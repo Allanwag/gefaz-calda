@@ -1,0 +1,15 @@
+{
+  "name": "Gefaz Calda — Compatibilidade de mistura",
+  "short_name": "Gefaz Calda",
+  "description": "Compatibilidade agronômica e físico-química de misturas em tanque: pH, ordem de adição, jar test, registro MAPA, custo/ha.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f3d2e",
+  "theme_color": "#0f3d2e",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

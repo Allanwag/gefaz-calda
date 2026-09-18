@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0f3d2e">
+<meta name="description" content="Gefaz Calda — compatibilidade agronômica e físico-química de misturas em tanque, integrada ao Gefaz360 e ao PVGest.">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<link rel="stylesheet" href="app.css">
+<title>Gefaz Calda</title>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><img src="icon-192.png" alt="" width="34" height="34"><div><h1>Gefaz Calda</h1><small>Compatibilidade de mistura de calda</small></div></div>
+  <div class="topbar-right"><span id="agroStatus" class="pill muted" title="Índice AGROFIT/MAPA">Agrofit…</span><span id="netStatus" class="pill muted">online</span></div>
+</header>
+
+<main id="app">
+  <!-- ══════════ CALDA ══════════ -->
+  <section id="tab-calda" class="tab active">
+    <div class="card">
+      <div class="card-hd"><h2>1 · Contexto da aplicação</h2><span class="hint">Tudo entra no cálculo</span></div>
+      <div class="grid2">
+        <label>Cultura<select id="fCultura"></select></label>
+        <label>Alvo (praga/doença/daninha)<input id="fAlvo" list="dlAlvos" placeholder="ex.: Hemileia vastatrix"><datalist id="dlAlvos"></datalist></label>
+        <label>Equipamento<select id="fEquip"></select></label>
+        <label>Volume de calda (L/ha)<input id="fVolume" type="number" min="1" step="1" value="400"></label>
+        <label>Área (ha)<input id="fArea" type="number" min="0" step="0.1" value="10"></label>
+        <label>Tanque (L)<input id="fTanque" type="number" min="0" step="10" value="2000"></label>
+        <label>pH da água<input id="fPh" type="number" min="3" max="11" step="0.1" placeholder="medir"></label>
+        <label>Dureza (mg/L CaCO₃)<input id="fDureza" type="number" min="0" step="1" placeholder="ex.: 120"></label>
+        <label>Aspecto da água<select id="fTurbidez"><option value="limpa">Limpa</option><option value="turva">Turva (argila / matéria orgânica)</option></select></label>
+        <label>Fonte da água<input id="fFonte" placeholder="poço, açude, rio…"></label>
+      </div>
+      <div id="droneAviso" class="alert warn hidden">⚠️ Drone: informe o modelo em Observações — vazão, bico e diluição mudam por modelo.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-hd"><h2>2 · Produtos da calda</h2><span class="hint" id="nItens">0 produtos</span></div>
+      <div class="search-wrap">
+        <input id="busca" placeholder="Buscar por marca, ingrediente ativo ou produto da fazenda (Wetcit, Kantphos…)" autocomplete="off">
+        <div id="buscaRes" class="search-res hidden"></div>
+      </div>
+      <div class="chips" id="chipsRapidos"></div>
+      <div id="itens" class="itens"></div>
+      <div class="row-btns">
+        <button class="btn ghost" id="btnManual">+ Produto manual</button>
+        <button class="btn ghost" id="btnReceita">📋 Carregar receita importada</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hd"><h2>3 · Observações</h2></div>
+      <textarea id="fObs" rows="2" placeholder="Estádio da cultura, modelo do drone, condições esperadas…"></textarea>
+      <div class="row-btns sticky-actions">
+        <button class="btn primary big" id="btnAnalisar">🧪 Analisar compatibilidade</button>
+        <button class="btn ghost" id="btnSalvarCalda">💾 Salvar calda</button>
+        <button class="btn ghost danger" id="btnLimpar">Limpar</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ RESULTADO ══════════ -->
+  <section id="tab-resultado" class="tab">
+    <div id="resultado"><div class="card empty">Monte a calda e toque em <b>Analisar</b>.</div></div>
+  </section>
+
+  <!-- ══════════ JAR TEST ══════════ -->
+  <section id="tab-jar" class="tab">
+    <div id="jar"><div class="card empty">Analise uma calda para gerar o protocolo do jar test na proporção real.</div></div>
+  </section>
+
+  <!-- ══════════ HISTÓRICO ══════════ -->
+  <section id="tab-historico" class="tab">
+    <div class="card"><div class="card-hd"><h2>Caldas salvas</h2></div><div id="listaCaldas" class="lista"></div></div>
+    <div class="card"><div class="card-hd"><h2>Análises</h2></div><div id="listaHistorico" class="lista"></div></div>
+    <div class="card"><div class="card-hd"><h2>Jar tests registrados</h2><span class="hint">Base de testes da fazenda — reaproveitada nas próximas análises</span></div><div id="listaJar" class="lista"></div></div>
+  </section>
+
+  <!-- ══════════ INTEGRAÇÃO ══════════ -->
+  <section id="tab-integracao" class="tab">
+    <div class="card">
+      <div class="card-hd"><h2>Apps neste navegador</h2><span class="hint">Mesma origem = dados compartilhados</span></div>
+      <p class="muted small">Quando o Gefaz Calda está publicado no mesmo domínio dos outros apps (allanwag.github.io), ele lê o PVGest (<code>pvgest_v1</code>), o Gefaz360 (<code>pvgest-erp-v1</code>) e o Gefaz360 Codex (<code>pvgest-activities</code>) direto do armazenamento do navegador.</p>
+      <div id="appsLocais" class="lista"></div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><h2>Importar arquivo</h2></div>
+      <div class="grid2">
+        <label>PVGest — JSON (<code>pvgest_v1</code> ou backup)<input type="file" id="impPV" accept=".json,application/json"></label>
+        <label>Gefaz360 — backup completo (<code>gefaz360-backup</code>)<input type="file" id="impG360" accept=".json,application/json"></label>
+      </div>
+      <label>Ou cole o JSON aqui<textarea id="impCola" rows="3" placeholder='Cole o conteúdo de localStorage.getItem("pvgest_v1") ou o backup do Gefaz360'></textarea></label>
+      <div class="row-btns"><button class="btn" id="btnImpCola">Importar colado</button><span id="impMsg" class="muted small"></span></div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><h2>Catálogo importado</h2><span class="hint" id="nCatalogo"></span></div>
+      <div id="listaCatalogo" class="lista compact"></div>
+      <div class="row-btns"><button class="btn ghost" id="btnExpCatalogo">⬇️ Exportar catálogo + caldas (formato PVGest/Gefaz360)</button><button class="btn ghost danger" id="btnLimparCatalogo">Limpar catálogo</button></div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><h2>Configuração da fazenda</h2></div>
+      <div class="grid2">
+        <label>pH padrão da água<input id="cfgPh" type="number" step="0.1" placeholder="7.5"></label>
+        <label>Dureza padrão (mg/L)<input id="cfgDureza" type="number" step="1"></label>
+        <label>Custo operacional barra (R$/ha)<input id="cfgBarra" type="number" step="1"></label>
+        <label>Custo operacional turbo (R$/ha)<input id="cfgTurbo" type="number" step="1"></label>
+        <label>Custo operacional drone (R$/ha)<input id="cfgDrone" type="number" step="1"></label>
+        <label>Custo operacional costal (R$/ha)<input id="cfgCostal" type="number" step="1"></label>
+      </div>
+      <label class="check"><input type="checkbox" id="cfgAcidUltimo"> Regra da fazenda: acidificante entra por último (diverge da Embrapa, que o coloca no passo 3)</label>
+      <div class="row-btns"><button class="btn" id="btnCfg">Salvar configuração</button><button class="btn ghost" id="btnBackup">⬇️ Backup do Gefaz Calda</button><label class="btn ghost">⬆️ Restaurar<input type="file" id="impBackup" accept=".json" hidden></label></div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><h2>SDK para os outros apps</h2></div>
+      <p class="small muted">Inclua <code>sdk.js</code> no Gefaz360, no Codex ou no PVGest e chame:</p>
+<pre id="sdkSnippet"></pre>
+      <p class="small muted">Formatos, deep-link <code>?mix=</code>, postMessage e patches prontos estão em <a href="INTEGRACAO.md" target="_blank">INTEGRACAO.md</a>.</p>
+    </div>
+  </section>
+
+  <!-- ══════════ REFERÊNCIAS ══════════ -->
+  <section id="tab-referencias" class="tab">
+    <div class="card">
+      <div class="card-hd"><h2>Benchmarks que orientaram o desenho</h2></div>
+      <div id="benchmarks" class="lista compact"></div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><h2>Fontes técnicas</h2></div>
+      <div id="fontes" class="lista compact"></div>
+      <p class="small muted">O Gefaz Calda apoia a decisão técnica; não substitui bula, receituário agronômico (IN 40/2018) nem o jar test. Cada alerta traz confiança declarada — abaixo de 70 % é indicativo.</p>
+    </div>
+    <div class="card"><div class="card-hd"><h2>Base de conhecimento</h2></div><div id="kbResumo" class="small muted"></div></div>
+  </section>
+</main>
+
+<nav class="bottomnav" id="nav">
+  <button data-tab="calda" class="active">🧪<span>Calda</span></button>
+  <button data-tab="resultado">📋<span>Resultado</span></button>
+  <button data-tab="jar">🫙<span>Jar test</span></button>
+  <button data-tab="historico">🕘<span>Histórico</span></button>
+  <button data-tab="integracao">🔗<span>Integração</span></button>
+  <button data-tab="referencias">📚<span>Fontes</span></button>
+</nav>
+
+<div id="modal" class="modal hidden"><div class="modal-box"><div id="modalBody"></div></div></div>
+<div id="toast" class="toast hidden"></div>
+
+<script src="kb.js"></script>
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
