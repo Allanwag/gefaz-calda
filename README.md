@@ -47,10 +47,14 @@ caldas salvas, histórico de análises, jar tests, regulagens de pontas, configu
 A aba **Pontas** resolve a outra metade da aplicação: que ponta usar, em que pressão e a que
 velocidade — e quanto disso vira volume de calda.
 
-* **Catálogo por família** — TeeJet (XR, XRC, TT, AIXR, AI, AIC, TTI, DG, TTJ60, AITTJ60, AI3070,
-  TP…E de faixa uniforme, TF flood, TX cone vazio), Magnojet (AD, ADGA, AD-IA, AD-IA/D, MUG, BD,
-  MAG) e Jacto/Albuz (JTT, J3D, JDF, ADI, AVI, AXI, ATR, AIRMIX), com tipo de jato, ângulo, faixa
-  útil de pressão, material, tamanhos e classe de gota — cada família com a sua fonte.
+* **Catálogo por família** — 51 famílias das cinco marcas que rodam no Brasil, com tipo de jato,
+  ângulo, faixa útil de pressão, material, tamanhos e classe de gota, cada uma com a sua fonte:
+  TeeJet (XR, XRC, TT, AIXR, AI, AIC, TTI, DG, TTJ60, AITTJ60, AI3070, TP…E, TF flood, TX),
+  Albuz (AXI, AXI TWIN, ADI, APE, AVI, AVI TWIN, AVI-UC, CVI, CVI TWIN, MVI, ATR, ATI, TVI, ATF),
+  Hypro (ULD, GuardianAIR, GuardianAIR Twin, Guardian, LD, 3D, VP, E FanTip, DeflecTip, HCX, XT),
+  Magnojet (AD, ADGA, AD-IA, AD-IA/D, MUG, BD, MAG) e Jacto (JTT, J3D, JDF, AIRMIX).
+  Pontas de escala própria (ATR e APE, na escala de cores Albuz) ficam declaradas como tais: o app
+  não calcula a vazão delas nem as sugere, porque a vazão não sai da ISO.
 * **Vazão pela norma, não pela marca** — a vazão sai da ISO 10625 (vazão nominal a 3 bar por
   tamanho e cor) e da lei da raiz quadrada `q₂ = q₁ × √(p₂ ÷ p₁)`. É assim que o catálogo do
   fabricante é montado; por isso o cálculo bate com qualquer marca. Os valores conferem com a

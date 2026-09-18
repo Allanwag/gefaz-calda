@@ -198,3 +198,43 @@ test('presets de faixa não saem com alerta alto', () => {
     assert.ok(!r.avisos.some(a => a.nivel === 'alta'), `${pre.nome}: ${r.avisos.filter(a => a.nivel === 'alta').map(a => a.texto).join(' / ')}`);
   });
 });
+
+test('vazões conferem com as tabelas dos catálogos Albuz', () => {
+  // Albuz 2022: AXI 01 a 1,5 bar = 0,28 · AXI 08 a 3 bar = 3,20 · CVI 02 a 2 bar = 0,66
+  perto(P.vazaoPonta('01', 1.5), 0.28, 0.01);
+  perto(P.vazaoPonta('08', 3), 3.20, 0.05);
+  perto(P.vazaoPonta('02', 2), 0.66, 0.02);
+  perto(P.vazaoPonta('03', 3), 1.20, 0.03);          // AVI 03 a 3 bar
+  perto(P.vazaoPonta('04', 3), 1.60, 0.03);          // MVI 04 a 3 bar
+});
+
+test('classes de gota das pontas Albuz vêm do catálogo', () => {
+  assert.equal(P.classeGota('jc-axi', 2, '02').id, 'F');        // AXI: fina em toda a faixa
+  assert.equal(P.classeGota('jc-adi', 2, '02').id, 'M');        // ADI: média até 3 bar
+  assert.equal(P.classeGota('jc-adi', 4, '02').id, 'F');        // e afina a 4 bar
+  assert.equal(P.classeGota('alb-cvi', 2, '02').id, 'MG');      // CVI: muito grossa a 2 bar
+  assert.equal(P.classeGota('alb-cvi', 4, '02').id, 'G');
+  assert.equal(P.classeGota('jc-avi', 3, '02').id, 'MG');       // AVI: 3 bar muito grossa
+  assert.equal(P.classeGota('alb-tvi', 10, '02').id, 'EG');     // TVI: cone com indução de ar
+  assert.equal(P.classeGota('alb-mvi', 2, '02').id, 'UG');      // MVI: ultragrossa
+});
+
+test('Albuz e Hypro entraram no catálogo com dados utilizáveis', () => {
+  const albuz = P.PONTAS.filter(p => p.marca === 'Albuz');
+  const hypro = P.PONTAS.filter(p => p.marca === 'Hypro');
+  assert.ok(albuz.length >= 12, `Albuz: ${albuz.length}`);
+  assert.ok(hypro.length >= 10, `Hypro: ${hypro.length}`);
+  hypro.forEach(p => assert.ok(!p.escalaPropria, `${p.id} deveria usar a escala ISO`));
+  // escala própria (ATR, APE) fica fora da seleção automática, porque a vazão não é ISO
+  const s = P.selecionar({ modo: 'area', espacamento: 0.5, volumeHa: 150, velocidade: 6, alvo: 'fungicida', limite: 40 });
+  assert.ok(!s.opcoes.some(o => ['jc-atr', 'alb-ape'].includes(o.ponta)), 'ponta de escala própria não pode ser sugerida');
+  assert.ok(s.opcoes.some(o => P.PONTA_MAP[o.ponta].marca === 'Hypro'));
+});
+
+test('as marcas novas aparecem na seleção para herbicida no café', () => {
+  const s = P.selecionar({ modo: 'faixa', larguraFaixa: 1.6, bicosPorPassada: 2, entreLinhas: 3.5, volumeHa: 200, velocidade: 4.5, alvo: 'herbicida-cafe', limite: 20 });
+  const marcas = new Set(s.opcoes.map(o => o.marca));
+  assert.ok(marcas.has('Albuz'), 'Albuz deve aparecer');
+  assert.ok(marcas.has('Hypro'), 'Hypro deve aparecer');
+  s.opcoes.slice(0, 10).forEach(o => assert.ok(o.gota.grau >= P.GOTA_MAP['G'].grau));
+});

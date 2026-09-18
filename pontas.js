@@ -68,7 +68,8 @@
     'leque-duplo': 'Leque duplo (dois jatos)',
     'faixa-uniforme': 'Leque de faixa uniforme (aplicação em faixa)',
     'flood': 'Defletor de grande ângulo (flood)',
-    'cone-vazio': 'Cone vazio'
+    'cone-vazio': 'Cone vazio',
+    'cone-cheio': 'Cone cheio'
   };
 
   /* ───────── Catálogo de pontas ─────────
@@ -274,37 +275,37 @@
       fonte: 'jacto.com — Jacto JDF'
     },
     {
-      id: 'jc-adi', marca: 'Jacto/Albuz', modelo: 'ADI (leque com pré-orifício)', tipo: 'leque-pre-orificio', angulos: [110],
-      sizes: ['015', '02', '025', '03', '04', '05'], pressao: [2.1, 5.2], material: 'Cerâmica',
-      gotasFaixa: ['G', 'M'],
+      id: 'jc-adi', marca: 'Albuz', modelo: 'ADI (leque antideriva com pré-orifício)', tipo: 'leque-pre-orificio', angulos: [110],
+      sizes: ['015', '02', '025', '03', '04', '05'], pressao: [2, 4], material: 'Cerâmica rosa Albuz',
+      gotasPorBar: { 2: 'M', 2.5: 'M', 3: 'M', 3.5: 'F', 4: 'F' },
       usos: ['herbicida-sistemico', 'herbicida-contato', 'dessecacao', 'fungicida'],
-      nota: 'Gota média com pré-orifício, 30 a 75 psi — opção para tempo instável.',
-      fonte: 'jacto.com — Jacto ADI'
+      nota: 'Corta pela metade as gotas abaixo de 100 µm sem mudar o padrão do leque; trabalha a partir de 2 bar, barra a 50–60 cm. Distribuída no Brasil pela Jacto (30–75 psi). Atenção: o catálogo europeu publica a ADI na escala de cores Albuz (amarelo = 0,49 L/min a 2 bar), não na ISO — confira a marcação da sua ponta.',
+      fonte: 'Catálogo Albuz 2022 (p. 11) + jacto.com'
     },
     {
-      id: 'jc-avi', marca: 'Jacto/Albuz', modelo: 'AVI (indução de ar)', tipo: 'leque-inducao', angulos: [110],
-      sizes: ['015', '02', '025', '03', '04', '05'], pressao: [3.1, 7.2], material: 'Cerâmica',
-      gotasFaixa: ['EG', 'MG', 'G'],
+      id: 'jc-avi', marca: 'Albuz', modelo: 'AVI 110° (indução de ar)', tipo: 'leque-inducao', angulos: [110],
+      sizes: ['01', '015', '02', '025', '03', '04', '05'], pressao: [3, 5], material: 'Cerâmica rosa Albuz (duplo orifício)',
+      gotasPorBar: { 3: 'MG', 4: 'G', 5: 'G' },
       usos: ['herbicida-sistemico', 'pre-emergente', 'dessecacao', 'herbicida-cafe'],
-      nota: 'Indicada pelo fabricante para pré-emergente, pós inicial e dessecação. 45 a 105 psi.',
-      fonte: 'jacto.com — Jacto AVI'
+      nota: 'Venturi com dupla entrada de ar: gota grande cheia de bolhas que arrebenta na folha. Homologada 75 % antideriva, barra a 50–60 cm, pressão recomendada 3 bar. No Brasil vem pela Jacto (45–105 psi).',
+      fonte: 'Catálogo Albuz 2022 (p. 16) + jacto.com'
     },
     {
-      id: 'jc-axi', marca: 'Jacto/Albuz', modelo: 'AXI (leque plano cerâmico)', tipo: 'leque', angulos: [110],
-      sizes: ['015', '02', '025', '03', '04', '05'], pressao: [1.0, 4.1], material: 'Cerâmica',
-      gotasFaixa: ['M', 'F'],
+      id: 'jc-axi', marca: 'Albuz', modelo: 'AXI 80°/110° (leque de faixa ampliada)', tipo: 'leque', angulos: [110, 80],
+      sizes: ['01', '015', '02', '025', '03', '04', '05', '06', '08'], pressao: [1.5, 4], material: 'Cerâmica em corpo plástico',
+      gotasPorBar: { 1.5: 'F', 2: 'F', 2.5: 'F', 3: 'F', 4: 'F' },
       usos: ['fungicida', 'inseticida', 'herbicida-contato', 'foliar'],
-      nota: 'Gota média já na pressão mínima (15 psi), distribuição uniforme, cerâmica de alta resistência.',
-      fonte: 'jacto.com — Jacto AXI'
+      nota: 'Aguenta 1,5 a 4 bar sem perder o padrão — é a ponta dos pulverizadores com controle automático de vazão. A 1,5 bar engrossa a gota (volume baixo, menos deriva); acima de 2,5 bar afina para cobrir melhor. VMD de ~150 µm no meio da faixa.',
+      fonte: 'Catálogo Albuz 2022 (p. 12)'
     },
     {
-      id: 'jc-atr', marca: 'Jacto/Albuz', modelo: 'ATR (cone vazio)', tipo: 'cone-vazio', angulos: [80],
-      sizes: ['lilás', 'marrom', 'amarelo', 'laranja', 'vermelho', 'verde', 'cinza', 'branco'], escalaPropria: true,
-      pressao: [4.1, 20.7], material: 'Cerâmica',
-      gotasFaixa: ['M', 'F', 'MF'],
+      id: 'jc-atr', marca: 'Albuz', modelo: 'ATR 60°/80° (cone vazio)', tipo: 'cone-vazio', angulos: [80, 60],
+      sizes: ['branco', 'lilás', 'marrom', 'amarelo', 'laranja', 'vermelho', 'cinza', 'verde', 'preto', 'azul'], escalaPropria: true,
+      pressao: [5, 20], material: 'Cerâmica Albuz',
+      gotasPorBar: { 5: 'F', 7: 'F', 10: 'F', 15: 'MF', 20: 'MF' },
       usos: ['fungicida', 'inseticida', 'foliar'],
-      nota: 'Cone vazio de 60 a 300 psi com escala de cores PRÓPRIA (não ISO) — turbo atomizador em café e citros. Consulte a tabela de vazão da Jacto para o par cor × pressão.',
-      fonte: 'jacto.com — Jacto ATR'
+      nota: 'Cone vazio de 5 a 20 bar com escala de cores PRÓPRIA (branco → azul), não ISO: o app não calcula a vazão dela — pegue o par cor × pressão na tabela da Albuz/Jacto. É a ponta do turbo atomizador em café e citros; gota fina a muito fina, cobertura máxima.',
+      fonte: 'Catálogo Albuz 2022 (p. 5 e 22)'
     },
     {
       id: 'jc-airmix', marca: 'Jacto', modelo: 'AIRMIX (indução de ar)', tipo: 'leque-inducao', angulos: [110],
@@ -313,6 +314,177 @@
       usos: ['herbicida-sistemico', 'pre-emergente', 'dessecacao'],
       nota: 'Indução de ar da linha Jacto — confirme faixa de pressão e classe de gota no catálogo antes de fechar a regulagem.',
       fonte: 'jacto.com — linha de bicos'
+    },
+    /* ── Albuz (linha completa do catálogo 2022; no Brasil vem pela Jacto) ── */
+    {
+      id: 'alb-axi-twin', marca: 'Albuz', modelo: 'AXI TWIN 120° (leque duplo)', tipo: 'leque-duplo', angulos: [120],
+      sizes: ['015', '02', '025', '03', '04'], pressao: [1.5, 5], material: 'Cerâmica em corpo plástico',
+      gotasPorBar: { 1.5: 'M', 2: 'F', 2.5: 'F', 3: 'MF', 3.5: 'MF', 4: 'MF' },
+      usos: ['fungicida', 'inseticida', 'foliar', 'herbicida-contato'],
+      nota: 'Dois jatos de 120° separados por 70°: penetra folhagem densa e cobre os dois lados do alvo. Gota fina — é ponta de produto de contato, não de herbicida em dia de vento.',
+      fonte: 'Catálogo Albuz 2022 (p. 13)'
+    },
+    {
+      id: 'alb-cvi', marca: 'Albuz', modelo: 'CVI 110° (indução de ar, corpo curto)', tipo: 'leque-inducao', angulos: [110],
+      sizes: ['015', '02', '025', '03', '04', '05', '06'], pressao: [1.5, 5], material: 'Cerâmica rosa Albuz',
+      gotasPorBar: { 1.5: 'MG', 2: 'MG', 2.5: 'MG', 3: 'G', 4: 'G', 5: 'G' },
+      usos: ['herbicida-sistemico', 'herbicida-contato', 'pre-emergente', 'dessecacao', 'herbicida-cafe'],
+      nota: 'Venturi de 22 mm que trabalha desde 1,5 bar — mesma capa das ISO (AXI). Gota de ~450 µm que arrebenta na folha: deriva baixa sem perder impacto. Pressão recomendada 2 bar, barra a 50–60 cm.',
+      fonte: 'Catálogo Albuz 2022 (p. 14)'
+    },
+    {
+      id: 'alb-cvi-twin', marca: 'Albuz', modelo: 'CVI TWIN (indução de ar, jato duplo)', tipo: 'leque-duplo', angulos: [110],
+      sizes: ['015', '02', '025', '03', '04'], pressao: [1.5, 5], material: 'Cerâmica de duplo orifício',
+      gotasFaixa: ['MG', 'G'],
+      usos: ['fungicida', 'inseticida', 'herbicida-sistemico', 'foliar'],
+      nota: 'Dois leques de 110° inclinados a 65°, com indução de ar: penetração do duplo e deriva do venturi. Filtro malha 80 nos tamanhos 015 e 02.',
+      fonte: 'Catálogo Albuz 2022 (p. 15)'
+    },
+    {
+      id: 'alb-avi-twin', marca: 'Albuz', modelo: 'AVI TWIN (indução de ar, jato duplo)', tipo: 'leque-duplo', angulos: [110],
+      sizes: ['01', '015', '02', '025', '03', '04'], pressao: [3, 5], material: 'Cerâmica de duplo orifício',
+      gotasFaixa: ['EG', 'MG', 'G'],
+      usos: ['fungicida', 'inseticida', 'herbicida-sistemico', 'foliar'],
+      nota: 'Dois leques de 110° inclinados a 65° com gota grande cheia de ar — cobertura nos dois lados da planta com deriva mínima.',
+      fonte: 'Catálogo Albuz 2022 (p. 17)'
+    },
+    {
+      id: 'alb-avi-uc', marca: 'Albuz', modelo: 'AVI-UC 110° (gota ultragrossa)', tipo: 'leque-inducao', angulos: [110],
+      sizes: ['015', '02', '025', '03', '04', '05'], pressao: [2, 5], material: 'Cerâmica Albuz',
+      gotasFaixa: ['UG', 'EG'],
+      usos: ['herbicida-sistemico', 'pre-emergente', 'herbicida-cafe', 'dessecacao'],
+      nota: 'Homologada 90 % antideriva: é a AVI levada ao extremo, gota ultragrossa em toda a faixa. Pressão recomendada 3 bar, barra a 50–60 cm. Para 2,4-D, dicamba e aplicação dirigida perto de cultura sensível.',
+      fonte: 'Catálogo Albuz 2022 (p. 18)'
+    },
+    {
+      id: 'alb-mvi', marca: 'Albuz', modelo: 'MVI (indução de ar, grande ângulo)', tipo: 'leque-inducao', angulos: [130, 140, 150, 160],
+      sizes: ['015', '02', '025', '03', '04', '05', '06', '08', '10'], pressao: [1.5, 3], material: 'Cerâmica Albuz',
+      gotasPorBar: { 1.5: 'UG', 2: 'UG', 3: 'UG' },
+      usos: ['herbicida-cafe', 'pre-emergente', 'herbicida-sistemico', 'foliar'],
+      nota: 'Grande ângulo que abre com a pressão (130° a 160°) e gota ultragrossa de 1,5 a 3 bar: faixa larga com a ponta baixa, sem deriva. Vale para fertilizante líquido e é a escolha natural da barra de herbicida sob a saia do café. A tabela de vazão do fabricante vai até 4 bar.',
+      fonte: 'Catálogo Albuz 2022 (p. 5 e 31)'
+    },
+    {
+      id: 'alb-ape', marca: 'Albuz', modelo: 'APE 80°/110° (leque padrão)', tipo: 'leque', angulos: [110, 80],
+      sizes: ['branco', 'lilás', 'marrom', 'amarelo', 'laranja', 'vermelho', 'cinza', 'verde', 'preto', 'azul'], escalaPropria: true,
+      pressao: [2, 4], material: 'Cerâmica rosa Albuz',
+      gotasPorBar: { 2: 'F', 2.5: 'F', 3: 'F', 3.5: 'F', 4: 'MF' },
+      usos: ['fungicida', 'inseticida', 'herbicida-contato', 'foliar'],
+      nota: 'Leque padrão da Albuz para todo tipo de tratamento, de 2 a 4 bar. Usa a escala de cores EUROPEIA da Albuz (amarelo = 0,49 L/min a 2 bar), não a ISO — o app não calcula a vazão dela; pegue o par cor × pressão na tabela do fabricante.',
+      fonte: 'Catálogo Albuz 2022 (p. 10)'
+    },
+    {
+      id: 'alb-ati', marca: 'Albuz', modelo: 'ATI 60°/80° (cone vazio ISO)', tipo: 'cone-vazio', angulos: [80, 60],
+      sizes: ['01', '015', '02', '025', '03', '04', '05'], pressao: [5, 20], material: 'Cerâmica Albuz',
+      gotasPorBar: { 5: 'F', 7: 'F', 10: 'F', 15: 'MF', 20: 'MF' },
+      usos: ['fungicida', 'inseticida', 'foliar'],
+      nota: 'É a ATR com código ISO: mesmo cone vazio de alta pressão, mas com tamanho e cor da norma — dá para calcular a vazão aqui. Turbo atomizador em café e citros.',
+      fonte: 'Catálogo Albuz 2022 (p. 5)'
+    },
+    {
+      id: 'alb-tvi', marca: 'Albuz', modelo: 'TVI 80° (cone vazio com indução de ar)', tipo: 'cone-vazio', angulos: [80],
+      sizes: ['01', '015', '02', '025', '03', '04'], pressao: [5, 15], material: 'Cerâmica Albuz',
+      gotasPorBar: { 5: 'UG', 7: 'UG', 10: 'EG', 15: 'MG' },
+      usos: ['fungicida', 'inseticida', 'foliar'],
+      nota: 'Cone vazio com venturi: a cobertura do cone do turbo atomizador com gota grossa a ultragrossa — corta a deriva do pomar e do cafezal, onde o cone comum joga névoa para fora da rua.',
+      fonte: 'Catálogo Albuz 2022 (p. 5)'
+    },
+    {
+      id: 'alb-atf', marca: 'Albuz', modelo: 'ATF 80° (cone cheio)', tipo: 'cone-cheio', angulos: [80],
+      sizes: ['015', '02', '025', '03', '04'], pressao: [3, 15], material: 'Cerâmica Albuz',
+      gotasPorBar: { 3: 'F', 5: 'F', 10: 'MF', 15: 'MF' },
+      usos: ['fungicida', 'inseticida', 'foliar'],
+      nota: 'Cone cheio: jato preenchido, deposição concentrada — tratamento localizado e alvos densos. Gota fina a muito fina, só com vento fraco.',
+      fonte: 'Catálogo Albuz 2022 (p. 5)'
+    },
+    /* ── Hypro (Pentair) ── */
+    {
+      id: 'hy-uld', marca: 'Hypro', modelo: 'ULD Ultra Lo-Drift', tipo: 'leque-inducao', angulos: [120],
+      sizes: ['015', '02', '025', '03', '04', '05', '06'], pressao: [1, 8], material: 'Poliacetal',
+      gotasFaixa: ['UG', 'EG', 'MG'],
+      usos: ['herbicida-sistemico', 'pre-emergente', 'herbicida-cafe', 'dessecacao'],
+      nota: 'A ponta de menor deriva da linha Hypro: gota grande cheia de ar, 120° de abertura e faixa de 1 a 8 bar. Indicada pelo fabricante para daninhas — sistêmico, pré-emergente e dessecação.',
+      fonte: 'Hypro — Selecting the Right Spray Nozzle (guia de seleção)'
+    },
+    {
+      id: 'hy-ga', marca: 'Hypro', modelo: 'GuardianAIR', tipo: 'leque-inducao', angulos: [110, 80],
+      sizes: ['015', '02', '025', '03', '04', '05', '06'], pressao: [1, 8], material: 'Poliacetal',
+      gotasFaixa: ['MG', 'G', 'M'],
+      usos: ['fungicida', 'inseticida', 'herbicida-sistemico', 'dessecacao', 'foliar'],
+      nota: 'Indução de ar que mantém o ângulo do leque de 1 a 8 bar: cobertura de fungicida e inseticida com deriva controlada. Existe em 80° e 110°.',
+      fonte: 'Hypro — guia de seleção e ficha GuardianAIR'
+    },
+    {
+      id: 'hy-gat', marca: 'Hypro', modelo: 'GuardianAIR Twin', tipo: 'leque-duplo', angulos: [110],
+      sizes: ['015', '02', '025', '03', '04', '05'], pressao: [2, 8], material: 'Poliacetal',
+      gotasFaixa: ['MG', 'G', 'M'],
+      usos: ['fungicida', 'inseticida', 'foliar', 'herbicida-sistemico'],
+      nota: 'Dois jatos com indução de ar num corpo só: deposição na frente e atrás do alvo, para espiga, haste e dossel fechado.',
+      fonte: 'Hypro — guia de seleção'
+    },
+    {
+      id: 'hy-grd', marca: 'Hypro', modelo: 'Guardian (pré-orifício)', tipo: 'leque-pre-orificio', angulos: [120],
+      sizes: ['015', '02', '025', '03', '04', '05'], pressao: [1, 8], material: 'Poliacetal',
+      gotasFaixa: ['G', 'M'],
+      usos: ['fungicida', 'inseticida', 'herbicida-contato', 'foliar'],
+      nota: '120° com pré-orifício: gota média a grossa numa faixa de pressão larga. Meio-termo entre cobertura e deriva quando não dá para usar indução de ar.',
+      fonte: 'Hypro — guia de seleção'
+    },
+    {
+      id: 'hy-ld', marca: 'Hypro', modelo: 'LD Lo-Drift', tipo: 'leque-pre-orificio', angulos: [110, 80],
+      sizes: ['015', '02', '025', '03', '04', '05'], pressao: [1, 5], material: 'Poliacetal',
+      gotasFaixa: ['M', 'F'],
+      usos: ['fungicida', 'inseticida', 'herbicida-contato', 'foliar'],
+      nota: 'A antideriva original da Hypro: pré-orifício que corta boa parte das gotas finas de um leque comum, mantendo cobertura.',
+      fonte: 'Hypro — guia de seleção'
+    },
+    {
+      id: 'hy-3d', marca: 'Hypro', modelo: '3D (leque inclinado)', tipo: 'leque', angulos: [100],
+      sizes: ['015', '02', '025', '03', '04', '05'], pressao: [0.7, 6], material: 'Poliacetal',
+      gotasFaixa: ['M', 'F'],
+      usos: ['fungicida', 'inseticida', 'foliar', 'herbicida-contato'],
+      nota: 'Jato inclinado de 100° para montar alternado na barra (um para a frente, outro para trás) — cobre os dois lados sem ponta dupla. Homologada para PWM (bico pulsado).',
+      fonte: 'Hypro — guia de seleção'
+    },
+    {
+      id: 'hy-vp', marca: 'Hypro', modelo: 'VP FanTip (pressão variável)', tipo: 'leque', angulos: [110, 80],
+      sizes: ['01', '015', '02', '025', '03', '04', '05', '06'], pressao: [1, 5], material: 'Poliacetal',
+      gotasFaixa: ['M', 'F'],
+      usos: ['fungicida', 'inseticida', 'herbicida-contato', 'foliar'],
+      nota: 'Leque de uso geral com orifício elíptico, estável de 1 a 5 bar — a ponta padrão de barra quando a deriva não é o problema do dia.',
+      fonte: 'Hypro — guia de seleção'
+    },
+    {
+      id: 'hy-even', marca: 'Hypro', modelo: 'E FanTip (faixa uniforme)', tipo: 'faixa-uniforme', angulos: [80],
+      sizes: ['01', '015', '02', '025', '03', '04'], pressao: [2, 4], material: 'Poliacetal',
+      gotasFaixa: ['M', 'F'],
+      usos: ['herbicida-cafe', 'herbicida-contato', 'pre-emergente'],
+      nota: 'Deposição uniforme de borda a borda para aplicação em FAIXA (linha de plantio, canteiro, faixa do café) — não sobrepõe. Também existe na versão costal (1 a 3 bar).',
+      fonte: 'Hypro — guia de seleção'
+    },
+    {
+      id: 'hy-dt', marca: 'Hypro', modelo: 'DeflecTip (defletor / flood)', tipo: 'flood', angulos: [160, 130, 80], confirmar: true,
+      sizes: ['02', '03', '04', '05', '06', '08', '10'], pressao: [1, 4], material: 'Poliacetal',
+      gotasFaixa: ['UG', 'EG', 'MG'],
+      usos: ['herbicida-cafe', 'pre-emergente', 'herbicida-sistemico', 'foliar'],
+      nota: 'Defletor de 80° a 160° a baixa pressão (1 a 4 bar), gota grossa: daninhas e fertilizante líquido, e é o tipo das barras de herbicida em faixa. A Hypro numera os tamanhos pela vazão em gpm — confira a equivalência com o código ISO antes de fechar a regulagem.',
+      fonte: 'Hypro — guia de seleção'
+    },
+    {
+      id: 'hy-hcx', marca: 'Hypro', modelo: 'HCX HollowTip (cone vazio)', tipo: 'cone-vazio', angulos: [80],
+      sizes: ['01', '015', '02', '025', '03', '04', '05'], pressao: [3, 10], material: 'Poliacetal',
+      gotasFaixa: ['M', 'F'],
+      usos: ['fungicida', 'inseticida', 'foliar'],
+      nota: 'Cone vazio em poliacetal, de 3 a 10 bar: cobertura para pulverização assistida por ar e aplicação dirigida (café, citros, hortaliças).',
+      fonte: 'Hypro — guia de seleção'
+    },
+    {
+      id: 'hy-xt', marca: 'Hypro', modelo: 'XT Boom X Tender (sem barra)', tipo: 'flood', angulos: [105], confirmar: true,
+      sizes: ['04', '05', '06', '08', '10'], pressao: [2, 5], material: 'Inox ou poliacetal',
+      gotasFaixa: ['EG', 'MG', 'G'],
+      usos: ['herbicida-sistemico', 'pre-emergente', 'dessecacao'],
+      nota: 'Ponta boomless: cobre uma faixa larga sem barra, para pastagem, beira de cerca e área acidentada. Tamanho pela vazão do fabricante — confira a equivalência ISO.',
+      fonte: 'Hypro — guia de seleção'
     },
     /* ── genérica ── */
     {
