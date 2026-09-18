@@ -88,7 +88,7 @@ Campos opcionais: `formulacao` (SC, EC, WG…), `classe`, `preco` (R$ por L ou k
 
 ## 3. Patches em cada app
 
-PVGest e Gefaz360 já receberam os patches (18/09/2026); o do Codex continua como sugestão.
+PVGest, Gefaz360 e o protótipo Codex receberam os patches em 18/09/2026.
 Nos dois casos o botão manda **cultura, alvo, volume de calda e produtos com dose e preço** pelo
 deep-link `?mix=`; **água (pH/dureza), equipamento e regras da fazenda não vão no link** — ficam
 na configuração do Gefaz Calda, que só sobrescreve o que o `mix` traz.
@@ -150,19 +150,26 @@ Para testar os três apps lado a lado fora do GitHub Pages, sirva uma pasta-raiz
 `gefaz360/` e `gefaz-calda/` (junções bastam) na mesma porta — o `../gefaz-calda/sdk.js` só
 resolve assim.
 
-### Gefaz360 Codex (`gefaz360-codex-site/app.js`, vista `spray`)
+### Gefaz360 Codex (`gefaz360-codex-site/index.html` + `app.js` + `styles.css`, vista `spray`) — aplicado
+
+O protótipo não tem receitas reais, então o patch traz três receitas demonstrativas
+(`sprayRecipes`: fungicida F-12, inseticida SI-02 e um herbicida com manganês como exemplo de
+incompatibilidade) e o painel **Compatibilidade de calda** logo abaixo dos indicadores da vista
+de pulverização, com seletor de receita, o Gefaz Calda embutido e o link "Abrir no Gefaz Calda":
 
 ```js
-// painel na vista de pulverização:
-panel('Compatibilidade de calda', 'Gefaz Calda embutido', '<div id="calda-slot"></div>');
-GefazCalda.embed('#calda-slot', mixDaReceitaSelecionada, res => {
-  state.activities.unshift({ icon: res.status === 'incompativel' ? 'alert' : 'check',
-    title: 'Gefaz Calda: ' + res.resumo.rotulo, meta: res.contexto.cultura + ' · ' + res.data });
-  localStorage.setItem('pvgest-activities', JSON.stringify(state.activities.slice(0, 5)));
-});
+// index.html: <script src="../gefaz-calda/sdk.js"></script> antes de app.js
+// app.js: caldaPanel() monta o painel; mountCaldaPanel() roda no fim de renderSpray()
+caldaEmbed = GefazCalda.embed(slot, sprayMix(currentSprayRecipe()), registrarResultadoCalda);
+select.addEventListener('change', () => caldaEmbed.enviar(sprayMix(currentSprayRecipe())));
+// registrarResultadoCalda(res): mostra rótulo e confiança no cabeçalho do painel e grava a atividade
+// { icon: 'alert' | 'check', title: 'Gefaz Calda: <rótulo> · <receita>', meta: 'Agora · cultura · alvo' }
+// em state.activities / localStorage 'pvgest-activities' (sem duplicar a mesma receita reanalisada).
+// render() destrói o embed ao sair da vista (caldaEmbed.destruir()).
 ```
 
-O botão **📤 Codex (atividade)** faz o mesmo sem patch, pela chave `pvgest-activities`.
+O botão **📤 Codex (atividade)** do Gefaz Calda grava na mesma chave `pvgest-activities`, que o
+painel inicial do protótipo lista em **Atividade recente**.
 
 ## 4. Publicar no GitHub Pages (mesma origem dos outros apps)
 
