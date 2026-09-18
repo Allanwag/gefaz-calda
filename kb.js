@@ -228,7 +228,7 @@
     classes: ['Herbicida', 'Fungicida', 'Inseticida', 'Acaricida', 'Nematicida', 'Adjuvante', 'Fertilizante Foliar', 'Bioracional', 'Cúprico', 'Outro'],
     formulacoes: { WG: 'Grânulos dispersíveis', WP: 'Pó molhável', SG: 'Granulado solúvel', SP: 'Pó solúvel', SC: 'Suspensão concentrada', CS: 'Suspensão de encapsulado', SE: 'Suspo-emulsão', SL: 'Concentrado solúvel', EC: 'Concentrado emulsionável', EW: 'Emulsão óleo em água', ME: 'Microemulsão', OD: 'Dispersão em óleo', BIO: 'Organismo vivo' },
     unidades: ['L/ha', 'kg/ha', 'mL/ha', 'g/ha', 'mL/100L', 'g/100L', 'L/100L', 'kg/100L'],
-    equipamentos: { barra: { nome: 'Pulverizador de barra', volume: [80, 150], custo: 60 }, turbo: { nome: 'Turbo atomizador', volume: [300, 500], custo: 90 }, drone: { nome: 'Drone (informar modelo)', volume: [10, 30], custo: 120 }, costal: { nome: 'Costal', volume: [150, 300], custo: 40 }, aviao: { nome: 'Avião agrícola', volume: [10, 40], custo: 110 } },
+    equipamentos: { barra: { nome: 'Pulverizador de barra', volume: [80, 150], custo: 60 }, turbo: { nome: 'Turbo atomizador', volume: [300, 500], custo: 90 }, drone: { nome: 'Drone (informar modelo)', volume: [10, 30], custo: 120 }, costal: { nome: 'Costal', volume: [150, 300], custo: 40 }, 'herbicida-cafe': { nome: 'Barra de herbicida para café (faixa dirigida)', volume: [150, 300], custo: 55 }, aviao: { nome: 'Avião agrícola', volume: [10, 40], custo: 110 } },
     fontes: [
       { id: 'embrapa437', titulo: 'Embrapa Soja — Manual técnico para subsidiar a mistura em tanque de agrotóxicos e afins (Documentos 437, 2021)', url: 'https://www.infoteca.cnptia.embrapa.br/infoteca/bitstream/doc/1132371/1/DOCUMENTOS-437-1.pdf' },
       { id: 'in40', titulo: 'MAPA — Instrução Normativa nº 40/2018 (receituário agronômico e mistura em tanque)', url: 'https://www.in.gov.br/materia/-/asset_publisher/Kujrw0TZC2Mb/content/id/45173700/do1-2018-10-15-instrucao-normativa-n-40-de-11-de-outubro-de-2018-45173522' },
@@ -242,6 +242,13 @@
       { id: 'mixtank', titulo: 'Precision Laboratories — Mix Tank app (ordem de mistura, mix sheet, spray log)', url: 'https://www.precisionlab.com/news-resources/mix-tank-app/' },
       { id: 'bayer', titulo: 'Bayer UK — Tank Mix Database (testes físicos; ordem de 15 passos)', url: 'https://cropscience.bayer.co.uk/tankmix' },
       { id: 'aegro', titulo: 'Aegro — Guia de mistura de defensivos em tanque', url: 'https://aegro.com.br/blog/mistura-defensivos-tanque-guia/' },
+      { id: 'teejet', titulo: 'TeeJet Technologies — Catálogo de bicos para área total (Brasil): vazão, classe de gota por pressão e altura ideal da barra', url: 'https://www.teejet.com/pt-br/-/media/dam/agricultural/brazil/sales-material/catalog/broadcast_nozzles-pt.pdf' },
+      { id: 'iso10625', titulo: 'ISO 10625 — código de cores e vazão nominal das pontas de pulverização (vazão a 3 bar)', url: 'https://www.iso.org/standard/76567.html' },
+      { id: 'asabe572', titulo: 'ASABE S572.1 — classificação do tamanho de gotas (fina, média, grossa, ultragrossa)', url: 'https://elibrary.asabe.org/abstract.asp?aid=29187' },
+      { id: 'magnojet', titulo: 'Magnojet — linha de pontas de pulverização (AD, ADGA, AD-IA, MUG, MAG)', url: 'https://www.magnojet.com.br/category/pontas-de-pulveriza%C3%A7%C3%A3o' },
+      { id: 'jacto-bicos', titulo: 'Jacto — bicos e pontas (JTT, J3D, JDF, ADI, AVI, AXI, ATR)', url: 'https://jacto.com/brasil/products/bicos-e-acessorios' },
+      { id: 'ph400', titulo: 'Jacto — Pulverizador de herbicida para café PH-400 (faixa de 1,40 a 3,60 m, bicos flood 130°, ~500 µm, 250 L/ha a 4,5 km/h)', url: 'https://sbcpd.org/uploads/trabalhos/pulverizador-de-herbicida-para-cafe-jacto-ph-400-997.pdf' },
+      { id: 'barra-cafe', titulo: 'Planta Daninha — Eficiência de uma barra de pulverização para aplicação de herbicida em lavouras de café em formação (faixa de 0,80 m, ponta de faixa uniforme, proteção contra deriva)', url: 'https://www.scielo.br/j/pd/a/8YrWpbZKMgkwKxrv398Qypm/' },
       { id: 'agrolink', titulo: 'Agrolink — Como realizar a mistura de defensivos em tanques (NBR 13875 × ASTM E1518)', url: 'https://www.agrolink.com.br/agrolinkfito/defensivos-e-adjuvantes/aspectos-gerais/como-realizar-a-mistura-de-defensivos-em-tanques-_485965.html' }
     ]
   };

@@ -298,7 +298,7 @@
   // ── Custo ──
   function custo(itens, opts) {
     const vol = +opts.volumeHa || 100, area = +opts.area || 0;
-    const custosOp = Object.assign({ barra: 60, turbo: 90, drone: 120, costal: 40, aviao: 110 }, opts.custoOperacional || {});
+    const custosOp = Object.assign({ barra: 60, turbo: 90, drone: 120, costal: 40, aviao: 110, 'herbicida-cafe': 55 }, opts.custoOperacional || {});
     const porItem = itens.map(it => {
       const d = dosePorHa(it, vol);
       const preco = +it.preco || 0;

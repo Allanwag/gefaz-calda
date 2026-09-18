@@ -36,6 +36,7 @@
         <label>Aspecto da água<select id="fTurbidez"><option value="limpa">Limpa</option><option value="turva">Turva (argila / matéria orgânica)</option></select></label>
         <label>Fonte da água<input id="fFonte" placeholder="poço, açude, rio…"></label>
       </div>
+      <div id="cafeAviso" class="alert info hidden">☕ Barra de herbicida do café: acerte a faixa, a ponta e a pressão na aba <b>Pontas</b> — o volume de calda sai de lá.</div>
       <div id="droneAviso" class="alert warn hidden">⚠️ Drone: informe o modelo em Observações — vazão, bico e diluição mudam por modelo.</div>
     </div>
 
@@ -72,6 +73,88 @@
   <!-- ══════════ JAR TEST ══════════ -->
   <section id="tab-jar" class="tab">
     <div id="jar"><div class="card empty">Analise uma calda para gerar o protocolo do jar test na proporção real.</div></div>
+  </section>
+
+  <!-- ══════════ PONTAS E REGULAGEM ══════════ -->
+  <section id="tab-pontas" class="tab">
+    <div class="card">
+      <div class="card-hd"><h2>1 · Arranjo do equipamento</h2><span class="hint">área total ou faixa dirigida</span></div>
+      <div class="chips" id="chipsPreset"></div>
+      <div class="grid2">
+        <label>Modo de aplicação<select id="pModo"><option value="area">Área total (barra, turbo, drone)</option><option value="faixa">Faixa dirigida (café, linha de plantio)</option></select></label>
+        <label>Alvo da aplicação<select id="pAlvo"></select></label>
+        <label>Velocidade (km/h)<input id="pVel" type="number" min="0.5" step="0.1" value="8"></label>
+        <label>Volume de calda (L/ha)<input id="pVol" type="number" min="1" step="1" value="100"></label>
+      </div>
+      <div class="grid2" id="camposArea">
+        <label>Espaçamento entre bicos (m)<input id="pEsp" type="number" min="0.1" step="0.05" value="0.5"></label>
+        <label>Nº de bicos<input id="pNb" type="number" min="1" step="1" value="40"></label>
+      </div>
+      <div class="grid2 hidden" id="camposFaixa">
+        <label>Largura total da faixa tratada (m)<input id="pLf" type="number" min="0.1" step="0.1" value="1.6"></label>
+        <label>Nº de bicos na faixa<input id="pBf" type="number" min="1" step="1" value="4"></label>
+        <label>Entrelinhas da cultura (m)<input id="pEl" type="number" min="0.5" step="0.1" value="3.5"></label>
+        <label class="check" style="grid-column:1/-1"><input type="checkbox" id="pProt"> Bicos com proteção física contra deriva (chapéu de Napoleão, saia protetora, cortina)</label>
+      </div>
+      <div class="grid2">
+        <label>Tanque (L)<input id="pTq" type="number" min="0" step="10" value="2000"></label>
+        <label>Área (ha)<input id="pArea" type="number" min="0" step="0.1" value="10"></label>
+      </div>
+      <p class="small muted" id="pAlvoNota"></p>
+    </div>
+
+    <div class="card">
+      <div class="card-hd"><h2>2 · Ponta</h2><span class="hint" id="pVazaoAlvo"></span></div>
+      <div class="grid2">
+        <label>Marca<select id="pMarca"></select></label>
+        <label>Modelo<select id="pPonta"></select></label>
+        <label>Tamanho ISO (cor)<select id="pIso"></select></label>
+        <label>Ângulo do leque (°)<select id="pAng"></select></label>
+        <label>Pressão de trabalho (bar)<input id="pPress" type="number" min="0.3" step="0.1" placeholder="calculada"></label>
+      </div>
+      <label class="check"><input type="checkbox" id="pFixar"> Pressão fixa (tenho manômetro travado nesse valor) — o app calcula o volume que sai</label>
+      <div class="row-btns"><button class="btn primary" id="btnRegular">📐 Calcular regulagem</button><button class="btn ghost" id="btnSugerir">🔎 Sugerir pontas para este alvo</button><button class="btn ghost" id="btnSalvarReg">💾 Salvar regulagem</button></div>
+      <div id="pSugestoes"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-hd"><h2>3 · Cruzamento vazão × pressão</h2><span class="hint">de um par conhecido para a pressão que você quer</span></div>
+      <p class="small muted">A vazão anda com a raiz quadrada da pressão: <code>q₂ = q₁ × √(p₂ ÷ p₁)</code> e <code>p₂ = p₁ × (q₂ ÷ q₁)²</code>. Serve para ponta sem tabela, já gasta ou de escala própria — basta um par medido.</p>
+      <div class="grid2">
+        <label>Vazão conhecida (L/min por bico)<input id="xQ1" type="number" min="0.01" step="0.01" placeholder="medida no bico ou do catálogo"></label>
+        <label>Na pressão de (bar)<input id="xP1" type="number" min="0.1" step="0.1" placeholder="ex.: 3"></label>
+        <label>Quero determinar<select id="xModo"><option value="vazao">A pressão para uma vazão desejada</option><option value="volume">A pressão para um volume desejado (L/ha)</option><option value="pressao">A vazão numa pressão desejada</option></select></label>
+        <label id="xAlvoLabel">Vazão desejada (L/min)<input id="xAlvo" type="number" min="0.01" step="0.01"></label>
+      </div>
+      <div class="row-btns"><button class="btn primary" id="btnCruzar">🔀 Cruzar</button><button class="btn ghost" id="btnCruzPonta">Preencher com a ponta selecionada</button><button class="btn ghost" id="btnCruzCalib">Preencher com a calibração</button></div>
+      <div id="xResultado"></div>
+      <div id="xTabela"></div>
+    </div>
+    <div id="pResultado"></div>
+
+    <div class="card">
+      <div class="card-hd"><h2>Calibração a campo</h2><span class="hint">coleta nos bicos · aferição de desgaste</span></div>
+      <div class="grid2">
+        <label>Tempo de coleta (s)<input id="cSeg" type="number" min="5" step="5" value="60"></label>
+        <label>Percurso medido (m)<input id="cDist" type="number" min="10" step="5" value="50"></label>
+        <label>Tempo do percurso (s)<input id="cTempo" type="number" min="1" step="0.1" placeholder="cronômetro"></label>
+        <label>Pressão no manômetro (bar)<input id="cPress" type="number" min="0.3" step="0.1"></label>
+      </div>
+      <label>Volume coletado por bico (mL, separados por vírgula ou espaço)<input id="cColetas" placeholder="ex.: 820 790 900 810 830"></label>
+      <div class="row-btns"><button class="btn" id="btnCalibrar">🧮 Conferir calibração</button></div>
+      <div id="cResultado"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-hd"><h2>Catálogo de pontas</h2><span class="hint" id="nPontas"></span></div>
+      <div class="search-wrap"><input id="pBusca" placeholder="Buscar por marca, modelo ou tipo (AIXR, indução de ar, faixa uniforme…)" autocomplete="off"></div>
+      <div id="listaPontas" class="lista compact"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-hd"><h2>Regulagens salvas</h2></div>
+      <div id="listaRegulagens" class="lista compact"></div>
+    </div>
   </section>
 
   <!-- ══════════ HISTÓRICO ══════════ -->
@@ -111,6 +194,7 @@
         <label>Custo operacional turbo (R$/ha)<input id="cfgTurbo" type="number" step="1"></label>
         <label>Custo operacional drone (R$/ha)<input id="cfgDrone" type="number" step="1"></label>
         <label>Custo operacional costal (R$/ha)<input id="cfgCostal" type="number" step="1"></label>
+        <label>Custo operacional barra de herbicida do café (R$/ha)<input id="cfgHerbCafe" type="number" step="1"></label>
       </div>
       <label class="check"><input type="checkbox" id="cfgAcidUltimo"> Regra da fazenda: acidificante entra por último (diverge da Embrapa, que o coloca no passo 3)</label>
       <div class="row-btns"><button class="btn" id="btnCfg">Salvar configuração</button><button class="btn ghost" id="btnBackup">⬇️ Backup do Gefaz Calda</button><label class="btn ghost">⬆️ Restaurar<input type="file" id="impBackup" accept=".json" hidden></label></div>
@@ -142,6 +226,7 @@
   <button data-tab="calda" class="active">🧪<span>Calda</span></button>
   <button data-tab="resultado">📋<span>Resultado</span></button>
   <button data-tab="jar">🫙<span>Jar test</span></button>
+  <button data-tab="pontas">💦<span>Pontas</span></button>
   <button data-tab="historico">🕘<span>Histórico</span></button>
   <button data-tab="integracao">🔗<span>Integração</span></button>
   <button data-tab="referencias">📚<span>Fontes</span></button>
@@ -152,6 +237,7 @@
 
 <script src="kb.js"></script>
 <script src="engine.js"></script>
+<script src="pontas.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

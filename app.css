@@ -108,3 +108,22 @@ table.tb tfoot td{font-weight:700}
   main{padding:0;max-width:none}.tab{display:none}.tab.active{display:block}.card{box-shadow:none;border:1px solid #ccc;break-inside:avoid}
   .print-only{display:block}.status{color:#000;border:2px solid #000;background:#fff!important}
 }
+/* ───────── pontas e regulagem ───────── */
+.alert.info{background:var(--blu100);border:1px solid #90caf9}
+.alert.ok{background:var(--g100);border:1px solid #a5d6a7}
+.alert.bad{background:var(--red100);border:1px solid #ef9a9a}
+.iso-cor{display:inline-flex;align-items:center;gap:5px;font-weight:700;font-size:.78rem}
+.iso-cor i{width:13px;height:13px;border-radius:50%;border:1px solid rgba(0,0,0,.25);display:inline-block}
+.gota{display:inline-block;padding:2px 9px;border-radius:999px;font-size:.72rem;font-weight:700;color:#3e2723}
+.ponta-resumo{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0}
+.formulas code{font-size:.78rem;white-space:nowrap}
+.formulas td{vertical-align:top}
+#pSugestoes h3{margin-top:10px}
+@media(max-width:560px){.formulas code{white-space:normal}.bottomnav button{min-width:44px;padding:4px 2px}}
+.cruzada{overflow-x:auto}
+.cruzada table{min-width:520px}
+.cruzada th{white-space:nowrap}
+.cruzada td small{display:block;font-size:.66rem;color:var(--ink2);font-weight:400}
+.cruzada td.alvo{background:var(--g100);font-weight:700}
+.cruzada td.sel{outline:2px solid var(--g600);outline-offset:-2px}
+label.check input[type=checkbox]{width:auto;flex:0 0 auto;margin:0}
