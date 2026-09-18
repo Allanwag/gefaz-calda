@@ -86,46 +86,69 @@ Campos opcionais: `formulacao` (SC, EC, WG…), `classe`, `preco` (R$ por L ou k
 `resultado` contém `status`, `resumo`, `score`, `confianca`, `alertas[]`, `ph`, `ordem[]`,
 `custo`, `tanque`, `checklist[]`, `registro[]`, `jarTest`, `contexto`, `versao`.
 
-## 3. Patches prontos para cada app
+## 3. Patches em cada app
 
-### PVGest (`pvgest/index.html` + `app.js`)
+PVGest e Gefaz360 já receberam os patches (18/09/2026); o do Codex continua como sugestão.
+Nos dois casos o botão manda **cultura, alvo, volume de calda e produtos com dose e preço** pelo
+deep-link `?mix=`; **água (pH/dureza), equipamento e regras da fazenda não vão no link** — ficam
+na configuração do Gefaz Calda, que só sobrescreve o que o `mix` traz.
+
+### PVGest (`pvgest/index.html` + `app.js` + `sw.js`) — aplicado
 
 ```html
-<!-- index.html, antes de app.js -->
+<!-- index.html, antes de app.js (que subiu para app.js?v=7) -->
 <script src="../gefaz-calda/sdk.js"></script>
 ```
 
 ```js
-// app.js — dentro de openReceitaDetail(id), junto dos botões de ação da receita:
-`<button class="btn btn-secondary" onclick="verificarCalda('${r.id}')">🧪 Compatibilidade</button>`
+// app.js — rodapé do modal de openReceitaDetail(id), abaixo de "Calcular para minha área":
+`<button class="btn btn-secondary btn-block" onclick="verificarCalda('${id}')">🧪 Verificar compatibilidade da calda</button>`
 
 // app.js — nova função:
 function verificarCalda(id) {
-  const r = byId(DB.receitas, id); if (!r || !window.GefazCalda) return;
-  GefazCalda.abrir(GefazCalda.dePVGest(r, DB.produtos, { equipamento: 'turbo', agua: { ph: 7.5 } }));
+  const r = byId(DB.receitas,id); if (!r) return;
+  if (!window.GefazCalda) { toast('Gefaz Calda não carregou — verifique a conexão e recarregue','error'); return; }
+  const w = GefazCalda.abrir(GefazCalda.dePVGest(r, DB.produtos));
+  if (!w) toast('Permita pop-ups para abrir o Gefaz Calda','error');
 }
 ```
+
+`sw.js` subiu para `pvgest-v7` e passou a servir recursos fora do escopo `/pvgest/` (o `sdk.js`)
+com **rede primeiro e cache só como reserva offline**, para não prender uma versão antiga do SDK
+no cache do PVGest.
 
 Quando a calda voltar do Gefaz Calda (botão **📤 PVGest**), ela aparece em **Receitas** com o
 status no campo de observações; produtos novos entram no Estoque com quantidade 0.
 
-### Gefaz360 (`repo/index.html` + `app.js`, página `pgPvgest`)
+### Gefaz360 (`repo/index.html` + `app.js`, página `pgPvgest`) — aplicado
 
 ```html
-<script src="../gefaz-calda/sdk.js"></script>   <!-- mesma origem: passa na CSP default-src 'self' -->
+<script src="../gefaz-calda/sdk.js" defer></script>   <!-- antes de app.js; mesma origem: passa na CSP script-src 'self' -->
 ```
 
 ```js
-// na tabela de receitas de pgPvgest(), coluna de ações:
-`<button class="btn ghost mini" data-action="calda" data-id="${r.id}">🧪 Compat.</button>`
+// na tabela de receitas de pgPvgest(), coluna de ações (junto do ✕ de excluir):
+`<button class="btn mini ghost" data-action="calda" data-id="${r.id}" title="Verificar compatibilidade da calda no Gefaz Calda">🧪 Compat.</button>`
 
-// no despachante de data-action:
-else if (a === 'calda') { const r = db.receitas.find(x => x.id === id);
-  GefazCalda.abrir(GefazCalda.deGefaz360(r, db.defensivos, { cultura: r.cultura, volumeHa: r.volumeHa })); return; }
+// no despachante de data-action de $main, antes de 'del':
+else if(a==='calda'){
+  const r=db.receitas.find(x=>x.id===id);if(!r)return;
+  if(!window.GefazCalda){showStatus('Gefaz Calda não carregou. Verifique a conexão e recarregue a página.',{timeout:0});return;}
+  if(!GefazCalda.abrir(GefazCalda.deGefaz360(r,db.defensivos)))showStatus('Permita pop-ups para abrir o Gefaz Calda.',{timeout:0});
+  return;
+}
 ```
 
+Os testes estáticos do Gefaz360 (`node --test tests/*.test.mjs`) continuam passando: o script
+externo tem `src`, é `defer` e `app.js` continua sendo o último.
+
 Sentido inverso: **📤 Gefaz360** grava a receita em `pvgest-erp-v1` (mesma origem) ou exporte
-o JSON e use **Importar do PVgest** no Gefaz360 — o formato é o mesmo.
+o JSON e use **Importar do PVgest** no Gefaz360 — o formato é o mesmo. Observação: o Gefaz360
+só grava essa chave depois da primeira alteração; com os dados de exemplo intocados ela não existe.
+
+Para testar os três apps lado a lado fora do GitHub Pages, sirva uma pasta-raiz com `pvgest/`,
+`gefaz360/` e `gefaz-calda/` (junções bastam) na mesma porta — o `../gefaz-calda/sdk.js` só
+resolve assim.
 
 ### Gefaz360 Codex (`gefaz360-codex-site/app.js`, vista `spray`)
 
