@@ -72,6 +72,73 @@
     'cone-cheio': 'Cone cheio'
   };
 
+  /* ───────── Tabelas de vazão publicadas (L/min) ─────────
+     Pontas cujo tamanho NÃO segue a vazão nominal ISO — ou que o fabricante
+     publica até pressões muito acima dos 3 bar da norma — trazem a própria
+     tabela. O motor interpola em √p entre as linhas (exato nos pontos da
+     tabela) e extrapola pela lei da raiz quadrada fora dela.
+     Fonte: Catálogo Albuz 2022, páginas 20 a 25.                            */
+  const TAB_ATR = {  // escala de cores europeia da Albuz (80° e 60°)
+    fonte: 'Catálogo Albuz 2022, p. 20 (80°) e p. 21 (60°)',
+    pressoes: [5, 7, 10, 12, 15, 20, 25],
+    valores: {
+      'branco': [0.27, 0.32, 0.38, 0.41, 0.46, 0.52, 0.58],
+      'lilás': [0.36, 0.42, 0.50, 0.55, 0.61, 0.70, 0.77],
+      'marrom': [0.48, 0.56, 0.67, 0.73, 0.81, 0.93, 1.04],
+      'amarelo': [0.73, 0.86, 1.03, 1.12, 1.25, 1.44, 1.61],
+      'laranja': [0.99, 1.17, 1.39, 1.51, 1.69, 1.94, 2.16],
+      'vermelho': [1.38, 1.62, 1.92, 2.09, 2.33, 2.67, 2.97],
+      'cinza': [1.50, 1.76, 2.08, 2.26, 2.51, 2.88, 3.20],
+      'verde': [1.78, 2.09, 2.47, 2.69, 2.99, 3.42, 3.80],
+      'preto': [2.00, 2.35, 2.78, 3.03, 3.36, 3.85, 4.28],
+      'azul': [2.45, 2.87, 3.40, 3.71, 4.12, 4.72, 5.25],
+      'roxo': [3.05, 3.57, 4.23, 4.61, 5.12, 5.87, 6.52]
+    },
+    so80: ['branco', 'roxo']   // o 60° não tem esses dois
+  };
+  const TAB_ATI = {  // código ISO, mas com vazão publicada de 5 a 25 bar
+    fonte: 'Catálogo Albuz 2022, p. 22',
+    pressoes: [5, 7, 10, 12, 15, 20, 25],
+    valores: {
+      '0050': [0.26, 0.31, 0.37, 0.40, 0.45, 0.52, 0.58],
+      '0075': [0.39, 0.46, 0.55, 0.60, 0.67, 0.77, 0.87],
+      '01': [0.52, 0.61, 0.73, 0.80, 0.89, 1.03, 1.15],
+      '015': [0.77, 0.92, 1.10, 1.20, 1.34, 1.55, 1.73],
+      '02': [1.03, 1.22, 1.46, 1.60, 1.79, 2.07, 2.31],
+      '025': [1.29, 1.53, 1.83, 2.00, 2.24, 2.58, 2.89],
+      '03': [1.55, 1.83, 2.19, 2.40, 2.68, 3.10, 3.46],
+      '035': [1.81, 2.14, 2.56, 2.80, 3.13, 3.61, 4.04],
+      '04': [2.07, 2.44, 2.92, 3.20, 3.58, 4.13, 4.62],
+      '05': [2.58, 3.06, 3.65, 4.00, 4.47, 5.16, 5.77]
+    }
+  };
+  const TAB_TVI = {  // cone vazio com indução de ar; os três LP saem de 3 bar
+    fonte: 'Catálogo Albuz 2022, p. 25',
+    pressoes: [5, 7, 10, 12, 15, 20, 25],
+    valores: {
+      '0050': [0.26, 0.31, 0.37, 0.40, 0.45, 0.52, 0.58],
+      '0075': [0.39, 0.46, 0.55, 0.60, 0.67, 0.77, 0.87],
+      '01': [0.52, 0.61, 0.73, 0.80, 0.89, 1.03, 1.15],
+      '015': [0.77, 0.92, 1.10, 1.20, 1.34, 1.55, 1.73],
+      '02': [1.03, 1.22, 1.46, 1.60, 1.79, 2.07, 2.31],
+      '025': [1.29, 1.53, 1.83, 2.00, 2.24, 2.58, 2.89],
+      '03': [1.55, 1.83, 2.19, 2.40, 2.68, 3.10, 3.46],
+      '04': [2.07, 2.44, 2.92, 3.20, 3.58, 4.13, 4.62]
+    }
+  };
+  const TAB_ATF = {  // cone cheio, publicada a partir de 3 bar
+    fonte: 'Catálogo Albuz 2022, p. 24',
+    pressoes: [3, 5, 7, 10, 12, 15, 20],
+    valores: {
+      '015': [0.60, 0.77, 0.92, 1.10, 1.20, 1.34, 1.55],
+      '02': [0.80, 1.03, 1.22, 1.46, 1.60, 1.79, 2.07],
+      '025': [1.00, 1.29, 1.53, 1.83, 2.00, 2.24, 2.58],
+      '03': [1.20, 1.55, 1.83, 2.19, 2.40, 2.68, 3.10],
+      '04': [1.60, 2.07, 2.44, 2.92, 3.20, 3.58, 4.13],
+      '05': [2.00, 2.58, 3.06, 3.65, 4.00, 4.47, 5.16]
+    }
+  };
+
   /* ───────── Catálogo de pontas ─────────
      gotasPorBar: classe lida no catálogo do fabricante para a ponta 02
        (tamanhos maiores → uma classe mais grossa; menores → mais fina).
@@ -300,8 +367,8 @@
     },
     {
       id: 'jc-atr', marca: 'Albuz', modelo: 'ATR 60°/80° (cone vazio)', tipo: 'cone-vazio', angulos: [80, 60],
-      sizes: ['branco', 'lilás', 'marrom', 'amarelo', 'laranja', 'vermelho', 'cinza', 'verde', 'preto', 'azul'], escalaPropria: true,
-      pressao: [5, 20], material: 'Cerâmica Albuz',
+      sizes: ['branco', 'lilás', 'marrom', 'amarelo', 'laranja', 'vermelho', 'cinza', 'verde', 'preto', 'azul', 'roxo'], escalaPropria: true, vazaoTabela: TAB_ATR,
+      pressao: [5, 25], material: 'Cerâmica rosa Albuz',
       gotasPorBar: { 5: 'F', 7: 'F', 10: 'F', 15: 'MF', 20: 'MF' },
       usos: ['fungicida', 'inseticida', 'foliar'],
       nota: 'Cone vazio de 5 a 20 bar com escala de cores PRÓPRIA (branco → azul), não ISO: o app não calcula a vazão dela — pegue o par cor × pressão na tabela da Albuz/Jacto. É a ponta do turbo atomizador em café e citros; gota fina a muito fina, cobertura máxima.',
@@ -375,7 +442,7 @@
     },
     {
       id: 'alb-ati', marca: 'Albuz', modelo: 'ATI 60°/80° (cone vazio ISO)', tipo: 'cone-vazio', angulos: [80, 60],
-      sizes: ['01', '015', '02', '025', '03', '04', '05'], pressao: [5, 20], material: 'Cerâmica Albuz',
+      sizes: ['0050', '0075', '01', '015', '02', '025', '03', '035', '04', '05'], pressao: [5, 25], material: 'Cerâmica rosa Albuz', vazaoTabela: TAB_ATI,
       gotasPorBar: { 5: 'F', 7: 'F', 10: 'F', 15: 'MF', 20: 'MF' },
       usos: ['fungicida', 'inseticida', 'foliar'],
       nota: 'É a ATR com código ISO: mesmo cone vazio de alta pressão, mas com tamanho e cor da norma — dá para calcular a vazão aqui. Turbo atomizador em café e citros.',
@@ -383,7 +450,7 @@
     },
     {
       id: 'alb-tvi', marca: 'Albuz', modelo: 'TVI 80° (cone vazio com indução de ar)', tipo: 'cone-vazio', angulos: [80],
-      sizes: ['01', '015', '02', '025', '03', '04'], pressao: [5, 15], material: 'Cerâmica Albuz',
+      sizes: ['0050', '0075', '01', '015', '02', '025', '03', '04'], pressao: [3, 20], material: 'Cerâmica rosa Albuz (3 peças)', vazaoTabela: TAB_TVI,
       gotasPorBar: { 5: 'UG', 7: 'UG', 10: 'EG', 15: 'MG' },
       usos: ['fungicida', 'inseticida', 'foliar'],
       nota: 'Cone vazio com venturi: a cobertura do cone do turbo atomizador com gota grossa a ultragrossa — corta a deriva do pomar e do cafezal, onde o cone comum joga névoa para fora da rua.',
@@ -391,7 +458,7 @@
     },
     {
       id: 'alb-atf', marca: 'Albuz', modelo: 'ATF 80° (cone cheio)', tipo: 'cone-cheio', angulos: [80],
-      sizes: ['015', '02', '025', '03', '04'], pressao: [3, 15], material: 'Cerâmica Albuz',
+      sizes: ['015', '02', '025', '03', '04', '05'], pressao: [3, 20], material: 'Cerâmica rosa Albuz', vazaoTabela: TAB_ATF,
       gotasPorBar: { 3: 'F', 5: 'F', 10: 'MF', 15: 'MF' },
       usos: ['fungicida', 'inseticida', 'foliar'],
       nota: 'Cone cheio: jato preenchido, deposição concentrada — tratamento localizado e alvos densos. Gota fina a muito fina, só com vento fraco.',
@@ -536,9 +603,9 @@
     },
     {
       id: 'cafe-turbo', nome: 'Café — turbo atomizador (fungicida/inseticida)',
-      modo: 'area', espacamento: 3.5, nBicos: 12, velocidade: 3.5, volumeHa: 400,
-      alvo: 'fungicida', ponta: 'jc-atr', iso: '', angulo: 80,
-      nota: 'No turbo o "espaçamento" é a distância entre linhas: cada passada trata uma rua. Cone vazio, alta pressão, cobertura na folha.'
+      modo: 'faixa', entreLinhas: 3.5, larguraFaixa: 3.5, bicosPorPassada: 12, velocidade: 3.5, volumeHa: 400,
+      alvo: 'fungicida', ponta: 'jc-atr', iso: 'marrom', angulo: 80,
+      nota: 'No turbo a passada trata uma rua inteira: a vazão da rua é dividida pelos bicos do arco (6 por lado, no exemplo). Cone vazio de alta pressão, gota fina, cobertura na folha.'
     }
   ];
 
@@ -546,6 +613,51 @@
   function vazaoNominal(iso) { const i = ISO_MAP[String(iso)]; return i ? i.vazao : 0; }
   function vazaoPonta(iso, bar) { const q = vazaoNominal(iso); return (!q || !(bar > 0)) ? 0 : round(q * Math.sqrt(bar / 3), 3); }
   function pressaoPara(iso, q) { const qn = vazaoNominal(iso); return (!qn || !(q > 0)) ? 0 : round(3 * Math.pow(q / qn, 2), 2); }
+
+  /* ── pontas com tabela própria (cones Albuz): interpola em √p entre as
+        linhas publicadas e extrapola pela raiz quadrada fora da tabela ── */
+  function tabelaDaPonta(ponta, tamanho) {
+    const p = typeof ponta === 'string' ? PONTA_MAP[ponta] : ponta;
+    if (!p || !p.vazaoTabela) return null;
+    if (tamanho == null) return p.vazaoTabela;
+    return p.vazaoTabela.valores[String(tamanho)] ? p.vazaoTabela : null;
+  }
+  function tamanhosDaPonta(ponta) {
+    const p = typeof ponta === 'string' ? PONTA_MAP[ponta] : ponta;
+    if (!p) return [];
+    return p.vazaoTabela ? Object.keys(p.vazaoTabela.valores) : p.sizes;
+  }
+  function vazaoDaPonta(ponta, tamanho, bar) {
+    const t = tabelaDaPonta(ponta, tamanho);
+    if (!t) return vazaoPonta(tamanho, bar);
+    if (!(bar > 0)) return 0;
+    const ps = t.pressoes, v = t.valores[String(tamanho)], n = ps.length;
+    if (bar <= ps[0]) return round(v[0] * Math.sqrt(bar / ps[0]), 3);
+    if (bar >= ps[n - 1]) return round(v[n - 1] * Math.sqrt(bar / ps[n - 1]), 3);
+    for (let i = 1; i < n; i++) {
+      if (bar <= ps[i]) {
+        const x0 = Math.sqrt(ps[i - 1]), x1 = Math.sqrt(ps[i]), x = Math.sqrt(bar);
+        return round(v[i - 1] + (v[i] - v[i - 1]) * (x - x0) / (x1 - x0), 3);
+      }
+    }
+    return 0;
+  }
+  function pressaoDaPonta(ponta, tamanho, q) {
+    const t = tabelaDaPonta(ponta, tamanho);
+    if (!t) return pressaoPara(tamanho, q);
+    if (!(q > 0)) return 0;
+    const ps = t.pressoes, v = t.valores[String(tamanho)], n = ps.length;
+    if (q <= v[0]) return round(ps[0] * Math.pow(q / v[0], 2), 2);
+    if (q >= v[n - 1]) return round(ps[n - 1] * Math.pow(q / v[n - 1], 2), 2);
+    for (let i = 1; i < n; i++) {
+      if (q <= v[i]) {
+        const x0 = Math.sqrt(ps[i - 1]), x1 = Math.sqrt(ps[i]);
+        const x = x0 + (x1 - x0) * (q - v[i - 1]) / (v[i] - v[i - 1]);
+        return round(x * x, 2);
+      }
+    }
+    return 0;
+  }
   function novaVazao(q1, p1, p2) { return (!(p1 > 0) || !(p2 > 0)) ? 0 : round(q1 * Math.sqrt(p2 / p1), 3); }
   function novaPressao(p1, q1, q2) { return (!(q1 > 0)) ? 0 : round(p1 * Math.pow(q2 / q1, 2), 2); }
 
@@ -634,17 +746,21 @@
 
     // pressão para essa vazão com a ponta escolhida (ou vazão real na pressão informada)
     let pressao = num(e.pressao), qReal = qNecessaria, pressaoCalculada = null, gota = null, vazaoNom = 0;
-    if (iso && ISO_MAP[iso]) {
-      vazaoNom = vazaoNominal(iso);
+    const tabela = tabelaDaPonta(ponta, iso);
+    if (iso && (ISO_MAP[iso] || tabela)) {
+      const pRef = tabela ? tabela.pressoes[0] : 3;
+      vazaoNom = tabela ? tabela.valores[iso][0] : vazaoNominal(iso);
       if (e.fixarPressao && pressao > 0) {
-        qReal = vazaoPonta(iso, pressao);
-        F('Vazão da ponta na pressão', 'q = q₃bar × √(p ÷ 3)',
-          `q = ${vazaoNom} × √(${pressao} ÷ 3)`, `${qReal} L/min`);
+        qReal = vazaoDaPonta(ponta, iso, pressao);
+        F('Vazão da ponta na pressão', tabela ? 'tabela do fabricante, interpolada em √p' : 'q = q₃bar × √(p ÷ 3)',
+          tabela ? `${ponta.modelo} ${iso} a ${pressao} bar (tabela de ${tabela.pressoes[0]} a ${tabela.pressoes[tabela.pressoes.length - 1]} bar)` : `q = ${vazaoNom} × √(${pressao} ÷ 3)`,
+          `${qReal} L/min`);
       } else {
-        pressaoCalculada = pressaoPara(iso, qNecessaria);
+        pressaoCalculada = pressaoDaPonta(ponta, iso, qNecessaria);
         pressao = pressaoCalculada;
-        F('Pressão necessária', 'p = 3 × (q ÷ q₃bar)²',
-          `p = 3 × (${round(qNecessaria, 3)} ÷ ${vazaoNom})²`, `${pressaoCalculada} bar`);
+        F('Pressão necessária', tabela ? 'inversão da tabela do fabricante (q ∝ √p entre as linhas)' : 'p = 3 × (q ÷ q₃bar)²',
+          tabela ? `${round(qNecessaria, 3)} L/min na tabela da ${ponta.modelo} ${iso} (${vazaoNom} L/min a ${pRef} bar)` : `p = 3 × (${round(qNecessaria, 3)} ÷ ${vazaoNom})²`,
+          `${pressaoCalculada} bar`);
       }
       gota = classeGota(ponta, pressao, iso);
     }
@@ -684,8 +800,11 @@
     }
 
     // altura da barra
+    const ehCone = !!(ponta && (ponta.tipo === 'cone-vazio' || ponta.tipo === 'cone-cheio'));
     const altura = alturaBarra(angulo, espacamento);
-    if (modo === 'area') F('Altura da barra', 'h ≈ espaçamento × fator do ângulo (110° → 1,0 · 80° → 1,5)',
+    if (ehCone) F('Posição no arco', 'cone em atomizador: quem leva a gota é o ar, não a altura',
+      'distribua a vazão por altura da planta (mais vazão no terço médio do cafeeiro)', 'sem altura de barra a calcular');
+    else if (modo === 'area') F('Altura da barra', 'h ≈ espaçamento × fator do ângulo (110° → 1,0 · 80° → 1,5)',
       `h ≈ ${round(espacamento, 2)} m × ${round(fatorAltura(angulo), 2)}`, `${altura} cm acima do alvo`);
     else F('Altura da barra para a faixa', 'h = (largura da faixa por bico ÷ 2) ÷ tg(ângulo ÷ 2)',
       `h = (${round(faixaPorBico, 2)} ÷ 2) ÷ tg(${angulo}° ÷ 2)`, `${alturaParaFaixa(angulo, faixaPorBico)} cm acima do alvo`);
@@ -704,8 +823,10 @@
       const min = Math.min.apply(null, ideais), max = Math.max.apply(null, ideais);
       if (gota.grau < min) avisos.push({ nivel: 'media', texto: `Gota ${gota.nome.toLowerCase()} (${gota.faixa}) é mais fina que o recomendado para ${alvo.nome.toLowerCase()} (${alvo.gotas.map(g => GOTA_MAP[g].nome.toLowerCase()).join(', ')}).`, conduta: 'Reduza a pressão, use ponta maior com indução de ar, ou aplique em janela de vento fraco (3–10 km/h) e umidade acima de 55 %.' });
       else if (gota.grau > max) avisos.push({ nivel: 'baixa', texto: `Gota ${gota.nome.toLowerCase()} pode faltar cobertura para ${alvo.nome.toLowerCase()}.`, conduta: 'Aumente o volume de calda ou use ponta com classe de gota mais fina; produtos de contato exigem cobertura.' });
-      if (volumeHa && alvo.volume && (volumeHa < alvo.volume[0] || volumeHa > alvo.volume[1]))
+      if (volumeHa && alvo.volume && !ehCone && (volumeHa < alvo.volume[0] || volumeHa > alvo.volume[1]))
         avisos.push({ nivel: 'baixa', texto: `Volume de ${volumeHa} L/ha fora do usual para ${alvo.nome.toLowerCase()} (${alvo.volume[0]}–${alvo.volume[1]} L/ha).`, conduta: 'Confirme na bula do produto e no arranjo do equipamento.' });
+      else if (volumeHa && ehCone && volumeHa > 800)
+        avisos.push({ nivel: 'baixa', texto: `Volume de ${volumeHa} L/ha é alto mesmo para turbo atomizador (usual 300–600 L/ha no café adulto).`, conduta: 'Confira a vazão do conjunto e a velocidade — volume demais escorre da folha e leva produto para o solo.' });
     }
     if (modo === 'faixa' && e.alvo === 'herbicida-cafe') {
       if (gota && gota.grau < GOTA_MAP['MG'].grau) avisos.push(protecao
@@ -716,11 +837,11 @@
     if (velocidade > 8 && (gota ? gota.grau <= 3 : true)) avisos.push({ nivel: 'media', texto: `Velocidade de ${velocidade} km/h com gota fina/média aumenta deriva e desuniformidade (barra balança).`, conduta: 'Abaixo de 8 km/h em barra convencional; acima disso, gota grossa e barra estabilizada.' });
     if (modo === 'faixa') {
       const hf = alturaParaFaixa(angulo, faixaPorBico);
-      const hMin = (ponta && (ponta.tipo === 'flood' || ponta.tipo === 'faixa-uniforme')) ? 15 : 25;
+      const hMin = ehCone ? 0 : (ponta && (ponta.tipo === 'flood' || ponta.tipo === 'faixa-uniforme')) ? 15 : 25;
       if (hf < hMin) avisos.push({ nivel: 'media', texto: `Para fazer ${round(faixaPorBico, 2)} m de faixa por bico com ${angulo}°, a ponta teria de ficar a ${hf} cm do alvo — baixo demais (mínimo prático desta ponta: ${hMin} cm).`, conduta: 'Use ponta de ângulo menor (80°, faixa uniforme), reduza o número de bicos por faixa ou aceite faixa maior por bico.' });
       else if (hf > 80) avisos.push({ nivel: 'baixa', texto: `A faixa pedida exige a ponta a ${hf} cm do alvo — nessa altura o vento pega a nuvem.`, conduta: 'Use ponta de ângulo maior (flood 130°) ou mais bicos por faixa.' });
     }
-    if (modo === 'area' && espacamento > 0.55) avisos.push({ nivel: 'baixa', texto: `Espaçamento de ${round(espacamento, 2)} m entre bicos exige barra mais alta para sobrepor.`, conduta: `Altura recomendada ≈ ${altura} cm; considere ponta de 120° para reduzir a altura.` });
+    if (modo === 'area' && !ehCone && espacamento > 0.55) avisos.push({ nivel: 'baixa', texto: `Espaçamento de ${round(espacamento, 2)} m entre bicos exige barra mais alta para sobrepor.`, conduta: `Altura recomendada ≈ ${altura} cm; considere ponta de 120° para reduzir a altura.` });
     if (ponta && ponta.confirmar) avisos.push({ nivel: 'info', texto: `Os dados de ${ponta.modelo} ainda não foram conferidos no catálogo do fabricante.`, conduta: 'Confirme pressão e classe de gota antes de fechar a regulagem.' });
     if (gota && gota.estimado) avisos.push({ nivel: 'info', texto: 'Classe de gota estimada a partir da faixa publicada pelo fabricante (o catálogo não traz a classe pressão a pressão).', conduta: 'Para decisão de deriva, confirme na tabela do fabricante.' });
 
@@ -731,7 +852,7 @@
       iso, cor: ISO_MAP[iso] ? ISO_MAP[iso].cor : '', hex: ISO_MAP[iso] ? ISO_MAP[iso].hex : '', malha: ISO_MAP[iso] ? ISO_MAP[iso].malha : null,
       vazaoNominal: vazaoNom, vazaoNecessaria: qNecessaria, vazaoPorBico: qReal, vazaoTotal,
       pressao: round(pressao, 2), pressaoCalculada, volumeAplicado: volumeReal, volumeLavoura,
-      angulo, protecao, altura, alturaFaixa: alturaParaFaixa(angulo, faixaPorBico), gota, rendimento, ficha, alvo: e.alvo || null,
+      angulo, protecao, ehCone, altura, alturaFaixa: alturaParaFaixa(angulo, faixaPorBico), gota, rendimento, ficha, alvo: e.alvo || null,
       avisos, formulas, versao: '1.0.0'
     };
   }
@@ -751,10 +872,10 @@
       if (e.marca && p.marca !== e.marca) return;
       if (e.tipo && p.tipo !== e.tipo) return;
       if (e.alvo && p.usos.indexOf(e.alvo) < 0 && p.id !== 'iso-generica') return;
-      if (p.escalaPropria) return; // vazão fora da escala ISO: não dá para calcular aqui
-      p.sizes.forEach(iso => {
-        if (!ISO_MAP[iso]) return;
-        const pressao = pressaoPara(iso, q);
+      if (p.escalaPropria && !p.vazaoTabela) return; // sem escala ISO e sem tabela: não dá para calcular
+      tamanhosDaPonta(p).forEach(iso => {
+        if (!ISO_MAP[iso] && !tabelaDaPonta(p, iso)) return;
+        const pressao = pressaoDaPonta(p, iso, q);
         if (pressao < p.pressao[0] || pressao > p.pressao[1]) return;
         const gota = classeGota(p, pressao, iso);
         let score = 40;
@@ -769,10 +890,12 @@
         if (pressao >= 1.5 && pressao <= 4) score += 8;
         if (gota && gota.estimado) score -= 4;
         if (p.confirmar) score -= 8;
+        const i = ISO_MAP[iso], tab = tabelaDaPonta(p, iso);
         opcoes.push({
-          ponta: p.id, marca: p.marca, modelo: p.modelo, tipo: p.tipo, iso, cor: ISO_MAP[iso].cor, hex: ISO_MAP[iso].hex,
-          malha: ISO_MAP[iso].malha, pressao, vazao: round(q, 3), vazaoNominal: ISO_MAP[iso].vazao,
-          angulo: p.angulos[0], gota, score, nota: p.nota, fonte: p.fonte, confirmar: !!p.confirmar
+          ponta: p.id, marca: p.marca, modelo: p.modelo, tipo: p.tipo, iso,
+          cor: i ? i.cor : iso, hex: i ? i.hex : null, malha: i ? i.malha : null,
+          pressao, vazao: round(q, 3), vazaoNominal: tab ? tab.valores[iso][0] : (i ? i.vazao : 0),
+          tabela: !!tab, angulo: p.angulos[0], gota, score, nota: p.nota, fonte: p.fonte, confirmar: !!p.confirmar
         });
       });
     });
@@ -879,20 +1002,23 @@
   function tabelaCruzada(e) {
     e = e || {};
     const ponta = PONTA_MAP[e.ponta];
-    const sizes = (e.sizes || (ponta && !ponta.escalaPropria ? ponta.sizes : null) || ['015', '02', '025', '03', '04', '05']).filter(s => ISO_MAP[s]);
+    const tab = tabelaDaPonta(ponta);
+    const sizes = (e.sizes || (ponta && (tab || !ponta.escalaPropria) ? tamanhosDaPonta(ponta) : null) || ['015', '02', '025', '03', '04', '05'])
+      .filter(s => ISO_MAP[s] || tabelaDaPonta(ponta, s));
     const faixa = ponta ? ponta.pressao : [1, 6];
-    const pressoes = e.pressoes || [1, 1.5, 2, 2.5, 3, 4, 5, 6, 7, 8].filter(p => p >= faixa[0] - 1e-9 && p <= faixa[1] + 1e-9);
+    const escala = tab ? tab.pressoes : [1, 1.5, 2, 2.5, 3, 4, 5, 6, 7, 8];
+    const pressoes = e.pressoes || escala.filter(p => p >= faixa[0] - 1e-9 && p <= faixa[1] + 1e-9);
     const velocidade = num(e.velocidade), faixaPorBico = num(e.faixaPorBico), alvo = num(e.volumeAlvo);
     const linhas = pressoes.map(bar => ({
       bar,
       celulas: sizes.map(iso => {
-        const vazao = vazaoPonta(iso, bar);
+        const vazao = vazaoDaPonta(ponta, iso, bar);
         const volume = (velocidade > 0 && faixaPorBico > 0) ? volumeAplicado(vazao, velocidade, faixaPorBico) : null;
         const gota = ponta ? classeGota(ponta, bar, iso) : null;
         return { iso, vazao, volume, gota, noAlvo: alvo > 0 && volume != null && Math.abs(volume - alvo) / alvo <= 0.05 };
       })
     }));
-    return { sizes, pressoes, linhas, velocidade, faixaPorBico: round(faixaPorBico, 3), volumeAlvo: alvo, ponta: ponta ? ponta.id : null };
+    return { sizes, pressoes, linhas, velocidade, faixaPorBico: round(faixaPorBico, 3), volumeAlvo: alvo, ponta: ponta ? ponta.id : null, tabela: tab ? tab.fonte : null };
   }
 
   /* ───────── API ───────── */
@@ -900,6 +1026,7 @@
     versao: '1.0.0',
     ISO, ISO_MAP, GOTAS, GOTA_MAP, ALVOS, ALVO_MAP, TIPOS, PONTAS, PONTA_MAP, PRESETS,
     vazaoNominal, vazaoPonta, pressaoPara, novaVazao, novaPressao,
+    tabelaDaPonta, tamanhosDaPonta, vazaoDaPonta, pressaoDaPonta,
     vazaoNecessaria, volumeAplicado, velocidadeAlvo, velocidadeCampo,
     alturaBarra, alturaParaFaixa, larguraJato, fatorAltura, classeGota,
     calcular, selecionar, calibracao, cruzar, tabelaCruzada

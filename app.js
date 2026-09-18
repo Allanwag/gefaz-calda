@@ -462,10 +462,13 @@ function preencherModelos(sel) {
 }
 function preencherIso(sel) {
   const p = PT.PONTA_MAP[$('#pPonta').value];
-  const sizes = p ? p.sizes : PT.ISO.map(i => i.id);
+  const sizes = p ? PT.tamanhosDaPonta(p) : PT.ISO.map(i => i.id);
+  const tab = p ? PT.tabelaDaPonta(p) : null;
+  const pRef = tab ? tab.pressoes[0] : 3;
   $('#pIso').innerHTML = sizes.map(s => {
-    const i = PT.ISO_MAP[s];
-    return `<option value="${esc(s)}">${esc(s)}${i ? ' · ' + i.cor + ' · ' + fmt(i.vazao, 2) + ' L/min a 3 bar' : ' (escala própria)'}</option>`;
+    const i = PT.ISO_MAP[s], q = PT.vazaoDaPonta(p, s, pRef);
+    const cor = i ? i.cor : s.charAt(0).toUpperCase() + s.slice(1);
+    return `<option value="${esc(s)}">${esc(s)}${i ? ' · ' + cor : ''}${q ? ' · ' + fmt(q, 2) + ' L/min a ' + fmt(pRef, 0) + ' bar' : ' (sem tabela)'}</option>`;
   }).join('');
   if (sel && sizes.indexOf(sel) >= 0) $('#pIso').value = sel;
 }
@@ -487,9 +490,14 @@ function gotaBadge(g) {
   if (!g) return '';
   return `<span class="gota" style="background:${g.hex}">${esc(g.nome)} · ${esc(g.faixa)}${g.estimado ? ' *' : ''}</span>`;
 }
+/* cores da escala europeia da Albuz (ATR), que não seguem o código ISO */
+const COR_HEX = { branco: '#eceff1', 'lilás': '#b39ddb', marrom: '#6d4c41', amarelo: '#fbc02d', laranja: '#f57c00', vermelho: '#c62828', cinza: '#757575', verde: '#2e7d32', preto: '#212121', azul: '#1565c0', roxo: '#7b1fa2', rosa: '#f48fb1' };
 function corBadge(iso) {
-  const i = PT.ISO_MAP[iso]; if (!i) return esc(iso || '—');
-  return `<span class="iso-cor"><i style="background:${i.hex}"></i>${esc(i.id)} · ${esc(i.cor)}</span>`;
+  const i = PT.ISO_MAP[iso];
+  if (i) return `<span class="iso-cor"><i style="background:${i.hex}"></i>${esc(i.id)} · ${esc(i.cor)}</span>`;
+  if (!iso) return '—';
+  const hex = COR_HEX[String(iso).toLowerCase()];
+  return hex ? `<span class="iso-cor"><i style="background:${hex}"></i>${esc(iso)}</span>` : `<span class="iso-cor">${esc(iso)}</span>`;
 }
 function calcularRegulagem(silencioso) {
   const e = lerRegulagem();
@@ -513,7 +521,7 @@ function renderRegulagem() {
       <div class="kpi"><b>${fmt(r.volumeAplicado, 0)}</b><small>L/ha ${r.modo === 'faixa' ? 'na faixa' : 'aplicados'}</small></div>
       ${r.modo === 'faixa' ? `<div class="kpi"><b>${fmt(r.volumeLavoura, 0)}</b><small>L/ha de lavoura</small></div><div class="kpi"><b>${fmt(r.economia, 0)} %</b><small>economia de produto</small></div>` : ''}
       <div class="kpi"><b>${fmt(r.vazaoTotal, 1)}</b><small>L/min no conjunto</small></div>
-      <div class="kpi"><b>${r.modo === 'faixa' ? r.alturaFaixa : r.altura} cm</b><small>altura da ponta</small></div>
+      ${r.ehCone ? '<div class="kpi"><b>arco</b><small>cone: posição no atomizador</small></div>' : `<div class="kpi"><b>${r.modo === 'faixa' ? r.alturaFaixa : r.altura} cm</b><small>altura da ponta</small></div>`}
       <div class="kpi"><b>${fmt(r.rendimento, 2)}</b><small>ha/h teórico</small></div>
     </div>
     <div class="ponta-resumo">
@@ -607,7 +615,7 @@ function renderCatalogoPontas(q) {
   $('#listaPontas').innerHTML = lista.map(p => `<div class="row"><div>
       <b>${esc(p.marca)} · ${esc(p.modelo)}</b>
       <small>${esc(TIPO_PONTA[p.tipo] || p.tipo)} · ${p.angulos.join('°/')}° · ${p.pressao[0]}–${p.pressao[1]} bar · ${esc(p.material)}</small>
-      <small>Tamanhos: ${p.sizes.map(s => esc(s)).join(', ')}${p.escalaPropria ? ' (escala própria do fabricante)' : ''}</small>
+      <small>Tamanhos: ${PT.tamanhosDaPonta(p).map(s => esc(s)).join(', ')}${p.escalaPropria ? ' (escala de cores do fabricante, não ISO)' : ''}${p.vazaoTabela ? ` · <span class="tag reg">tabela de vazão do fabricante, ${p.vazaoTabela.pressoes[0]}–${p.vazaoTabela.pressoes[p.vazaoTabela.pressoes.length - 1]} bar</span>` : ''}</small>
       <small>${esc(p.nota)}</small>
       <small class="muted">Gota: ${p.gotasPorBar ? Object.entries(p.gotasPorBar).map(([b, g]) => `${b} bar → ${PT.GOTA_MAP[g].nome.toLowerCase()}`).join(' · ') : (p.gotasFaixa || []).map(g => PT.GOTA_MAP[g].nome.toLowerCase()).join(' a ') + ' (faixa do catálogo)'} · Fonte: ${esc(p.fonte)}</small>
     </div><div class="acts"><button class="btn sm ghost" data-ponta="${esc(p.id)}">Usar</button></div></div>`).join('') || '<div class="small muted">Nada encontrado.</div>';

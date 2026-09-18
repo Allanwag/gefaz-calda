@@ -53,8 +53,12 @@ velocidade — e quanto disso vira volume de calda.
   Albuz (AXI, AXI TWIN, ADI, APE, AVI, AVI TWIN, AVI-UC, CVI, CVI TWIN, MVI, ATR, ATI, TVI, ATF),
   Hypro (ULD, GuardianAIR, GuardianAIR Twin, Guardian, LD, 3D, VP, E FanTip, DeflecTip, HCX, XT),
   Magnojet (AD, ADGA, AD-IA, AD-IA/D, MUG, BD, MAG) e Jacto (JTT, J3D, JDF, AIRMIX).
-  Pontas de escala própria (ATR e APE, na escala de cores Albuz) ficam declaradas como tais: o app
-  não calcula a vazão delas nem as sugere, porque a vazão não sai da ISO.
+  Os cones da Albuz (ATR, ATI, TVI e o cone cheio ATF) trazem a **tabela de vazão publicada** —
+  de 3 a 25 bar, incluindo a escala de cores europeia da ATR (branco → roxo), que não é ISO. O motor
+  interpola em √p entre as linhas da tabela (exato nos pontos publicados) e extrapola pela lei da
+  raiz quadrada fora dela, então regulagem, seleção e tabela cruzada funcionam também nessas pontas.
+  A APE, que usa a mesma escala europeia mas cuja tabela não está embutida, fica declarada como
+  escala própria: o app não calcula a vazão dela nem a sugere.
 * **Vazão pela norma, não pela marca** — a vazão sai da ISO 10625 (vazão nominal a 3 bar por
   tamanho e cor) e da lei da raiz quadrada `q₂ = q₁ × √(p₂ ÷ p₁)`. É assim que o catálogo do
   fabricante é montado; por isso o cálculo bate com qualquer marca. Os valores conferem com a

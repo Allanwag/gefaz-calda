@@ -131,7 +131,14 @@ test('catálogo é consistente', () => {
     assert.ok(p.pressao[0] > 0 && p.pressao[1] > p.pressao[0], `faixa de pressão inválida em ${p.id}`);
     assert.ok(p.angulos.length && p.sizes.length, `ângulos/tamanhos faltando em ${p.id}`);
     p.usos.forEach(u => assert.ok(usos.includes(u), `uso desconhecido "${u}" em ${p.id}`));
-    if (!p.escalaPropria) p.sizes.forEach(s => assert.ok(P.ISO_MAP[s], `tamanho fora da ISO "${s}" em ${p.id}`));
+    if (!p.escalaPropria) p.sizes.forEach(s => assert.ok(P.ISO_MAP[s] || P.tabelaDaPonta(p, s), `tamanho sem ISO e sem tabela "${s}" em ${p.id}`));
+    if (p.vazaoTabela) {
+      assert.ok(p.vazaoTabela.fonte, `tabela de vazão sem fonte em ${p.id}`);
+      Object.entries(p.vazaoTabela.valores).forEach(([s, v]) => {
+        assert.equal(v.length, p.vazaoTabela.pressoes.length, `linha ${s} de ${p.id} com tamanho diferente das pressões`);
+        for (let i = 1; i < v.length; i++) assert.ok(v[i] > v[i - 1], `vazão não cresce com a pressão em ${p.id} ${s}`);
+      });
+    }
     Object.values(p.gotasPorBar || {}).forEach(g => assert.ok(classes.includes(g), `classe inválida em ${p.id}`));
     (p.gotasFaixa || []).forEach(g => assert.ok(classes.includes(g), `classe inválida em ${p.id}`));
     assert.ok(p.gotasPorBar || p.gotasFaixa, `${p.id} sem informação de gota`);
@@ -227,7 +234,7 @@ test('Albuz e Hypro entraram no catálogo com dados utilizáveis', () => {
   hypro.forEach(p => assert.ok(!p.escalaPropria, `${p.id} deveria usar a escala ISO`));
   // escala própria (ATR, APE) fica fora da seleção automática, porque a vazão não é ISO
   const s = P.selecionar({ modo: 'area', espacamento: 0.5, volumeHa: 150, velocidade: 6, alvo: 'fungicida', limite: 40 });
-  assert.ok(!s.opcoes.some(o => ['jc-atr', 'alb-ape'].includes(o.ponta)), 'ponta de escala própria não pode ser sugerida');
+  assert.ok(!s.opcoes.some(o => o.ponta === 'alb-ape'), 'ponta sem ISO e sem tabela não pode ser sugerida');
   assert.ok(s.opcoes.some(o => P.PONTA_MAP[o.ponta].marca === 'Hypro'));
 });
 
@@ -237,4 +244,51 @@ test('as marcas novas aparecem na seleção para herbicida no café', () => {
   assert.ok(marcas.has('Albuz'), 'Albuz deve aparecer');
   assert.ok(marcas.has('Hypro'), 'Hypro deve aparecer');
   s.opcoes.slice(0, 10).forEach(o => assert.ok(o.gota.grau >= P.GOTA_MAP['G'].grau));
+});
+
+test('cones Albuz usam a tabela de vazão publicada, não a ISO', () => {
+  // ATR 80° (escala de cores Albuz) — catálogo 2022, p. 20
+  perto(P.vazaoDaPonta('jc-atr', 'vermelho', 10), 1.92, 0.01);
+  perto(P.vazaoDaPonta('jc-atr', 'amarelo', 5), 0.73, 0.01);
+  perto(P.vazaoDaPonta('jc-atr', 'roxo', 25), 6.52, 0.01);
+  // linhas intermediárias: interpolação em √p bate com o catálogo
+  perto(P.vazaoDaPonta('jc-atr', 'vermelho', 11), 2.01, 0.02);
+  perto(P.vazaoDaPonta('jc-atr', 'amarelo', 18), 1.37, 0.02);
+  perto(P.vazaoDaPonta('jc-atr', 'azul', 8), 3.06, 0.03);
+  // ATI / TVI / ATF (código ISO, mas vazão publicada até 25 bar)
+  perto(P.vazaoDaPonta('alb-ati', '015', 10), 1.10, 0.01);
+  perto(P.vazaoDaPonta('alb-ati', '0050', 5), 0.26, 0.01);
+  perto(P.vazaoDaPonta('alb-tvi', '01', 3), 0.40, 0.01);   // extrapolação abaixo da tabela
+  perto(P.vazaoDaPonta('alb-atf', '03', 4), 1.39, 0.02);
+  // a tabela do fabricante difere da extrapolação ISO pura — e é ela que vale
+  assert.ok(Math.abs(P.vazaoDaPonta('alb-ati', '015', 20) - P.vazaoPonta('015', 20)) > 0.02);
+});
+
+test('pressão é a inversa da tabela', () => {
+  ['jc-atr', 'alb-ati', 'alb-tvi', 'alb-atf'].forEach(id => {
+    const t = P.tabelaDaPonta(id);
+    Object.keys(t.valores).forEach(tam => {
+      t.pressoes.forEach((bar, i) => {
+        perto(P.pressaoDaPonta(id, tam, t.valores[tam][i]), bar, 0.05);
+        perto(P.vazaoDaPonta(id, tam, bar), t.valores[tam][i], 0.005);
+      });
+    });
+  });
+});
+
+test('regulagem de turbo atomizador com cone Albuz fecha sem alerta', () => {
+  const r = P.calcular({ ...P.PRESETS.find(p => p.id === 'cafe-turbo'), tanque: 2000, area: 20 });
+  perto(r.vazaoPorBico, 0.681, 0.005);          // 400 L/ha ÷ 12 bicos na rua de 3,5 m a 3,5 km/h
+  assert.ok(r.pressao > 5 && r.pressao < 25, `pressão ${r.pressao} fora da faixa da ATR`);
+  perto(r.vazaoTotal, 8.17, 0.05);
+  assert.ok(!r.avisos.some(a => a.nivel === 'alta' || a.nivel === 'media'), r.avisos.map(a => a.texto).join(' / '));
+  assert.ok(r.formulas.some(f => f.nome === 'Posição no arco'), 'cone não deve ganhar altura de barra');
+});
+
+test('tabela cruzada de ponta com tabela usa as pressões do fabricante', () => {
+  const t = P.tabelaCruzada({ ponta: 'jc-atr', velocidade: 3.5, faixaPorBico: 0.29, volumeAlvo: 400 });
+  assert.deepEqual(t.pressoes, [5, 7, 10, 12, 15, 20, 25]);
+  assert.ok(t.sizes.includes('roxo') && t.sizes.includes('branco'));
+  assert.ok(t.tabela && /Albuz/.test(t.tabela), 'deve declarar a fonte da tabela');
+  perto(t.linhas.find(l => l.bar === 10).celulas.find(c => c.iso === 'marrom').vazao, 0.67, 0.01);
 });
