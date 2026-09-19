@@ -327,7 +327,7 @@ test('toda ponta com tabela declara a fonte e cobre a faixa de pressão', () => 
   assert.ok(comTabela.length >= 9, `só ${comTabela.length} pontas com tabela`);
   comTabela.forEach(p => {
     const t = p.vazaoTabela;
-    assert.ok(/Cat[áa]logo|Guide|Catalog/.test(t.fonte), `fonte fraca em ${p.id}`);
+    assert.ok(/Cat[áa]logo|Guide|Catalog|Folheto/.test(t.fonte), `fonte fraca em ${p.id}`);
     // a tabela publicada pode passar da faixa útil (o fabricante imprime além dela),
     // mas tem de cobrir a faixa em que a ponta trabalha
     assert.ok(t.pressoes[0] <= p.pressao[1], `${p.id}: tabela começa depois da faixa útil`);
@@ -410,4 +410,33 @@ test('preset do PH-400 usa um tamanho real do flood', () => {
   perto(r.vazaoPorBico, 1.641, 0.01);          // 4 bicos, 250 L/ha, 4,5 km/h, faixa de 3,5 m
   assert.ok(r.gota.grau >= P.GOTA_MAP['MG'].grau, 'o flood do PH-400 tem de dar gota muito grossa para cima');
   assert.ok(!r.avisos.some(a => a.nivel === 'alta'));
+});
+
+test('AIRMIX tem a tabela do folheto da Jacto', () => {
+  const p = P.PONTA_MAP['jc-airmix'];
+  assert.ok(!p.confirmar, 'com a ficha em mãos, não precisa mais conferir');
+  assert.ok(/Folheto Jacto/.test(p.fonte));
+  perto(P.vazaoDaPonta(p, '01', 1.38), 0.27, 0.01);    // 20 PSI
+  perto(P.vazaoDaPonta(p, '02', 2.76), 0.77, 0.01);    // 40 PSI
+  perto(P.vazaoDaPonta(p, '06', 5.52), 3.26, 0.01);    // 80 PSI
+  assert.equal(P.classeGota(p, 2.07, '02').id, 'G');   // gota grande a 30 PSI
+  assert.equal(P.classeGota(p, 5.52, '02').id, 'F');   // e fina no topo da faixa
+  assert.equal(p.tipo, 'leque-pre-orificio');          // o fabricante chama de jato plano padrão
+});
+
+test('só a entrada genérica continua marcada para conferir', () => {
+  const pendentes = P.PONTAS.filter(p => p.confirmar).map(p => p.id);
+  assert.deepEqual(pendentes, ['iso-generica'], `ainda pendentes: ${pendentes.join(', ')}`);
+  assert.ok(P.PONTAS.filter(p => p.vazaoTabela).length >= 36);
+});
+
+test('matriz de gota por tamanho vence o ajuste por tamanho', () => {
+  // AIRMIX traz a classe tamanho a tamanho no folheto: nada de estimar
+  assert.equal(P.classeGota('jc-airmix', 1.38, '01').id, 'G');    // a 01 não é mais fina que grossa a 20 PSI
+  assert.equal(P.classeGota('jc-airmix', 4.14, '01').id, 'F');
+  assert.equal(P.classeGota('jc-airmix', 1.38, '03').id, 'MG');   // e a 03 já é muito grossa
+  assert.equal(P.classeGota('jc-airmix', 5.52, '06').id, 'G');
+  assert.ok(!P.classeGota('jc-airmix', 2.07, '02').estimado);
+  // onde o fabricante só publica a linha de referência, o ajuste por tamanho continua valendo
+  assert.ok(P.classeGota('tj-aixr', 3, '04').grau > P.classeGota('tj-aixr', 3, '02').grau);
 });

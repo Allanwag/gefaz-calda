@@ -53,10 +53,11 @@ velocidade — e quanto disso vira volume de calda.
   Albuz (AXI, AXI TWIN, ADI, APE, AVI, AVI TWIN, AVI-UC, CVI, CVI TWIN, MVI, ATR, ATI, TVI, ATF),
   Hypro (ULD, ULDM, GuardianAIR, GuardianAIR Twin, Guardian, LD, 3D, VP, E FanTip, DeflecTip, HCX, XT),
   Magnojet (AD, ADGA, AD-IA, AD-IA/D, MUG, MUG-CV, BD, MAG) e Jacto (JTT, J3D, JDF, AIRMIX).
-  **Trinta e cinco famílias trazem a tabela de vazão publicada** em vez da vazão nominal calculada:
+  **Trinta e seis famílias trazem a tabela de vazão publicada** em vez da vazão nominal calculada:
   a linha de jato plano da TeeJet (catálogo Brasil, 1 a 6 bar), a da Hypro (Crop Spraying Guide,
-  1 a 5 bar), a linha Magnojet (AD, AD-IA, MUG, MUG-CV e o cone MAG, 15 a 150 PSI) e os cones da
-  Albuz (ATR, ATI, TVI e o cone cheio ATF, 3 a 25 bar). O motor interpola em √p entre as linhas da
+  1 a 5 bar), a linha Magnojet (AD, AD-IA, MUG, MUG-CV e o cone MAG, 15 a 150 PSI), os cones da
+  Albuz (ATR, ATI, TVI e o cone cheio ATF, 3 a 25 bar) e a Jacto AIRMIX (folheto 930000238,
+  20 a 80 PSI). O motor interpola em √p entre as linhas da
   tabela (exato nos pontos publicados) e extrapola pela lei da raiz quadrada fora dela.
 
   Por que isso muda alguma coisa: para a ponta 02 a 3 bar a TeeJet publica 0,79 L/min e Hypro,
@@ -74,9 +75,11 @@ velocidade — e quanto disso vira volume de calda.
   tamanho e cor) e da lei da raiz quadrada `q₂ = q₁ × √(p₂ ÷ p₁)`. É assim que o catálogo do
   fabricante é montado; por isso o cálculo bate com qualquer marca. Os valores conferem com a
   tabela da TeeJet Brasil (ex.: 11002 → 0,46 · 0,65 · 0,79 · 0,91 L/min a 1 · 2 · 3 · 4 bar).
-* **Classe de gota do catálogo** — ASABE S572.1 (muito fina → ultragrossa). Para as famílias em que
-  o fabricante publica a classe pressão a pressão, o app usa a tabela; quando publica só a faixa,
-  interpola e marca o resultado como estimado.
+* **Classe de gota do catálogo** — ASABE S572.1 (muito fina → ultragrossa), em três níveis de
+  fidelidade, sempre declarados na tela: quando o fabricante publica a matriz tamanho × pressão
+  (caso da Jacto AIRMIX), o app usa a célula exata; quando publica só a linha de referência, usa
+  essa linha e engrossa uma classe nos tamanhos 04 para cima; quando publica só a faixa, interpola
+  e marca o resultado com asterisco de estimado.
 * **Equações à vista** — `q = (V × v × e) ÷ 600`, `V = (600 × q) ÷ (v × e)`, `p₂ = p₁ × (q₂ ÷ q₁)²`,
   altura da barra pelo ângulo do leque, largura da faixa, área/tempo/percurso por tanque e
   rendimento em ha/h: cada uma aparece com os seus números substituídos, não só o resultado.

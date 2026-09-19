@@ -139,6 +139,21 @@
     }
   };
 
+  const TAB_JC_AIRMIX = {   // Jacto AIRMIX: código ISO, 20 a 80 PSI
+    fonte: 'Folheto Jacto AIRMIX (930000238, 03/2014)',
+    pressoes: [1.38, 2.07, 2.76, 3.45, 4.14, 4.83, 5.52],
+    valores: {
+      '01': [0.27, 0.33, 0.38, 0.43, 0.47, 0.51, 0.54],
+      '015': [0.41, 0.50, 0.57, 0.64, 0.70, 0.76, 0.81],
+      '02': [0.54, 0.66, 0.77, 0.86, 0.94, 1.02, 1.09],
+      '025': [0.68, 0.83, 0.96, 1.07, 1.17, 1.27, 1.36],
+      '03': [0.81, 1.00, 1.15, 1.29, 1.41, 1.52, 1.63],
+      '04': [1.09, 1.33, 1.53, 1.71, 1.88, 2.03, 2.17],
+      '05': [1.36, 1.66, 1.92, 2.14, 2.35, 2.54, 2.71],
+      '06': [1.63, 1.99, 2.30, 2.57, 2.82, 3.05, 3.26]
+    }
+  };
+
   /* ───────── Pontas de numeração própria (não ISO) ─────────
      Flood, cone e boomless são numerados pela vazão em gpm a 10 psi ou por
      disco e núcleo. Sem a tabela do fabricante não dá para calcular nada —
@@ -571,12 +586,22 @@
       fonte: 'Catálogo Albuz 2022 (p. 5 e 22)'
     },
     {
-      id: 'jc-airmix', marca: 'Jacto', modelo: 'AIRMIX (indução de ar)', tipo: 'leque-inducao', angulos: [110],
-      sizes: ['015', '02', '025', '03', '04', '05'], pressao: [1.5, 6], material: 'Polímero/cerâmica',
-      gotasFaixa: ['EG', 'MG', 'G'], confirmar: true,
-      usos: ['herbicida-sistemico', 'pre-emergente', 'dessecacao'],
-      nota: 'Indução de ar da linha Jacto — confirme faixa de pressão e classe de gota no catálogo antes de fechar a regulagem.',
-      fonte: 'jacto.com — linha de bicos'
+      id: 'jc-airmix', marca: 'Jacto', modelo: 'AIRMIX (leque de baixa deriva)', tipo: 'leque-pre-orificio', angulos: [110],
+      sizes: ['01', '015', '02', '025', '03', '04', '05', '06'], pressao: [1.38, 5.52], material: 'Plástico de alta resistência ao desgaste', vazaoTabela: TAB_JC_AIRMIX,
+      gotasPorBar: { 1.38: 'G', 2.07: 'G', 2.76: 'M', 3.45: 'M', 4.14: 'M', 4.83: 'F', 5.52: 'F' },
+      gotasPorTamanho: {   // matriz do folheto: classe por tamanho E por pressão
+        '01': { 1.38: 'G', 2.07: 'M', 2.76: 'M', 3.45: 'F', 4.14: 'F', 4.83: 'F', 5.52: 'F' },
+        '015': { 1.38: 'G', 2.07: 'M', 2.76: 'M', 3.45: 'F', 4.14: 'F', 4.83: 'F', 5.52: 'F' },
+        '02': { 1.38: 'G', 2.07: 'G', 2.76: 'M', 3.45: 'M', 4.14: 'M', 4.83: 'F', 5.52: 'F' },
+        '025': { 1.38: 'G', 2.07: 'G', 2.76: 'G', 3.45: 'M', 4.14: 'M', 4.83: 'M', 5.52: 'M' },
+        '03': { 1.38: 'MG', 2.07: 'MG', 2.76: 'G', 3.45: 'G', 4.14: 'M', 4.83: 'M', 5.52: 'M' },
+        '04': { 1.38: 'MG', 2.07: 'MG', 2.76: 'G', 3.45: 'G', 4.14: 'M', 4.83: 'M', 5.52: 'M' },
+        '05': { 1.38: 'MG', 2.07: 'MG', 2.76: 'MG', 3.45: 'G', 4.14: 'G', 4.83: 'M', 5.52: 'M' },
+        '06': { 1.38: 'MG', 2.07: 'MG', 2.76: 'MG', 3.45: 'G', 4.14: 'G', 4.83: 'G', 5.52: 'G' }
+      },
+      usos: ['herbicida-sistemico', 'pre-emergente', 'herbicida-contato', 'dessecacao', 'fungicida', 'inseticida'],
+      nota: 'Jato plano padrão de 110° com gota grande, de 20 a 80 PSI, codificado pela cor da ISO. O folheto classifica como EXCELENTE para herbicida incorporado, pré-emergente e sistêmico em pós, e BOM para produto de contato (a gota é grande demais para cobertura fina). Barra entre 0,40 m (mínimo) e 0,80 m; 0,35 m dá duplo recobrimento e 0,70 m dá triplo, a 0,5 m entre bicos. Os tamanhos 03 e acima saem com gota muito grossa até 3 bar.',
+      fonte: 'Folheto Jacto AIRMIX (930000238) + jacto.com'
     },
     /* ── Albuz (linha completa do catálogo 2022; no Brasil vem pela Jacto) ── */
     {
@@ -901,14 +926,17 @@
   function classeGota(ponta, bar, iso) {
     const p = typeof ponta === 'string' ? PONTA_MAP[ponta] : ponta;
     if (!p || !(bar > 0)) return null;
-    let base = null, estimado = false;
-    if (p.gotasPorBar) {
-      const chaves = Object.keys(p.gotasPorBar).map(Number).sort((a, b) => a - b);
+    let base = null, estimado = false, porTamanho = false;
+    // matriz do fabricante (classe por tamanho E por pressão): não leva ajuste de tamanho
+    const mapa = (p.gotasPorTamanho && iso && p.gotasPorTamanho[String(iso)]) || p.gotasPorBar;
+    if (p.gotasPorTamanho && iso && p.gotasPorTamanho[String(iso)]) porTamanho = true;
+    if (mapa) {
+      const chaves = Object.keys(mapa).map(Number).sort((a, b) => a - b);
       let k = chaves[0];
       chaves.forEach(c => { if (c <= bar + 1e-9) k = c; });
       if (bar < chaves[0]) { k = chaves[0]; estimado = true; }
       if (bar > chaves[chaves.length - 1]) { k = chaves[chaves.length - 1]; estimado = true; }
-      base = p.gotasPorBar[k];
+      base = mapa[k];
     } else if (p.gotasFaixa && p.gotasFaixa.length) {
       estimado = true;
       const [pmin, pmax] = p.pressao, n = p.gotasFaixa.length;
@@ -917,8 +945,9 @@
     }
     if (!base) return null;
     // tamanhos maiores produzem gota mais grossa; os menores, mais fina
+    // (só quando a classe veio da linha de referência — a matriz por tamanho já é exata)
     let grau = GOTA_MAP[base].grau;
-    if (iso && !p.escalaPropria) {
+    if (iso && !p.escalaPropria && !porTamanho) {
       const i = ORDEM_ISO.indexOf(String(iso));
       if (i >= 0) { if (i >= ORDEM_ISO.indexOf('04')) grau += 1; else if (i <= ORDEM_ISO.indexOf('01')) grau -= 1; }
     }
