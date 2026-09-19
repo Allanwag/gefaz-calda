@@ -956,6 +956,55 @@
     return { id: g.id, nome: g.nome, faixa: g.faixa, grau, hex: g.hex, estimado, base };
   }
 
+  /* ───────── Condições de aplicação (Delta T) ─────────
+     Portado do PVGest (app.js, aba Delta T) para o mesmo critério valer nos
+     dois apps da fazenda: bulbo úmido por Stull (2011), ponto de orvalho por
+     Magnus, DPV, e as quatro faixas de Delta T mais a escala de vento.      */
+  function bulboUmido(t, ur) {
+    return t * Math.atan(0.151977 * Math.pow(ur + 8.313659, 0.5)) + Math.atan(t + ur)
+      - Math.atan(ur - 1.676331) + 0.00391838 * Math.pow(ur, 1.5) * Math.atan(0.023101 * ur) - 4.686035;
+  }
+  function pontoOrvalho(t, ur) {
+    const a = 17.27, b = 237.7, al = ((a * t) / (b + t)) + Math.log(ur / 100);
+    return (b * al) / (a - al);
+  }
+  function dpv(t, ur) {                       // déficit de pressão de vapor (kPa)
+    const es = 0.6108 * Math.exp((17.27 * t) / (t + 237.3));
+    return es - es * (ur / 100);
+  }
+  const FAIXAS_DT = [
+    { max: 2, id: 'baixo', rotulo: 'Delta T abaixo de 2 — umidade alta demais', nivel: 'alta', conduta: 'Não pulverize: risco de inversão térmica e de a nuvem descer para fora do alvo. Espere o ar secar.' },
+    { max: 8, id: 'ideal', rotulo: 'Janela ideal (Delta T 2–8)', nivel: 'ok', conduta: 'Boa evaporação, deriva mínima e cobertura uniforme. Pode aplicar.' },
+    { max: 10, id: 'limiar', rotulo: 'Delta T no limiar (8–10)', nivel: 'media', conduta: 'Evaporação alta: use gota mais grossa, aumente o volume e prefira o começo da manhã ou o fim da tarde.' },
+    { max: Infinity, id: 'critico', rotulo: 'Delta T acima de 10 — crítico', nivel: 'alta', conduta: 'Suspenda: a gota evapora antes de chegar ao alvo e o produto vira deriva.' }
+  ];
+  const FAIXAS_VENTO = [
+    { max: 3, id: 'calmo', rotulo: 'Vento calmo (< 3 km/h)', nivel: 'media', conduta: 'Risco de inversão térmica — a nuvem fica suspensa e caminha para onde não se quer. Confira fumaça ou poeira antes de sair.' },
+    { max: 15, id: 'ideal', rotulo: 'Vento ideal (3–15 km/h)', nivel: 'ok', conduta: 'Boa dispersão com deriva mínima.' },
+    { max: 20, id: 'limite', rotulo: 'Vento no limite (15–20 km/h)', nivel: 'media', conduta: 'Risco moderado: gota grossa, barra baixa e atenção à direção em relação à cultura sensível.' },
+    { max: Infinity, id: 'excessivo', rotulo: 'Vento excessivo (> 20 km/h)', nivel: 'alta', conduta: 'Suspenda a aplicação.' }
+  ];
+  const faixaDe = (tab, v) => tab.find(f => v < f.max) || tab[tab.length - 1];
+
+  function clima(e) {
+    e = e || {};
+    const t = num(e.temperatura), ur = num(e.umidade), vento = num(e.vento);
+    if (!(t > 0) || !(ur > 0)) return null;
+    const bu = bulboUmido(t, ur), dt = t - bu;
+    const fDT = faixaDe(FAIXAS_DT, dt), fV = e.vento === '' || e.vento == null ? null : faixaDe(FAIXAS_VENTO, vento);
+    const avisos = [];
+    if (fDT.nivel !== 'ok') avisos.push({ nivel: fDT.nivel, texto: `${fDT.rotulo}: ${round(t, 1)} °C e ${round(ur, 0)} % de umidade dão Delta T de ${round(dt, 1)}.`, conduta: fDT.conduta });
+    if (fV && fV.nivel !== 'ok') avisos.push({ nivel: fV.nivel, texto: `${fV.rotulo} — medido ${round(vento, 1)} km/h.`, conduta: fV.conduta });
+    return {
+      temperatura: round(t, 1), umidade: round(ur, 0), vento: e.vento === '' || e.vento == null ? null : round(vento, 1),
+      deltaT: round(dt, 1), bulboUmido: round(bu, 1), pontoOrvalho: round(pontoOrvalho(t, ur), 1), dpv: round(dpv(t, ur), 2),
+      faixa: fDT.id, rotulo: fDT.rotulo, conduta: fDT.conduta, nivel: fDT.nivel,
+      ventoFaixa: fV ? fV.id : null, ventoRotulo: fV ? fV.rotulo : null, ventoConduta: fV ? fV.conduta : null,
+      pode: fDT.nivel !== 'alta' && (!fV || fV.nivel !== 'alta'),
+      avisos, fonte: 'Delta T do PVGest (bulbo úmido por Stull, 2011)'
+    };
+  }
+
   /* ───────── regulagem completa ───────── */
   function calcular(e) {
     e = e || {};
@@ -1088,7 +1137,20 @@
     if (ponta && ponta.confirmar) avisos.push({ nivel: 'info', texto: `Os dados de ${ponta.modelo} ainda não foram conferidos no catálogo do fabricante.`, conduta: 'Confirme pressão e classe de gota antes de fechar a regulagem.' });
     if (gota && gota.estimado) avisos.push({ nivel: 'info', texto: 'Classe de gota estimada a partir da faixa publicada pelo fabricante (o catálogo não traz a classe pressão a pressão).', conduta: 'Para decisão de deriva, confirme na tabela do fabricante.' });
 
+    /* ── condição do ar: Delta T e vento (mesmo critério do PVGest) ── */
+    const cond = clima(e);
+    if (cond) {
+      cond.avisos.forEach(a => avisos.push(a));
+      // gota fina ou média com ar seco: a gota evapora no caminho e vira deriva
+      if (gota && gota.grau <= GOTA_MAP['M'].grau && cond.deltaT > 8)
+        avisos.push({ nivel: 'alta', texto: `Gota ${gota.nome.toLowerCase()} com Delta T de ${cond.deltaT}: parte da calda evapora antes de tocar o alvo e o resto caminha com o vento.`, conduta: 'Suba para gota grossa ou acima (ponta maior, menos pressão, indução de ar) ou espere a janela — Delta T entre 2 e 8.' });
+      // aplicação dirigida no café com vento em cima da cultura sensível
+      if (modo === 'faixa' && e.alvo === 'herbicida-cafe' && cond.vento != null && cond.vento > 15)
+        avisos.push({ nivel: 'alta', texto: `Herbicida dirigido no café com vento de ${cond.vento} km/h: a proteção física não segura deriva nessa faixa de vento.`, conduta: 'Espere cair para menos de 15 km/h. Na dúvida, aplique no começo da manhã.' });
+    }
+
     return {
+      clima: cond,
       modo, volumeHa, velocidade, espacamento: round(espacamento, 3), faixaPorBico: round(faixaPorBico, 3), nBicos,
       larguraTrabalho, larguraFaixa, entreLinhas, fracaoTratada: round(fracaoTratada, 3), economia,
       ponta: ponta ? { id: ponta.id, marca: ponta.marca, modelo: ponta.modelo, tipo: ponta.tipo, material: ponta.material, pressao: ponta.pressao, fonte: ponta.fonte } : null,
@@ -1272,6 +1334,7 @@
     tabelaDaPonta, tamanhosDaPonta, vazaoDaPonta, pressaoDaPonta, pressaoReferencia,
     vazaoNecessaria, volumeAplicado, velocidadeAlvo, velocidadeCampo,
     alturaBarra, alturaParaFaixa, larguraJato, fatorAltura, classeGota,
-    calcular, selecionar, calibracao, cruzar, tabelaCruzada
+    calcular, selecionar, calibracao, cruzar, tabelaCruzada,
+    clima, bulboUmido, pontoOrvalho, dpv, FAIXAS_DT, FAIXAS_VENTO
   };
 });

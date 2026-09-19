@@ -225,6 +225,62 @@
     regrasPares,
     condicionadoresSugeridos: { reduzir: ['Wetcit 50–100 mL/100 L', 'Kantphos 100–200 mL/100 L (se não houver cúprico/cátion na calda)'], sequestrar: ['Forte SR (conforme bula)', 'sulfato de amônio 0,5–2 %'] },
     culturas: ['Café', 'Milho', 'Soja', 'Sorgo', 'Trigo', 'Feijão', 'Algodão', 'Pastagens', 'Cana-de-açúcar', 'Citros', 'Outra'],
+    /* doenças, pragas e estádios por cultura — listas de apoio para os campos
+       de alvo da calda (não substituem o diagnóstico nem a bula) */
+    alvosCultura: {
+      'Café': {
+        doencas: ['Ferrugem (Hemileia vastatrix)', 'Cercosporiose (Cercospora coffeicola)', 'Phoma / requeima (Phoma tarda)', 'Mancha aureolada (Pseudomonas syringae)', 'Antracnose (Colletotrichum spp.)', 'Rizoctoniose (mal-de-mudas)', 'Nematoides (Meloidogyne spp.)'],
+        pragas: ['Broca-do-café (Hypothenemus hampei)', 'Bicho-mineiro (Leucoptera coffeella)', 'Ácaro-vermelho (Oligonychus ilicis)', 'Cochonilha-da-roseta (Planococcus spp.)', 'Cigarra (Quesada gigas)', 'Lagarta-dos-cafezais (Eacles imperialis)', 'Cochonilha-da-raiz (Dysmicoccus)'],
+        estadios: ['Repouso / dormência', 'Florada', 'Chumbinho', 'Expansão do fruto', 'Granação', 'Maturação', 'Pós-colheita', 'Formação / mudas']
+      },
+      'Milho': {
+        doencas: ['Mancha-branca (Pantoea / Phaeosphaeria)', 'Cercosporiose (Cercospora zeae-maydis)', 'Helmintosporiose (Exserohilum turcicum)', 'Ferrugem polissora (Puccinia polysora)', 'Ferrugem tropical (Physopella zeae)', 'Antracnose (Colletotrichum graminicola)', 'Enfezamento (molicutes, vetor cigarrinha)'],
+        pragas: ['Lagarta-do-cartucho (Spodoptera frugiperda)', 'Cigarrinha-do-milho (Dalbulus maidis)', 'Percevejo barriga-verde (Dichelops spp.)', 'Lagarta-da-espiga (Helicoverpa zea)', 'Broca-da-cana (Diatraea saccharalis)', 'Pulgão-do-milho (Rhopalosiphum maidis)', 'Corós (Phyllophaga spp.)'],
+        estadios: ['V2–V4', 'V6–V8', 'V10–V12', 'Pendoamento (VT)', 'Florescimento (R1)', 'Grão leitoso (R3)', 'Grão pastoso (R4)', 'Maturação (R6)']
+      },
+      'Soja': {
+        doencas: ['Ferrugem asiática (Phakopsora pachyrhizi)', 'Mancha-alvo (Corynespora cassiicola)', 'Mofo-branco (Sclerotinia sclerotiorum)', 'Antracnose (Colletotrichum truncatum)', 'Crestamento / DFC (Cercospora kikuchii)', 'Oídio (Erysiphe diffusa)', 'Nematoides (Heterodera / Meloidogyne)'],
+        pragas: ['Percevejo-marrom (Euschistus heros)', 'Lagarta-da-soja (Anticarsia gemmatalis)', 'Helicoverpa armigera', 'Falsa-medideira (Chrysodeixis includens)', 'Mosca-branca (Bemisia tabaci)', 'Ácaro-rajado (Tetranychus urticae)', 'Percevejo-barriga-verde (Dichelops)'],
+        estadios: ['V3–V4', 'V6–V8', 'Pré-florada (R1)', 'Florescimento pleno (R2)', 'Formação de vagem (R3–R4)', 'Enchimento de grãos (R5)', 'Maturação (R7–R8)']
+      },
+      'Sorgo': {
+        doencas: ['Antracnose (Colletotrichum sublineolum)', 'Ferrugem (Puccinia purpurea)', 'Mancha zonada (Gloeocercospora sorghi)', 'Doença açucarada / ergot (Claviceps africana)', 'Helmintosporiose (Exserohilum turcicum)'],
+        pragas: ['Pulgão-do-sorgo (Melanaphis sacchari)', 'Lagarta-do-cartucho (Spodoptera frugiperda)', 'Mosca-do-sorgo (Stenodiplosis sorghicola)', 'Percevejos (Dichelops / Euschistus)', 'Cigarrinha (Dalbulus maidis)'],
+        estadios: ['Vegetativo inicial', 'Diferenciação floral', 'Emborrachamento', 'Florescimento', 'Grão leitoso', 'Grão pastoso', 'Maturação']
+      },
+      'Trigo': {
+        doencas: ['Brusone (Pyricularia oryzae)', 'Ferrugem-da-folha (Puccinia triticina)', 'Giberela (Fusarium graminearum)', 'Mancha amarela (Drechslera tritici-repentis)', 'Oídio (Blumeria graminis)', 'Septoriose (Zymoseptoria tritici)'],
+        pragas: ['Pulgão-da-espiga (Sitobion avenae)', 'Pulgão-da-folha (Rhopalosiphum padi)', 'Lagarta-do-trigo (Pseudaletia sequax)', 'Percevejo barriga-verde (Dichelops)', 'Corós'],
+        estadios: ['Perfilhamento', 'Elongação', 'Emborrachamento', 'Espigamento', 'Florescimento (antese)', 'Grão leitoso', 'Maturação']
+      },
+      'Feijão': {
+        doencas: ['Antracnose (Colletotrichum lindemuthianum)', 'Mofo-branco (Sclerotinia sclerotiorum)', 'Ferrugem (Uromyces appendiculatus)', 'Mancha-angular (Pseudocercospora griseola)', 'Murcha de fusário (Fusarium oxysporum)', 'Crestamento bacteriano (Xanthomonas)'],
+        pragas: ['Mosca-branca (Bemisia tabaci)', 'Vaquinha (Diabrotica speciosa)', 'Cigarrinha-verde (Empoasca kraemeri)', 'Lagarta-das-vagens (Helicoverpa)', 'Ácaro-branco (Polyphagotarsonemus latus)', 'Lagarta-elasmo (Elasmopalpus)'],
+        estadios: ['V3 (primeira folha trifoliolada)', 'V4 (pré-florada)', 'R5 (botão floral)', 'R6 (florescimento)', 'R7 (formação de vagens)', 'R8 (enchimento de grãos)', 'R9 (maturação)']
+      },
+      'Algodão': {
+        doencas: ['Ramulária (Ramularia areola)', 'Mancha-alvo (Corynespora cassiicola)', 'Ramulose (Colletotrichum gossypii)', 'Mofo-branco (Sclerotinia)', 'Murcha de fusário (Fusarium)', 'Mancha-de-estenfílio (Stemphylium)'],
+        pragas: ['Bicudo (Anthonomus grandis)', 'Lagarta-das-maçãs (Helicoverpa armigera)', 'Curuquerê (Alabama argillacea)', 'Mosca-branca (Bemisia tabaci)', 'Ácaro-rajado (Tetranychus urticae)', 'Pulgão (Aphis gossypii)', 'Percevejo-manchador (Dysdercus)'],
+        estadios: ['Vegetativo (V4–V6)', 'Aparecimento de botões (B1)', 'Florescimento (F1)', 'Maçã formada', 'Capulho', 'Pré-colheita / desfolha']
+      },
+      'Pastagens': {
+        doencas: ['Helmintosporiose em braquiária', 'Carvão (Ustilago spp.)', 'Antracnose em estilosantes'],
+        pragas: ['Cigarrinha-das-pastagens (Deois / Mahanarva)', 'Lagarta-do-capim (Spodoptera frugiperda)', 'Percevejo-castanho (Scaptocoris castanea)', 'Cupins de montículo', 'Formiga cortadeira (Atta / Acromyrmex)'],
+        estadios: ['Rebrota', 'Pleno crescimento', 'Pré-pastejo', 'Pós-pastejo', 'Reforma / implantação']
+      },
+      'Cana-de-açúcar': {
+        doencas: ['Ferrugem alaranjada (Puccinia kuehnii)', 'Ferrugem marrom (Puccinia melanocephala)', 'Carvão (Sporisorium scitamineum)', 'Escaldadura (Xanthomonas albilineans)', 'Raquitismo da soqueira (Leifsonia xyli)', 'Mosaico (SCMV)'],
+        pragas: ['Broca-da-cana (Diatraea saccharalis)', 'Cigarrinha-da-raiz (Mahanarva fimbriolata)', 'Bicudo-da-cana (Sphenophorus levis)', 'Migdolus (Migdolus fryanus)', 'Cupins subterrâneos', 'Formiga cortadeira'],
+        estadios: ['Brotação', 'Perfilhamento', 'Crescimento dos colmos', 'Maturação', 'Soqueira pós-corte']
+      },
+      'Citros': {
+        doencas: ['Greening / HLB (vetor psilídeo)', 'Cancro cítrico (Xanthomonas citri)', 'Pinta preta (Phyllosticta citricarpa)', 'Verrugose (Elsinoe spp.)', 'Gomose (Phytophthora spp.)', 'Leprose (vírus transmitido por ácaro)'],
+        pragas: ['Psilídeo (Diaphorina citri)', 'Ácaro da leprose (Brevipalpus yothersi)', 'Ácaro da falsa-ferrugem (Phyllocoptruta oleivora)', 'Mosca-das-frutas (Ceratitis / Anastrepha)', 'Bicho-furão (Gymnandrosoma aurantianum)', 'Larva-minadora (Phyllocnistis citrella)', 'Cochonilhas'],
+        estadios: ['Repouso', 'Brotação', 'Florada', 'Chumbinho', 'Fruto em expansão', 'Maturação', 'Pós-colheita']
+      }
+    },
+    severidades: ['Preventivo (sem sintoma)', 'Baixa — focos isolados', 'Média — distribuída no talhão', 'Alta — generalizada', 'Curativa / erradicante'],
+    partesAlvo: ['Folha — face superior', 'Folha — face inferior', 'Ponteiro e brotação', 'Flor', 'Fruto', 'Tronco e ramos', 'Solo / palhada', 'Planta daninha em pós-emergência', 'Raiz e colo'],
     classes: ['Herbicida', 'Fungicida', 'Inseticida', 'Acaricida', 'Nematicida', 'Adjuvante', 'Fertilizante Foliar', 'Bioracional', 'Cúprico', 'Outro'],
     formulacoes: { WG: 'Grânulos dispersíveis', WP: 'Pó molhável', SG: 'Granulado solúvel', SP: 'Pó solúvel', SC: 'Suspensão concentrada', CS: 'Suspensão de encapsulado', SE: 'Suspo-emulsão', SL: 'Concentrado solúvel', EC: 'Concentrado emulsionável', EW: 'Emulsão óleo em água', ME: 'Microemulsão', OD: 'Dispersão em óleo', BIO: 'Organismo vivo' },
     unidades: ['L/ha', 'kg/ha', 'mL/ha', 'g/ha', 'mL/100L', 'g/100L', 'L/100L', 'kg/100L'],
@@ -248,6 +304,7 @@
       { id: 'magnojet', titulo: 'Magnojet — linha de pontas de pulverização (AD, ADGA, AD-IA, MUG, MAG)', url: 'https://www.magnojet.com.br/category/pontas-de-pulveriza%C3%A7%C3%A3o' },
       { id: 'albuz', titulo: 'ALBUZ — Nozzle technology catalog 2022 (AXI, ADI, APE, AVI, AVI-UC, CVI, MVI, ATR, ATI, TVI, ATF): vazão, ângulo, classe de gota por pressão e altura de barra', url: 'https://albuz-spray.com/pdf/catalogue-ALBUZ-UK.pdf' },
       { id: 'hypro', titulo: 'Hypro (Pentair) — Selecting the Right Spray Nozzle: tipo de jato, tecnologia, ângulo, faixa de pressão e classe ASABE por modelo (ULD, GuardianAIR, Guardian, LD, 3D, VP, E, DeflecTip)', url: 'https://sprayersupplies.com/content/media/documents/hypro_selecting_the_right_spray_nozzle.pdf' },
+      { id: 'deltat', titulo: 'Delta T — janela de pulverização (bulbo úmido por Stull, 2011): faixa ideal de 2 a 8, vento de 3 a 15 km/h. Mesmo critério do PVGest da fazenda', url: 'https://allanwag.github.io/pvgest/' },
       { id: 'hypro-guide', titulo: 'Pentair Hypro — Crop Spraying Guide: tabelas de vazao em L/min por bar, classificacao BCPC/LERAP e faixa de pressao (GuardianAIR, ULD, ULDM, 3D)', url: 'https://cropservices.co.uk/wp-content/uploads/2025/03/Pentair-Hypro-Crop-Spraying-Guide.pdf' },
       { id: 'magnojet-catalogo', titulo: 'Magnojet — Catálogo 2025 (PDF): tabelas de vazão em L/min por pressão, classe de gota e faixa útil de cada ponta', url: 'https://www.magnojet.com.br/pulverizacao' },
       { id: 'jacto-bicos', titulo: 'Jacto — bicos e pontas (JTT, J3D, JDF, ADI, AVI, AXI, ATR)', url: 'https://jacto.com/brasil/products/bicos-e-acessorios' },

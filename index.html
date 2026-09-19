@@ -27,6 +27,11 @@
       <div class="grid2">
         <label>Cultura<select id="fCultura"></select></label>
         <label>Alvo (praga/doença/daninha)<input id="fAlvo" list="dlAlvos" placeholder="ex.: Hemileia vastatrix"><datalist id="dlAlvos"></datalist></label>
+        <label>Doença alvo<input id="fDoenca" list="dlDoencas" placeholder="lista da cultura"><datalist id="dlDoencas"></datalist></label>
+        <label>Praga alvo<input id="fPraga" list="dlPragas" placeholder="lista da cultura"><datalist id="dlPragas"></datalist></label>
+        <label>Nível de infestação<select id="fSeveridade"></select></label>
+        <label>Estádio fenológico<input id="fEstadio" list="dlEstadios" placeholder="lista da cultura"><datalist id="dlEstadios"></datalist></label>
+        <label>Parte da planta alvo<select id="fParte"></select></label>
         <label>Equipamento<select id="fEquip"></select></label>
         <label>Volume de calda (L/ha)<input id="fVolume" type="number" min="1" step="1" value="400"></label>
         <label>Área (ha)<input id="fArea" type="number" min="0" step="0.1" value="10"></label>
@@ -36,6 +41,7 @@
         <label>Aspecto da água<select id="fTurbidez"><option value="limpa">Limpa</option><option value="turva">Turva (argila / matéria orgânica)</option></select></label>
         <label>Fonte da água<input id="fFonte" placeholder="poço, açude, rio…"></label>
       </div>
+      <p class="small muted" id="fAreaTanque"></p>
       <div id="cafeAviso" class="alert info hidden">☕ Barra de herbicida do café: acerte a faixa, a ponta e a pressão na aba <b>Pontas</b> — o volume de calda sai de lá.</div>
       <div id="droneAviso" class="alert warn hidden">⚠️ Drone: informe o modelo em Observações — vazão, bico e diluição mudam por modelo.</div>
     </div>
@@ -100,11 +106,23 @@
         <label>Tanque (L)<input id="pTq" type="number" min="0" step="10" value="2000"></label>
         <label>Área (ha)<input id="pArea" type="number" min="0" step="0.1" value="10"></label>
       </div>
+      <p class="small muted" id="pAreaTanque"></p>
       <p class="small muted" id="pAlvoNota"></p>
     </div>
 
     <div class="card">
-      <div class="card-hd"><h2>2 · Ponta</h2><span class="hint" id="pVazaoAlvo"></span></div>
+      <div class="card-hd"><h2>2 · Condições do ar</h2><span class="hint">Delta T e vento — mesmo critério do PVGest</span></div>
+      <div class="grid2">
+        <label>Temperatura (°C)<input id="pTemp" type="number" min="0" max="50" step="0.5" placeholder="medir na sombra"></label>
+        <label>Umidade relativa (%)<input id="pUr" type="number" min="5" max="100" step="1" placeholder="ex.: 55"></label>
+        <label>Vento (km/h)<input id="pVento" type="number" min="0" max="40" step="0.5" placeholder="ex.: 8"></label>
+        <label>Horário<input id="pHora" type="time"></label>
+      </div>
+      <div id="pClima"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-hd"><h2>3 · Ponta</h2><span class="hint" id="pVazaoAlvo"></span></div>
       <div class="grid2">
         <label>Marca<select id="pMarca"></select></label>
         <label>Modelo<select id="pPonta"></select></label>
@@ -118,7 +136,7 @@
     </div>
 
     <div class="card">
-      <div class="card-hd"><h2>3 · Cruzamento vazão × pressão</h2><span class="hint">de um par conhecido para a pressão que você quer</span></div>
+      <div class="card-hd"><h2>4 · Cruzamento vazão × pressão</h2><span class="hint">de um par conhecido para a pressão que você quer</span></div>
       <p class="small muted">A vazão anda com a raiz quadrada da pressão: <code>q₂ = q₁ × √(p₂ ÷ p₁)</code> e <code>p₂ = p₁ × (q₂ ÷ q₁)²</code>. Serve para ponta sem tabela, já gasta ou de escala própria — basta um par medido.</p>
       <div class="grid2">
         <label>Vazão conhecida (L/min por bico)<input id="xQ1" type="number" min="0.01" step="0.01" placeholder="medida no bico ou do catálogo"></label>

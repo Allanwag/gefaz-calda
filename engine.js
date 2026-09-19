@@ -328,6 +328,9 @@
     if (res.jarTest.obrigatorio) c.push('Jar test realizado na proporção real e sem precipitado/espuma/separação');
     c.push('Dose por hectare conferida (não só dose/100 L)');
     c.push(`Volume de calda ${opts.volumeHa || '?'} L/ha adequado ao equipamento (${opts.equipamento || 'não informado'})`);
+    if (opts.doenca || opts.praga) c.push(`Alvo confirmado no talhão${opts.severidade ? ' (' + opts.severidade + ')' : ''}: ${[opts.doenca, opts.praga].filter(Boolean).join(' + ')} — produto registrado para esse alvo`);
+    if (opts.parte) c.push(`Alvo está em "${opts.parte}": ponta, volume e classe de gota escolhidos para atingir essa parte`);
+    if (opts.estadio) c.push(`Estádio "${opts.estadio}": carência, fitotoxidez e janela de aplicação conferidas para esse momento da cultura`);
     c.push('Bulas consultadas para restrições de mistura e intervalos de segurança');
     c.push('Condições climáticas: T < 30 °C, UR > 55 %, vento 3–15 km/h (ΔT 2–8)');
     if (opts.equipamento === 'drone') c.push('Modelo do drone confirmado; restrição UBV verificada no rótulo');

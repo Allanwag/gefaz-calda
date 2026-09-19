@@ -440,3 +440,47 @@ test('matriz de gota por tamanho vence o ajuste por tamanho', () => {
   // onde o fabricante só publica a linha de referência, o ajuste por tamanho continua valendo
   assert.ok(P.classeGota('tj-aixr', 3, '04').grau > P.classeGota('tj-aixr', 3, '02').grau);
 });
+
+test('Delta T importado do PVGest bate com as faixas do app original', () => {
+  const c = P.clima({ temperatura: 26, umidade: 55, vento: 8 });
+  perto(c.deltaT, 6.4, 0.2);              // 26 °C e 55 % → janela ideal
+  assert.equal(c.faixa, 'ideal');
+  assert.equal(c.ventoFaixa, 'ideal');
+  assert.ok(c.pode);
+  assert.equal(c.avisos.length, 0);
+  perto(c.bulboUmido, 19.6, 0.3);
+  assert.ok(c.pontoOrvalho < c.bulboUmido && c.dpv > 0);
+  // as quatro faixas
+  assert.equal(P.clima({ temperatura: 22, umidade: 90 }).faixa, 'baixo');
+  assert.equal(P.clima({ temperatura: 24, umidade: 60 }).faixa, 'ideal');
+  assert.equal(P.clima({ temperatura: 28, umidade: 45 }).faixa, 'limiar');   // 8,3 já é limiar
+  assert.equal(P.clima({ temperatura: 34, umidade: 25 }).faixa, 'critico');
+  // vento
+  assert.equal(P.clima({ temperatura: 26, umidade: 55, vento: 1 }).ventoFaixa, 'calmo');
+  assert.equal(P.clima({ temperatura: 26, umidade: 55, vento: 18 }).ventoFaixa, 'limite');
+  assert.equal(P.clima({ temperatura: 26, umidade: 55, vento: 25 }).ventoFaixa, 'excessivo');
+  assert.equal(P.clima({ temperatura: 26 }), null);   // sem umidade não há Delta T
+});
+
+test('a condição do ar entra nos alertas da regulagem', () => {
+  const base = { modo: 'area', volumeHa: 100, velocidade: 8, espacamento: 0.5, nBicos: 40, ponta: 'tj-aixr', iso: '02', alvo: 'herbicida-sistemico' };
+  const bom = P.calcular({ ...base, temperatura: 26, umidade: 55, vento: 8 });
+  assert.equal(bom.clima.faixa, 'ideal');
+  assert.ok(!bom.avisos.some(a => a.nivel === 'alta'));
+  // gota fina com ar seco: evapora antes de chegar
+  const seco = P.calcular({ ...base, ponta: 'tj-xr', temperatura: 32, umidade: 30, vento: 6 });
+  assert.ok(seco.avisos.some(a => a.nivel === 'alta' && /evapora/.test(a.texto)));
+  // café dirigido com vento alto: nem a proteção física salva
+  const cafe = P.calcular({ modo: 'faixa', volumeHa: 200, velocidade: 4.5, larguraFaixa: 1.6, bicosPorPassada: 2, entreLinhas: 3.5, ponta: 'tj-aixr', iso: '04', alvo: 'herbicida-cafe', protecao: true, temperatura: 27, umidade: 60, vento: 18 });
+  assert.ok(cafe.avisos.some(a => a.nivel === 'alta' && /vento/.test(a.texto)));
+  // sem os dados do ar, nada muda
+  assert.equal(P.calcular(base).clima, null);
+});
+
+test('área por tanque é o volume dividido pela taxa de aplicação', () => {
+  const r = P.calcular({ modo: 'area', volumeHa: 100, velocidade: 8, espacamento: 0.5, nBicos: 40, ponta: 'tj-aixr', iso: '02', tanque: 2000, area: 50 });
+  perto(r.ficha.haPorTanque, 20, 0.05);          // 2000 L ÷ 100 L/ha
+  assert.equal(r.ficha.cargas, 3);               // 50 ha / 20 ha por carga
+  const faixa = P.calcular({ modo: 'faixa', volumeHa: 200, velocidade: 4.5, larguraFaixa: 1.6, bicosPorPassada: 2, entreLinhas: 3.5, ponta: 'tj-aixr', iso: '04', tanque: 600 });
+  perto(faixa.ficha.haPorTanque, 600 / faixa.volumeLavoura, 0.01);  // na faixa vale o L/ha de lavoura
+});

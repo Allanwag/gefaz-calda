@@ -91,6 +91,14 @@ velocidade — e quanto disso vira volume de calda.
 * **Seleção por alvo** — informando alvo (sistêmico, contato, pré-emergente, fungicida…), volume e
   velocidade, o app lista as pontas cuja classe de gota serve ao alvo **e** cuja pressão cai dentro
   da faixa útil do modelo, ordenadas por adequação.
+* **Condições do ar (Delta T)** — temperatura, umidade e vento entram na regulagem e saem como
+  janela de aplicação: Delta T pelo bulbo úmido de Stull, ponto de orvalho, déficit de pressão de
+  vapor e as quatro faixas (abaixo de 2 é inversão térmica, 2 a 8 é a janela, 8 a 10 é limiar,
+  acima de 10 suspende), mais a escala de vento. O critério é o mesmo do
+  [PVGest](https://allanwag.github.io/pvgest/) — os dois apps da fazenda respondem igual. A
+  condição do ar cruza com a gota: gota fina ou média com Delta T acima de 8 vira alerta alto
+  (evapora antes de chegar), e herbicida dirigido no café com vento acima de 15 km/h também, porque
+  nessa faixa a proteção física do bico já não segura a deriva.
 * **Calibração a campo** — coleta por bico, CV do conjunto, desgaste contra a vazão nominal (troca
   acima de 10 %), volume real medido e a correção a fazer (pressão ou velocidade).
 
@@ -111,6 +119,23 @@ operacional próprio.
 
 O botão **Usar … L/ha na calda** joga o volume calculado direto no contexto da análise de
 compatibilidade — regulagem e calda passam a falar do mesmo número.
+
+## Alvo da aplicação e área por carga
+
+Além do campo livre de alvo, a calda registra **cinco campos** que mudam a decisão técnica e ficam
+no laudo: **doença**, **praga**, **nível de infestação**, **estádio fenológico** e **parte da planta
+alvo**. Doença, praga e estádio vêm de listas por cultura — café, milho, soja, sorgo, trigo, feijão,
+algodão, pastagens, cana e citros —, com os alvos que realmente aparecem em cada uma (no café:
+ferrugem, cercosporiose, phoma, mancha aureolada, antracnose, rizoctoniose e nematoides; broca,
+bicho-mineiro, ácaro-vermelho, cochonilha, cigarra, lagarta-dos-cafezais). O checklist pré-saída
+passa a cobrar o que esses campos afirmam: alvo confirmado no talhão, ponta escolhida para a parte
+da planta onde ele está, e carência e fitotoxidez conferidas para o estádio.
+
+A **área por carga** é calculada direto, nas duas abas: capacidade do tanque ÷ volume por hectare.
+A aba Calda mostra quantos hectares uma carga cobre e quantas cargas o talhão exige; a aba Pontas
+mostra a mesma conta com o volume da regulagem, e as duas têm botão para adotar o resultado como
+área. Em aplicação em faixa a conta usa o L/ha de lavoura, não o da faixa — senão a área sairia
+inflada na mesma proporção da economia de produto.
 
 ## Rodar localmente
 

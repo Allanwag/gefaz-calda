@@ -98,6 +98,13 @@ function atualizarAlvos() {
   if (ci >= 0) AGRO.produtos.forEach(p => (p.a[ci] || []).forEach(i => set.add(AGRO.alvos[i])));
   $('#dlAlvos').innerHTML = [...set].sort().map(a => `<option value="${esc(a)}">`).join('');
 }
+function atualizarListasCultura() {
+  const lista = (KB.alvosCultura || {})[$('#fCultura').value] || { doencas: [], pragas: [], estadios: [] };
+  const opts = arr => arr.map(x => `<option value="${esc(x)}">`).join('');
+  $('#dlDoencas').innerHTML = opts(lista.doencas);
+  $('#dlPragas').innerHTML = opts(lista.pragas);
+  $('#dlEstadios').innerHTML = opts(lista.estadios);
+}
 
 /* ───────── busca unificada ───────── */
 function buscarKB(q) {
@@ -173,9 +180,20 @@ function formManual(pre) {
 }
 
 /* ───────── contexto ───────── */
+function areaPorTanqueCalda() {
+  const tanque = num($('#fTanque').value), volume = num($('#fVolume').value), el = $('#fAreaTanque');
+  if (!el) return;
+  if (!(tanque > 0) || !(volume > 0)) { el.innerHTML = ''; return; }
+  const ha = tanque / volume, cargas = num($('#fArea').value) > 0 ? Math.ceil(num($('#fArea').value) / ha) : 0;
+  el.innerHTML = `Cada carga cobre <b>${fmt(ha, 2)} ha</b> — ${fmt(tanque, 0)} L ÷ ${fmt(volume, 0)} L/ha${cargas ? ` · ${cargas} carga(s) para ${fmt(num($('#fArea').value), 1)} ha` : ''}.
+    <button class="btn sm ghost" id="btnAreaUmaCarga">usar 1 carga como área</button>`;
+  $('#btnAreaUmaCarga').onclick = () => { $('#fArea').value = Math.round(ha * 100) / 100; areaPorTanqueCalda(); toast(`Área ajustada para uma carga: ${fmt(ha, 2)} ha`); };
+}
 function lerContexto() {
   return {
     cultura: $('#fCultura').value, alvo: $('#fAlvo').value.trim(), equipamento: $('#fEquip').value,
+    doenca: $('#fDoenca').value.trim(), praga: $('#fPraga').value.trim(), severidade: $('#fSeveridade').value,
+    estadio: $('#fEstadio').value.trim(), parte: $('#fParte').value,
     volumeHa: num($('#fVolume').value), area: num($('#fArea').value), tanque: num($('#fTanque').value),
     agua: { ph: $('#fPh').value === '' ? null : num($('#fPh').value), dureza: $('#fDureza').value === '' ? null : num($('#fDureza').value), turbidez: $('#fTurbidez').value, fonte: $('#fFonte').value },
     obs: $('#fObs').value
@@ -185,6 +203,11 @@ function aplicarContexto(c) {
   if (!c) return;
   if (c.cultura) $('#fCultura').value = KB.culturas.includes(c.cultura) ? c.cultura : (KB.culturas.find(x => norm(x) === norm(c.cultura)) || 'Outra');
   if (c.alvo != null) $('#fAlvo').value = c.alvo;
+  if (c.doenca != null) $('#fDoenca').value = c.doenca;
+  if (c.praga != null) $('#fPraga').value = c.praga;
+  if (c.severidade) $('#fSeveridade').value = c.severidade;
+  if (c.estadio != null) $('#fEstadio').value = c.estadio;
+  if (c.parte) $('#fParte').value = c.parte;
   if (c.equipamento) $('#fEquip').value = c.equipamento;
   if (c.volumeHa) $('#fVolume').value = c.volumeHa;
   if (c.area != null) $('#fArea').value = c.area;
@@ -192,7 +215,7 @@ function aplicarContexto(c) {
   if (c.agua) { $('#fPh').value = c.agua.ph ?? ''; $('#fDureza').value = c.agua.dureza ?? ''; $('#fTurbidez').value = c.agua.turbidez || 'limpa'; $('#fFonte').value = c.agua.fonte || ''; }
   if (c.obs != null) $('#fObs').value = c.obs;
   $('#droneAviso').classList.toggle('hidden', $('#fEquip').value !== 'drone');
-  atualizarAlvos();
+  atualizarAlvos(); atualizarListasCultura();
 }
 
 /* ───────── análise ───────── */
@@ -227,7 +250,7 @@ function renderResultado() {
   const phBar = phMin != null && !r.ph.faixaVazia ? `<div class="ph-bar"><div class="range" style="left:${(phMin - 3) / 8 * 100}%;width:${(phMax - phMin) / 8 * 100}%"></div>${r.ph.aguaPh != null ? `<div class="mark" style="left:${Math.min(Math.max((r.ph.aguaPh - 3) / 8 * 100, 0), 100)}%">água ${r.ph.aguaPh}</div>` : ''}</div><div class="small muted">Escala 3–11 · faixa alvo ${phMin.toFixed(1)}–${phMax.toFixed(1)}${r.ph.precisaCorrigir ? ' · <b>' + esc(r.ph.sugestao) + '</b>' : ''}</div>` : (r.ph.faixaVazia ? '<div class="alert warn">Sem faixa de pH comum — ver alerta.</div>' : '<div class="small muted">Nenhum produto com faixa de pH cadastrada.</div>');
   el.innerHTML = `
   <div class="print-only"><h1>Laudo de compatibilidade de calda — ${esc(DB.config.fazenda)}</h1><p>${esc(r.data)} · Gefaz Calda ${E.versao} · KB ${KB.versao}${AGRO ? ' · Agrofit ' + esc(AGRO.gerado) : ''}</p></div>
-  <div class="status ${r.status}"><div><h2>${esc(r.resumo.rotulo)}</h2><div class="sub">${esc(ctx.cultura)}${ctx.alvo ? ' · ' + esc(ctx.alvo) : ''} · ${esc((KB.equipamentos[ctx.equipamento] || {}).nome || ctx.equipamento)} · ${ctx.volumeHa} L/ha · ${r.itens.length} produtos</div><div class="sub">${esc(r.resumo.frase)}</div></div><div class="score" title="Índice de risco (100 = sem alertas)">${r.score}</div></div>
+  <div class="status ${r.status}"><div><h2>${esc(r.resumo.rotulo)}</h2><div class="sub">${esc(ctx.cultura)}${ctx.alvo ? ' · ' + esc(ctx.alvo) : ''} · ${esc((KB.equipamentos[ctx.equipamento] || {}).nome || ctx.equipamento)} · ${ctx.volumeHa} L/ha · ${r.itens.length} produtos</div><div class="sub">${[ctx.doenca, ctx.praga, ctx.severidade, ctx.estadio, ctx.parte].filter(Boolean).map(esc).join(' · ')}</div><div class="sub">${esc(r.resumo.frase)}</div></div><div class="score" title="Índice de risco (100 = sem alertas)">${r.score}</div></div>
   <div class="card"><div class="kpis">
     <div class="kpi"><b>${r.resumo.contagem.alta}</b><small>críticos</small></div><div class="kpi"><b>${r.resumo.contagem.media}</b><small>restrições</small></div><div class="kpi"><b>${Math.round(r.confianca * 100)} %</b><small>confiança</small></div>
     <div class="kpi"><b>${BRL(r.custo.totalHa)}</b><small>custo total/ha</small></div><div class="kpi"><b>${r.jarTest.obrigatorio ? 'Sim' : 'Recomendado'}</b><small>jar test</small></div></div>
@@ -282,7 +305,7 @@ function renderJar() {
 }
 
 /* ───────── histórico e caldas ───────── */
-function caldaComoReceita() { const ctx = lerContexto(); return { id: uid(), nome: `Calda ${ctx.cultura}${ctx.alvo ? ' — ' + ctx.alvo : ''} ${hoje()}`, cultura: ctx.cultura, alvo: ctx.alvo, volumeHa: ctx.volumeHa, itens: calda.itens.map(i => ({ nome: i.nome, dose: i.dose, unidade: i.unidade, classe: i.classe, formulacao: i.formulacao, preco: i.preco, ativos: i.ativos, ingredientes: i.ingredientes, registro: i.registro, tags: i.tags, fonte: i.fonte })), agua: ctx.agua, equipamento: ctx.equipamento, area: ctx.area, tanque: ctx.tanque, obs: ctx.obs, fonte: 'gefaz-calda', status: resultado ? resultado.status : null }; }
+function caldaComoReceita() { const ctx = lerContexto(); return { id: uid(), nome: `Calda ${ctx.cultura}${ctx.alvo ? ' — ' + ctx.alvo : ''} ${hoje()}`, cultura: ctx.cultura, alvo: ctx.alvo, doenca: ctx.doenca, praga: ctx.praga, severidade: ctx.severidade, estadio: ctx.estadio, parte: ctx.parte, volumeHa: ctx.volumeHa, itens: calda.itens.map(i => ({ nome: i.nome, dose: i.dose, unidade: i.unidade, classe: i.classe, formulacao: i.formulacao, preco: i.preco, ativos: i.ativos, ingredientes: i.ingredientes, registro: i.registro, tags: i.tags, fonte: i.fonte })), agua: ctx.agua, equipamento: ctx.equipamento, area: ctx.area, tanque: ctx.tanque, obs: ctx.obs, fonte: 'gefaz-calda', status: resultado ? resultado.status : null }; }
 function salvarCalda() { if (!calda.itens.length) return toast('Nada para salvar', 'err'); const nome = prompt('Nome da calda', caldaComoReceita().nome); if (!nome) return; const c = caldaComoReceita(); c.nome = nome; DB.caldas.unshift(c); saveDB(); toast('Calda salva'); renderHistorico(); }
 function carregarReceita(rec) { calda.itens = rec.itens.map(i => ({ id: uid(), ...i, dose: +i.dose || 0, unidade: i.unidade || 'L/ha' })); aplicarContexto({ cultura: rec.cultura, alvo: rec.alvo, volumeHa: rec.volumeHa, area: rec.area, tanque: rec.tanque, equipamento: rec.equipamento, agua: rec.agua, obs: rec.obs }); renderItens(); navTo('calda'); toast(`Receita “${rec.nome}” carregada`); }
 function renderHistorico() {
@@ -422,7 +445,8 @@ function lerRegulagem() {
     larguraFaixa: num($('#pLf').value), bicosPorPassada: num($('#pBf').value), entreLinhas: num($('#pEl').value), protecao: $('#pProt').checked,
     ponta: $('#pPonta').value, iso: $('#pIso').value, angulo: num($('#pAng').value),
     pressao: num($('#pPress').value), fixarPressao: $('#pFixar').checked,
-    tanque: num($('#pTq').value), area: num($('#pArea').value)
+    tanque: num($('#pTq').value), area: num($('#pArea').value),
+    temperatura: $('#pTemp').value, umidade: $('#pUr').value, vento: $('#pVento').value, hora: $('#pHora').value
   };
 }
 function aplicarRegulagem(e) {
@@ -433,6 +457,7 @@ function aplicarRegulagem(e) {
   set('#pEsp', e.espacamento); set('#pNb', e.nBicos);
   set('#pLf', e.larguraFaixa); set('#pBf', e.bicosPorPassada); set('#pEl', e.entreLinhas); $('#pProt').checked = !!e.protecao;
   set('#pTq', e.tanque); set('#pArea', e.area);
+  set('#pTemp', e.temperatura); set('#pUr', e.umidade); set('#pVento', e.vento); set('#pHora', e.hora);
   camposPorModo();
   if (e.ponta) { const p = PT.PONTA_MAP[e.ponta]; if (p) { $('#pMarca').value = p.marca; preencherModelos(e.ponta); } }
   if (e.iso != null) preencherIso(e.iso); else preencherIso();
@@ -714,6 +739,41 @@ function preencherCruzarDaCalibracao() {
   cruzarVazaoPressao();
 }
 
+/* ───────── condições do ar (Delta T, importado do PVGest) ───────── */
+const CLIMA_CLS = { ideal: 'ok', limiar: 'warn', baixo: 'bad', critico: 'bad' };
+function renderClima() {
+  const e = lerRegulagem(), c = PT.clima(e), el = $('#pClima');
+  if (!c) { el.innerHTML = '<p class="small muted">Informe temperatura e umidade para calcular o Delta T e a janela de aplicação.</p>'; return; }
+  const cls = CLIMA_CLS[c.faixa] || 'info';
+  el.innerHTML = `
+    <div class="deltat ${cls}">
+      <div class="dt-num"><b>${fmt(c.deltaT, 1)}</b><small>Delta T</small></div>
+      <div class="dt-txt"><b>${esc(c.rotulo)}</b><div class="small">${esc(c.conduta)}</div></div>
+    </div>
+    <div class="dt-escala"><i class="dt-marca" style="left:${Math.min(Math.max(c.deltaT / 15 * 100, 0), 100)}%"></i></div>
+    <div class="dt-lbls"><span>0</span><span>2</span><span>8</span><span>10</span><span>15+</span></div>
+    <div class="kpis">
+      <div class="kpi"><b>${fmt(c.bulboUmido, 1)} °C</b><small>bulbo úmido</small></div>
+      <div class="kpi"><b>${fmt(c.pontoOrvalho, 1)} °C</b><small>ponto de orvalho</small></div>
+      <div class="kpi"><b>${fmt(c.dpv, 2)} kPa</b><small>déficit de pressão de vapor</small></div>
+      ${c.vento != null ? `<div class="kpi"><b>${fmt(c.vento, 1)} km/h</b><small>${esc((c.ventoRotulo || '').replace(/\s*\(.*/, '').toLowerCase())}</small></div>` : ''}
+    </div>
+    ${c.ventoConduta && c.ventoFaixa !== 'ideal' ? `<div class="alert warn small">${esc(c.ventoConduta)}</div>` : ''}
+    <p class="small muted">${esc(c.fonte)}. A janela de 2 a 8 vale para pulverização em geral; produto sistêmico aguenta a borda superior melhor que o de contato.</p>`;
+}
+function atualizarAreaTanque() {
+  const tanque = num($('#pTq').value), volume = num($('#pVol').value), el = $('#pAreaTanque');
+  if (!(tanque > 0) || !(volume > 0)) { el.innerHTML = ''; return; }
+  const ha = tanque / volume;
+  el.innerHTML = `Área por tanque = ${fmt(tanque, 0)} L ÷ ${fmt(volume, 0)} L/ha = <b>${fmt(ha, 2)} ha</b> por carga.
+    <button class="btn sm ghost" id="btnUsarAreaTanque">usar como área</button>`;
+  $('#btnUsarAreaTanque').onclick = () => {
+    $('#pArea').value = Math.round(ha * 100) / 100;
+    if (regulagem) calcularRegulagem(true);
+    toast(`Área ajustada para uma carga: ${fmt(ha, 2)} ha`);
+  };
+}
+
 function initPontas() {
   $('#pAlvo').innerHTML = PT.ALVOS.map(a => `<option value="${a.id}">${esc(a.nome)}</option>`).join('');
   $('#chipsPreset').innerHTML = PT.PRESETS.map(p => `<span class="chip" data-preset="${esc(p.id)}" title="${esc(p.nota)}">${esc(p.nome)}</span>`).join('');
@@ -725,6 +785,8 @@ function initPontas() {
   $('#pPonta').onchange = () => { preencherIso(); preencherAngulos(); recalc(); };
   ['#pIso', '#pAng', '#pVel', '#pVol', '#pEsp', '#pNb', '#pLf', '#pBf', '#pEl', '#pTq', '#pArea', '#pPress'].forEach(s => { $(s).oninput = recalc; $(s).onchange = recalc; });
   $('#pFixar').onchange = recalc; $('#pProt').onchange = recalc;
+  ['#pTemp', '#pUr', '#pVento', '#pHora'].forEach(s => { $(s).oninput = () => { renderClima(); recalc(); }; });
+  ['#pTq', '#pVol'].forEach(s => { const antes = $(s).oninput; $(s).oninput = ev => { if (antes) antes(ev); atualizarAreaTanque(); }; });
   $('#btnRegular').onclick = () => calcularRegulagem();
   $('#btnSugerir').onclick = sugerirPontas;
   $('#btnSalvarReg').onclick = salvarRegulagem;
@@ -743,7 +805,7 @@ function initPontas() {
   });
   camposPorModo();
   if (DB.config.pontas) aplicarRegulagem(DB.config.pontas);
-  atualizarVazaoAlvo(); renderCatalogoPontas(); renderRegulagens(); renderTabelaCruzada();
+  atualizarVazaoAlvo(); renderCatalogoPontas(); renderRegulagens(); renderTabelaCruzada(); renderClima(); atualizarAreaTanque();
 }
 
 /* ───────── URL / postMessage ───────── */
@@ -762,14 +824,18 @@ function init() {
   loadDB();
   $('#fCultura').innerHTML = KB.culturas.map(c => `<option ${c === DB.config.cultura ? 'selected' : ''}>${c}</option>`).join('');
   $('#fEquip').innerHTML = Object.entries(KB.equipamentos).map(([k, e]) => `<option value="${k}" ${k === DB.config.equipamento ? 'selected' : ''}>${e.nome}</option>`).join('');
+  $('#fSeveridade').innerHTML = '<option value=""></option>' + KB.severidades.map(s => `<option>${s}</option>`).join('');
+  $('#fParte').innerHTML = '<option value=""></option>' + KB.partesAlvo.map(s => `<option>${s}</option>`).join('');
+  atualizarListasCultura();
   $('#fVolume').value = DB.config.volumeHa; if (DB.config.ph != null) $('#fPh').value = DB.config.ph; if (DB.config.dureza != null) $('#fDureza').value = DB.config.dureza;
   $('#chipsRapidos').innerHTML = KB.comerciais.filter(c => c.tags && c.tags.includes('estoque-fazenda')).map(c => `<span class="chip" data-chip="${esc(c.nome)}">+ ${esc(c.nome)}</span>`).join('');
   $$('[data-chip]').forEach(ch => ch.onclick = () => { const c = KB.comerciais.find(x => x.nome === ch.dataset.chip); addItem({ id: uid(), nome: c.nome, classe: c.classe, formulacao: c.formulacao, unidade: 'mL/100L', dose: 0, fonte: 'fazenda' }); });
   $('#busca').oninput = e => renderBusca(e.target.value);
   document.addEventListener('click', e => { if (!e.target.closest('.search-wrap')) $('#buscaRes').classList.add('hidden'); });
-  $('#fCultura').onchange = () => { atualizarAlvos(); renderItens(); DB.config.cultura = $('#fCultura').value; saveDB(); };
-  $('#fEquip').onchange = () => { const k = $('#fEquip').value; $('#droneAviso').classList.toggle('hidden', k !== 'drone'); $('#cafeAviso').classList.toggle('hidden', k !== 'herbicida-cafe'); const eq = KB.equipamentos[k]; if (eq && !$('#fVolume').dataset.touched) $('#fVolume').value = Math.round((eq.volume[0] + eq.volume[1]) / 2); DB.config.equipamento = k; saveDB(); };
-  $('#fVolume').oninput = () => { $('#fVolume').dataset.touched = 1; };
+  $('#fCultura').onchange = () => { atualizarAlvos(); atualizarListasCultura(); renderItens(); DB.config.cultura = $('#fCultura').value; saveDB(); };
+  $('#fEquip').onchange = () => { const k = $('#fEquip').value; $('#droneAviso').classList.toggle('hidden', k !== 'drone'); $('#cafeAviso').classList.toggle('hidden', k !== 'herbicida-cafe'); const eq = KB.equipamentos[k]; if (eq && !$('#fVolume').dataset.touched) $('#fVolume').value = Math.round((eq.volume[0] + eq.volume[1]) / 2); DB.config.equipamento = k; areaPorTanqueCalda(); saveDB(); };
+  $('#fVolume').oninput = () => { $('#fVolume').dataset.touched = 1; areaPorTanqueCalda(); };
+  $('#fTanque').oninput = areaPorTanqueCalda; $('#fArea').oninput = areaPorTanqueCalda;
   $('#btnManual').onclick = () => formManual();
   $('#btnReceita').onclick = () => { if (!DB.receitas.length && !DB.caldas.length) return toast('Nenhuma receita importada ou calda salva — veja Integração', 'err'); modal(`<h2>Carregar</h2><div class="lista">${DB.caldas.map((r, i) => `<div class="row"><div><b>${esc(r.nome)}</b><small>calda salva · ${r.itens.length} itens</small></div><button class="btn sm" data-c="${i}">Carregar</button></div>`).join('')}${DB.receitas.map((r, i) => `<div class="row"><div><b>${esc(r.nome)}</b><small>${esc(r.fonte)} · ${esc(r.cultura || '')} · ${r.itens.length} itens</small></div><button class="btn sm" data-r="${i}">Carregar</button></div>`).join('')}</div><div class="row-btns"><button class="btn ghost" id="mCancel">Fechar</button></div>`); $('#mCancel').onclick = closeModal; $$('#modal [data-c]').forEach(b => b.onclick = () => { carregarReceita(DB.caldas[+b.dataset.c]); closeModal(); }); $$('#modal [data-r]').forEach(b => b.onclick = () => { carregarReceita(DB.receitas[+b.dataset.r]); closeModal(); }); };
   $('#btnAnalisar').onclick = () => analisar();
@@ -788,7 +854,7 @@ function init() {
   $('#impBackup').onchange = async e => { const f = e.target.files[0]; if (!f) return; try { const d = JSON.parse(await f.text()); if (d.app !== 'gefaz-calda-backup') throw new Error('não é um backup do Gefaz Calda'); if (confirm('Substituir todos os dados do Gefaz Calda por este backup?')) { delete d.app; DB = d; loadDBFrom(d); saveDB(); renderIntegracao(); renderHistorico(); toast('Backup restaurado'); } } catch (err) { toast('Falha: ' + err.message, 'err'); } e.target.value = ''; };
   window.addEventListener('online', () => { $('#netStatus').textContent = 'online'; }); window.addEventListener('offline', () => { $('#netStatus').textContent = 'offline'; });
   $('#netStatus').textContent = navigator.onLine ? 'online' : 'offline';
-  renderItens(); renderHistorico(); renderIntegracao(); renderReferencias(); initPontas();
+  renderItens(); renderHistorico(); renderIntegracao(); renderReferencias(); initPontas(); areaPorTanqueCalda();
   carregarAgrofit().then(() => { renderItens(); });
   const q = new URLSearchParams(location.search);
   const mix = q.get('mix') ? decodeMix(q.get('mix')) : null;
