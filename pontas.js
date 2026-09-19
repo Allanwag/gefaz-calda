@@ -139,6 +139,82 @@
     }
   };
 
+  /* ───────── Pontas de numeração própria (não ISO) ─────────
+     Flood, cone e boomless são numerados pela vazão em gpm a 10 psi ou por
+     disco e núcleo. Sem a tabela do fabricante não dá para calcular nada —
+     com ela, entram na regulagem como qualquer outra.                      */
+  const TAB_TJ_TF = {   // TurboFloodJet: TF-2 = 0,2 gpm a 10 psi
+    fonte: 'Catálogo TeeJet Brasil (cat51a-pt, p. 47)',
+    pressoes: [1, 1.5, 2, 2.5, 3],
+    valores: {
+      'TF-2': [0.91, 1.11, 1.29, 1.44, 1.58],
+      'TF-2.5': [1.14, 1.40, 1.61, 1.80, 1.97],
+      'TF-3': [1.37, 1.68, 1.94, 2.17, 2.37],
+      'TF-4': [1.82, 2.23, 2.57, 2.88, 3.15],
+      'TF-5': [2.28, 2.79, 3.22, 3.60, 3.95],
+      'TF-7.5': [3.42, 4.19, 4.84, 5.41, 5.92],
+      'TF-10': [4.56, 5.58, 6.45, 7.21, 7.90]
+    }
+  };
+  const TAB_TJ_TX = {   // ConeJet: numeração por disco e núcleo
+    fonte: 'Catálogo TeeJet Brasil (cat51a-pt, p. 81)',
+    pressoes: [2, 3, 4, 5, 6, 8, 10, 12, 15, 20],
+    valores: {
+      'TX-1': [0.055, 0.065, 0.074, 0.081, 0.087, 0.098, 0.108, 0.116, 0.127, 0.143],
+      'TX-2': [0.110, 0.131, 0.148, 0.164, 0.177, 0.201, 0.221, 0.240, 0.264, 0.299],
+      'TX-3': [0.164, 0.196, 0.223, 0.245, 0.266, 0.301, 0.332, 0.359, 0.396, 0.449],
+      'TX-4': [0.218, 0.262, 0.299, 0.331, 0.360, 0.410, 0.454, 0.493, 0.546, 0.623],
+      'TX-6': [0.327, 0.393, 0.448, 0.496, 0.539, 0.615, 0.681, 0.740, 0.819, 0.934],
+      'TX-8': [0.433, 0.525, 0.603, 0.671, 0.732, 0.840, 0.934, 1.02, 1.13, 1.30],
+      'TX-10': [0.541, 0.657, 0.753, 0.838, 0.915, 1.05, 1.17, 1.27, 1.42, 1.63],
+      'TX-12': [0.649, 0.788, 0.904, 1.01, 1.10, 1.26, 1.40, 1.53, 1.70, 1.95],
+      'TX-18': [0.968, 1.18, 1.37, 1.53, 1.67, 1.93, 2.15, 2.35, 2.63, 3.03],
+      'TX-26': [1.40, 1.71, 1.97, 2.20, 2.41, 2.78, 3.11, 3.40, 3.80, 4.38]
+    }
+  };
+  const TAB_ALB_APE = { // escala de cores europeia da Albuz
+    fonte: 'Catálogo Albuz 2022 (p. 10)',
+    pressoes: [2, 2.5, 3, 3.5, 4],
+    valores: {
+      'amarelo': [0.49, 0.55, 0.61, 0.65, 0.70],
+      'laranja': [0.69, 0.77, 0.85, 0.92, 0.98],
+      'vermelho': [0.99, 1.11, 1.21, 1.31, 1.40],
+      'verde': [1.40, 1.57, 1.71, 1.85, 1.98],
+      'turquesa': [1.69, 1.89, 2.07, 2.24, 2.39],
+      'azul': [1.98, 2.21, 2.42, 2.62, 2.80],
+      'cinza': [2.79, 3.11, 3.41, 3.69, 3.94],
+      'preto': [3.95, 4.41, 4.83, 5.22, 5.58],
+      'marfim': [5.61, 6.28, 6.88, 7.43, 7.94],
+      'branco': [7.82, 8.85, 9.70, 10.48, 11.20]
+    }
+  };
+  const TAB_HY_DT = {   // DeflecTip: mesma escala do flood da TeeJet
+    fonte: 'Hypro — Crop Spraying Pocket Guide (p. 26)',
+    pressoes: [1, 2, 3],
+    valores: {
+      'DT0.5': [0.23, 0.33, 0.40],
+      'DT0.75': [0.35, 0.49, 0.59],
+      'DT1.0': [0.46, 0.65, 0.80],
+      'DT1.5': [0.68, 0.97, 1.17],
+      'DT2.0': [0.91, 1.29, 1.58],
+      'DT2.5': [1.14, 1.61, 1.98],
+      'DT3.0': [1.37, 1.93, 2.37]
+    },
+    /* largura de faixa a 50 cm de altura e ângulo de cada tamanho */
+    faixa: { 'DT0.5': 0.8, 'DT0.75': 1.1, 'DT1.0': 1.3, 'DT1.5': 1.3, 'DT2.0': 1.3, 'DT2.5': 1.4, 'DT3.0': 1.4 },
+    angulo: { 'DT0.5': 80, 'DT0.75': 95, 'DT1.0': 105, 'DT1.5': 105, 'DT2.0': 105, 'DT2.5': 110, 'DT3.0': 110 }
+  };
+  const TAB_HY_XT = {   // Boom X Tender: boomless, faixa de 3,9 a 4,9 m
+    fonte: 'Hypro — Crop Spraying Pocket Guide (p. 28)',
+    pressoes: [2, 3, 4],
+    valores: {
+      'XT010': [3.2, 3.9, 4.6],
+      'XT020': [6.4, 7.9, 9.1],
+      'XT024': [7.7, 9.5, 10.9]
+    },
+    faixa: { 'XT010': 3.9, 'XT020': 4.8, 'XT024': 4.9 }
+  };
+
   /* TeeJet — catálogo Brasil "Bicos para área total". A vazão é a mesma em
      todas as famílias de jato plano da marca (muda a gota, não a vazão), por
      isso uma tabela só serve para todas elas. Note que a TeeJet publica a
@@ -353,20 +429,22 @@
       fonte: 'TeeJet — Even Flat Spray (aplicação em faixa)'
     },
     {
-      id: 'tj-tf', marca: 'TeeJet', modelo: 'TF (Flood / leque defletor)', tipo: 'flood', angulos: [130, 145],
-      sizes: ['02', '025', '03', '04', '05', '06', '08', '10'], pressao: [0.7, 3], material: 'Inox / polímero',
-      gotasFaixa: ['UG', 'EG', 'MG'], confirmar: true,
-      usos: ['herbicida-cafe', 'pre-emergente', 'herbicida-sistemico'],
-      nota: 'Grande ângulo a baixa pressão e gota muito grossa — é o tipo montado nas barras de herbicida de café (padrão do Jacto PH-400, ~500 µm a 1 bar). Atenção: a TeeJet numera a linha flood pela vazão em gpm (TF-VS2, VS5…), não pelo código ISO — o cálculo aqui usa a escala ISO, confira a equivalência na tabela do fabricante.',
-      fonte: 'Catálogo TeeJet + Jacto PH-400 (SBCPD)'
+      id: 'tj-tf', marca: 'TeeJet', modelo: 'TF TurboFloodJet (defletor de grande ângulo)', tipo: 'flood', angulos: [130, 145],
+      sizes: ['TF-2', 'TF-2.5', 'TF-3', 'TF-4', 'TF-5', 'TF-7.5', 'TF-10'], escalaPropria: true, vazaoTabela: TAB_TJ_TF,
+      pressao: [1, 3], material: 'Inox (VS) ou polímero (VP)',
+      gotasPorBar: { 1: 'UG', 1.5: 'UG', 2: 'EG', 2.5: 'MG', 3: 'MG' },
+      usos: ['herbicida-cafe', 'pre-emergente', 'herbicida-sistemico', 'foliar'],
+      nota: 'Câmara de turbulência com pré-orifício: gota ultragrossa a 1–1,5 bar e deriva mínima. É o tipo montado nas barras de herbicida de café (o Jacto PH-400 usa flood de 130° com ~500 µm a 1 bar). A numeração é por vazão: TF-2 = 0,2 gpm a 10 psi, o que dá 1,58 L/min a 3 bar — não confunda com o tamanho ISO 02.',
+      fonte: 'Catálogo TeeJet Brasil (p. 47 e 199) + Jacto PH-400 (SBCPD)'
     },
     {
       id: 'tj-tx', marca: 'TeeJet', modelo: 'TX ConeJet (cone vazio)', tipo: 'cone-vazio', angulos: [80],
-      sizes: ['01', '015', '02', '03', '04', '05'], pressao: [3, 20], material: 'Cerâmica / inox',
-      gotasFaixa: ['M', 'F', 'MF'], confirmar: true,
+      sizes: ['TX-1', 'TX-2', 'TX-3', 'TX-4', 'TX-6', 'TX-8', 'TX-10', 'TX-12', 'TX-18', 'TX-26'], escalaPropria: true, vazaoTabela: TAB_TJ_TX,
+      pressao: [2, 20], material: 'Cerâmica (VK), inox (VS) ou latão',
+      gotasPorBar: { 2: 'MF', 5: 'MF', 10: 'MF', 20: 'MF' },
       usos: ['fungicida', 'inseticida', 'foliar'],
-      nota: 'Cone vazio de alta pressão — turbo atomizador e aplicação em café/citros, onde a cobertura vale mais que a deriva. Atenção: a linha ConeJet é numerada por disco/núcleo (TX-6, TX-10…), não pelo código ISO — o cálculo aqui usa a escala ISO, confira a equivalência na tabela do fabricante. Para cone com tabela fechada, use a Albuz ATI/ATR ou a Magnojet MAG.',
-      fonte: 'Catálogo TeeJet Brasil — ConeJet'
+      nota: 'Cone vazio de 2 a 20 bar para turbo atomizador em café e citros: gota muito fina em toda a faixa, cobertura máxima e deriva alta. A numeração é por disco e núcleo (TX-6, TX-10…), não pelo código ISO — a TX-6 dá 0,54 L/min a 3 bar, nada a ver com a 06 da norma.',
+      fonte: 'Catálogo TeeJet Brasil (p. 81)'
     },
     /* ── Magnojet ── */
     {
@@ -551,11 +629,11 @@
     },
     {
       id: 'alb-ape', marca: 'Albuz', modelo: 'APE 80°/110° (leque padrão)', tipo: 'leque', angulos: [110, 80],
-      sizes: ['branco', 'lilás', 'marrom', 'amarelo', 'laranja', 'vermelho', 'cinza', 'verde', 'preto', 'azul'], escalaPropria: true,
+      sizes: ['amarelo', 'laranja', 'vermelho', 'verde', 'turquesa', 'azul', 'cinza', 'preto', 'marfim', 'branco'], escalaPropria: true, vazaoTabela: TAB_ALB_APE,
       pressao: [2, 4], material: 'Cerâmica rosa Albuz',
       gotasPorBar: { 2: 'F', 2.5: 'F', 3: 'F', 3.5: 'F', 4: 'MF' },
       usos: ['fungicida', 'inseticida', 'herbicida-contato', 'foliar'],
-      nota: 'Leque padrão da Albuz para todo tipo de tratamento, de 2 a 4 bar. Usa a escala de cores EUROPEIA da Albuz (amarelo = 0,49 L/min a 2 bar), não a ISO — o app não calcula a vazão dela; pegue o par cor × pressão na tabela do fabricante.',
+      nota: 'Leque padrão da Albuz para todo tipo de tratamento, de 2 a 4 bar, barra a 50–60 cm (110°) ou 80–90 cm (80°). Usa a escala de cores EUROPEIA da Albuz — o amarelo dá 0,49 L/min a 2 bar, enquanto o amarelo ISO (02) daria 0,65. Os tamanhos grandes (cinza para cima) já saem com gota grossa.',
       fonte: 'Catálogo Albuz 2022 (p. 10)'
     },
     {
@@ -656,12 +734,13 @@
       fonte: 'Hypro — guia de seleção'
     },
     {
-      id: 'hy-dt', marca: 'Hypro', modelo: 'DeflecTip (defletor / flood)', tipo: 'flood', angulos: [160, 130, 80], confirmar: true,
-      sizes: ['02', '03', '04', '05', '06', '08', '10'], pressao: [1, 4], material: 'Poliacetal',
-      gotasFaixa: ['UG', 'EG', 'MG'],
+      id: 'hy-dt', marca: 'Hypro', modelo: 'DeflecTip (defletor / flood)', tipo: 'flood', angulos: [80, 95, 105, 110],
+      sizes: ['DT0.5', 'DT0.75', 'DT1.0', 'DT1.5', 'DT2.0', 'DT2.5', 'DT3.0'], escalaPropria: true, vazaoTabela: TAB_HY_DT,
+      pressao: [1, 3], material: 'Poliacetal',
+      gotasFaixa: ['MG', 'G', 'M'],
       usos: ['herbicida-cafe', 'pre-emergente', 'herbicida-sistemico', 'foliar'],
-      nota: 'Defletor de 80° a 160° a baixa pressão (1 a 4 bar), gota grossa: daninhas e fertilizante líquido, e é o tipo das barras de herbicida em faixa. A Hypro numera os tamanhos pela vazão em gpm — confira a equivalência com o código ISO antes de fechar a regulagem.',
-      fonte: 'Hypro — guia de seleção'
+      nota: 'Defletor de faixa uniforme e muito resistente a entupimento, de 1 a 3 bar — herbicida de solo, fertilizante líquido e aplicação em faixa, inclusive em costal. Cada tamanho tem o seu ângulo e a sua faixa a 50 cm de altura: DT0.5 faz 0,8 m a 80°, a DT1.0 faz 1,3 m a 105° e a DT3.0 faz 1,4 m a 110°. Mesma escala do flood da TeeJet (DT2.0 = TF-2).',
+      fonte: 'Hypro — Crop Spraying Pocket Guide (p. 26)'
     },
     {
       id: 'hy-hcx', marca: 'Hypro', modelo: 'HCX HollowTip (cone vazio)', tipo: 'cone-vazio', angulos: [80],
@@ -672,12 +751,13 @@
       fonte: 'Hypro — guia de seleção'
     },
     {
-      id: 'hy-xt', marca: 'Hypro', modelo: 'XT Boom X Tender (sem barra)', tipo: 'flood', angulos: [105], confirmar: true,
-      sizes: ['04', '05', '06', '08', '10'], pressao: [2, 5], material: 'Inox ou poliacetal',
+      id: 'hy-xt', marca: 'Hypro', modelo: 'XT Boom X Tender (sem barra)', tipo: 'flood', angulos: [105],
+      sizes: ['XT010', 'XT020', 'XT024'], escalaPropria: true, vazaoTabela: TAB_HY_XT,
+      pressao: [2, 4], material: 'Inox ou poliacetal (FastCap)',
       gotasFaixa: ['EG', 'MG', 'G'],
       usos: ['herbicida-sistemico', 'pre-emergente', 'dessecacao'],
-      nota: 'Ponta boomless: cobre uma faixa larga sem barra, para pastagem, beira de cerca e área acidentada. Tamanho pela vazão do fabricante — confira a equivalência ISO.',
-      fonte: 'Hypro — guia de seleção'
+      nota: 'Boomless: joga um leque grosso e uniforme de até 4,9 m sem barra, para pastagem, beira de cerca, carreador e área com obstáculo. A 3 bar e 1,2 m de altura a XT010 faz 3,9 m de faixa, a XT020 faz 4,8 m e a XT024 faz 4,9 m — a largura muda ±18° com o ângulo do bico. A numeração XT010/XT020/XT024 é própria da Hypro, não é código ISO. Existem tamanhos maiores (XT043 em diante) que não estão nesta tabela.',
+      fonte: 'Hypro — Crop Spraying Pocket Guide (p. 28)'
     },
     /* ── genérica ── */
     {
@@ -718,7 +798,7 @@
     {
       id: 'cafe-ph400', nome: 'Café — barra tipo PH-400 (sob a saia, área total)',
       modo: 'faixa', entreLinhas: 3.5, larguraFaixa: 3.5, bicosPorPassada: 4, velocidade: 4.5, protecao: true,
-      volumeHa: 250, alvo: 'herbicida-cafe', ponta: 'tj-tf', iso: '06', angulo: 130,
+      volumeHa: 250, alvo: 'herbicida-cafe', ponta: 'tj-tf', iso: 'TF-2.5', angulo: 130,
       nota: 'Arranjo do Jacto PH-400: 4 bicos flood de 130°, faixa regulável de 1,40 a 3,60 m, ~1 bar, gota de ~500 µm, 250 L/ha a 4,5 km/h — asas protegidas que levantam a saia do cafeeiro.'
     },
     {

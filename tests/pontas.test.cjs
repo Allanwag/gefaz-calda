@@ -231,10 +231,11 @@ test('Albuz e Hypro entraram no catálogo com dados utilizáveis', () => {
   const hypro = P.PONTAS.filter(p => p.marca === 'Hypro');
   assert.ok(albuz.length >= 12, `Albuz: ${albuz.length}`);
   assert.ok(hypro.length >= 10, `Hypro: ${hypro.length}`);
-  hypro.forEach(p => assert.ok(!p.escalaPropria, `${p.id} deveria usar a escala ISO`));
-  // escala própria (ATR, APE) fica fora da seleção automática, porque a vazão não é ISO
+  // o jato plano da Hypro é ISO; flood e boomless têm numeração própria, mas com tabela
+  hypro.forEach(p => assert.ok(!p.escalaPropria || p.vazaoTabela, `${p.id}: escala própria sem tabela`));
+  assert.ok(['hy-dt', 'hy-xt'].every(id => P.PONTA_MAP[id].escalaPropria));
   const s = P.selecionar({ modo: 'area', espacamento: 0.5, volumeHa: 150, velocidade: 6, alvo: 'fungicida', limite: 40 });
-  assert.ok(!s.opcoes.some(o => o.ponta === 'alb-ape'), 'ponta sem ISO e sem tabela não pode ser sugerida');
+  assert.ok(s.opcoes.some(o => P.PONTA_MAP[o.ponta].escalaPropria), 'ponta de escala própria com tabela pode ser sugerida');
   assert.ok(s.opcoes.some(o => P.PONTA_MAP[o.ponta].marca === 'Hypro'));
 });
 
@@ -370,10 +371,43 @@ test('ULDM 130° entrou com ultragrossa em toda a faixa', () => {
   assert.ok(s.opcoes.some(o => o.ponta === 'hy-uldm'), 'ULDM deve aparecer para herbicida no café');
 });
 
-test('pontas de numeração própria sem tabela ficam marcadas para conferir', () => {
-  ['tj-tf', 'tj-tx', 'hy-dt', 'hy-xt'].forEach(id => {
+test('pontas de numeração própria trazem a tabela e explicam a escala', () => {
+  ['tj-tf', 'tj-tx', 'alb-ape', 'hy-dt', 'hy-xt'].forEach(id => {
     const p = P.PONTA_MAP[id];
-    assert.ok(p.confirmar, `${id} deveria estar marcada para conferir`);
-    assert.ok(/ISO|equival/i.test(p.nota), `${id} deveria explicar a escala na nota`);
+    assert.ok(p.escalaPropria, id + ' usa escala própria e precisa declarar isso');
+    assert.ok(p.vazaoTabela, id + ' precisa da tabela do fabricante');
+    assert.ok(!p.confirmar, id + ' já tem tabela: não deve mais pedir conferência');
+    assert.ok(/ISO|escala|numera/i.test(p.nota), id + ' deveria explicar a escala na nota');
+    P.tamanhosDaPonta(p).forEach(s => assert.ok(!P.ISO_MAP[s], id + ': ' + s + ' não deveria ser um código ISO'));
   });
+});
+
+test('tabelas das pontas de escala própria batem com os catálogos', () => {
+  // TeeJet TurboFloodJet (TF-2 = 0,2 gpm a 10 psi) e ConeJet (disco e núcleo)
+  perto(P.vazaoDaPonta('tj-tf', 'TF-2', 3), 1.58, 0.01);
+  perto(P.vazaoDaPonta('tj-tf', 'TF-10', 1), 4.56, 0.01);
+  perto(P.vazaoDaPonta('tj-tx', 'TX-6', 3), 0.393, 0.005);
+  perto(P.vazaoDaPonta('tj-tx', 'TX-26', 20), 4.38, 0.01);
+  // Albuz APE na escala de cores europeia
+  perto(P.vazaoDaPonta('alb-ape', 'amarelo', 2), 0.49, 0.01);
+  perto(P.vazaoDaPonta('alb-ape', 'branco', 4), 11.20, 0.02);
+  // Hypro DeflecTip e boomless
+  perto(P.vazaoDaPonta('hy-dt', 'DT1.0', 2), 0.65, 0.01);
+  perto(P.vazaoDaPonta('hy-dt', 'DT3.0', 3), 2.37, 0.01);
+  perto(P.vazaoDaPonta('hy-xt', 'XT020', 3), 7.9, 0.02);
+  // o flood da Hypro e o da TeeJet usam a mesma escala: DT2.0 = TF-2
+  perto(P.vazaoDaPonta('hy-dt', 'DT2.0', 1), P.vazaoDaPonta('tj-tf', 'TF-2', 1), 0.01);
+  // e a cor da APE não é a cor da ISO: amarelo Albuz a 2 bar ≠ amarelo ISO (02)
+  assert.ok(Math.abs(P.vazaoDaPonta('alb-ape', 'amarelo', 2) - P.vazaoPonta('02', 2)) > 0.1);
+});
+
+test('preset do PH-400 usa um tamanho real do flood', () => {
+  const pre = P.PRESETS.find(p => p.id === 'cafe-ph400');
+  assert.ok(P.tamanhosDaPonta(pre.ponta).includes(pre.iso), `${pre.iso} não existe na ${pre.ponta}`);
+  const r = P.calcular({ ...pre, tanque: 400 });
+  const ponta = P.PONTA_MAP[pre.ponta];
+  assert.ok(r.pressao >= ponta.pressao[0] && r.pressao <= ponta.pressao[1], `pressão ${r.pressao} fora de ${ponta.pressao.join('–')} bar`);
+  perto(r.vazaoPorBico, 1.641, 0.01);          // 4 bicos, 250 L/ha, 4,5 km/h, faixa de 3,5 m
+  assert.ok(r.gota.grau >= P.GOTA_MAP['MG'].grau, 'o flood do PH-400 tem de dar gota muito grossa para cima');
+  assert.ok(!r.avisos.some(a => a.nivel === 'alta'));
 });

@@ -53,20 +53,22 @@ velocidade — e quanto disso vira volume de calda.
   Albuz (AXI, AXI TWIN, ADI, APE, AVI, AVI TWIN, AVI-UC, CVI, CVI TWIN, MVI, ATR, ATI, TVI, ATF),
   Hypro (ULD, ULDM, GuardianAIR, GuardianAIR Twin, Guardian, LD, 3D, VP, E FanTip, DeflecTip, HCX, XT),
   Magnojet (AD, ADGA, AD-IA, AD-IA/D, MUG, MUG-CV, BD, MAG) e Jacto (JTT, J3D, JDF, AIRMIX).
-  **Trinta famílias trazem a tabela de vazão publicada** em vez da vazão nominal calculada: a linha
-  de jato plano da TeeJet (catálogo Brasil, 1 a 6 bar), a da Hypro (Crop Spraying Guide, 1 a 5 bar),
-  a linha Magnojet (AD, AD-IA, MUG, MUG-CV e o cone MAG, 15 a 150 PSI) e os cones da Albuz (ATR,
-  ATI, TVI e o cone cheio ATF, 3 a 25 bar). Duas dessas escalas não são ISO e só existem em tabela:
-  as cores europeias da ATR (branco → roxo) e a numeração MAG1 a MAG6. O motor interpola em √p entre
-  as linhas da tabela (exato nos pontos publicados) e extrapola pela lei da raiz quadrada fora dela.
+  **Trinta e cinco famílias trazem a tabela de vazão publicada** em vez da vazão nominal calculada:
+  a linha de jato plano da TeeJet (catálogo Brasil, 1 a 6 bar), a da Hypro (Crop Spraying Guide,
+  1 a 5 bar), a linha Magnojet (AD, AD-IA, MUG, MUG-CV e o cone MAG, 15 a 150 PSI) e os cones da
+  Albuz (ATR, ATI, TVI e o cone cheio ATF, 3 a 25 bar). O motor interpola em √p entre as linhas da
+  tabela (exato nos pontos publicados) e extrapola pela lei da raiz quadrada fora dela.
 
   Por que isso muda alguma coisa: para a ponta 02 a 3 bar a TeeJet publica 0,79 L/min e Hypro,
   Magnojet e Albuz publicam 0,80 — ~1 % de diferença entre catálogos da mesma norma. Com a tabela
   embutida, o app mostra o número do catálogo que está na mão do operador.
 
-  Ficam de fora as pontas numeradas por vazão em gpm ou por disco e núcleo, que não têm equivalência
-  ISO direta (TeeJet TF flood e TX ConeJet, Hypro DeflecTip e Boom X Tender) e a Albuz APE: essas
-  saem marcadas como "conferir catálogo", com a escala explicada na própria ficha.
+  **Cinco famílias não usam o código ISO e só existem em tabela**, e é justamente onde o cálculo
+  por norma erraria feio: o flood TeeJet TF (TF-2 a TF-10, numerado em gpm a 10 psi — a TF-2 dá
+  1,58 L/min a 3 bar, quase o dobro da 02 ISO), o cone TeeJet TX (TX-1 a TX-26, por disco e
+  núcleo), o leque Albuz APE (cores europeias: o amarelo dá 0,49 L/min a 2 bar, contra 0,65 do
+  amarelo ISO), o defletor Hypro DeflecTip (DT0.5 a DT3.0, com ângulo e largura de faixa próprios
+  por tamanho) e o boomless Hypro XT (faixa de 3,9 a 4,9 m). Todas entram na regulagem normalmente.
 
 * **Vazão pela norma, não pela marca** — a vazão sai da ISO 10625 (vazão nominal a 3 bar por
   tamanho e cor) e da lei da raiz quadrada `q₂ = q₁ × √(p₂ ÷ p₁)`. É assim que o catálogo do
@@ -81,7 +83,7 @@ velocidade — e quanto disso vira volume de calda.
 * **Cruzamento vazão × pressão** — com um par conhecido (vazão medida numa pressão medida) o app
   devolve a pressão de qualquer vazão ou volume desejado, a velocidade equivalente e a tabela
   cruzada pressão × tamanho com o volume de cada célula. Funciona para ponta gasta, sem tabela ou
-  de escala própria (cone vazio ATR), e avisa quando o ajuste passa de ±20 % — aí é troca de ponta,
+  de escala própria, e avisa quando o ajuste passa de ±20 % — aí é troca de ponta,
   não de manômetro.
 * **Seleção por alvo** — informando alvo (sistêmico, contato, pré-emergente, fungicida…), volume e
   velocidade, o app lista as pontas cuja classe de gota serve ao alvo **e** cuja pressão cai dentro
@@ -100,7 +102,7 @@ deriva sobre a saia do cafeeiro.
 
 Presets prontos: faixa na linha (dois lados da saia), café em formação (faixa de 0,80 m — 0,40 m de
 cada lado, ponta de faixa uniforme), rua/entrelinha, barra tipo **Jacto PH-400** (faixa de 1,40 a
-3,60 m, 4 bicos flood de 130°, gota de ~500 µm, 250 L/ha a 4,5 km/h), barra de área total e turbo
+3,60 m, 4 bicos flood TF-2.5 de 130°, gota de ~500 µm, 250 L/ha a 4,5 km/h), barra de área total e turbo
 atomizador. O equipamento *Barra de herbicida para café* também entrou na aba Calda, com custo
 operacional próprio.
 
