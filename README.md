@@ -99,6 +99,7 @@ velocidade — e quanto disso vira volume de calda.
   condição do ar cruza com a gota: gota fina ou média com Delta T acima de 8 vira alerta alto
   (evapora antes de chegar), e herbicida dirigido no café com vento acima de 15 km/h também, porque
   nessa faixa a proteção física do bico já não segura a deriva.
+* **Velocidade pelo cronômetro** — percurso de 50 m (ajustável) e o tempo marcado, uma ou várias passadas: `v = 3,6 × d ÷ t`. A velocidade da regulagem é preenchida sozinha, o app avisa se as passadas variam mais de 5 % e, com a velocidade já definida, diz quanto o cronômetro deve marcar. O tempo e o percurso vão para a regulagem salva e para o laudo.
 * **Calibração a campo** — coleta por bico, CV do conjunto, desgaste contra a vazão nominal (troca
   acima de 10 %), volume real medido e a correção a fazer (pressão ou velocidade).
 
@@ -122,12 +123,7 @@ compatibilidade — regulagem e calda passam a falar do mesmo número.
 
 ## Alvo da aplicação e área por carga
 
-Além do campo livre de alvo, a calda registra **cinco campos** que mudam a decisão técnica e ficam
-no laudo: **doença**, **praga**, **nível de infestação**, **estádio fenológico** e **parte da planta
-alvo**. Doença, praga e estádio vêm de listas por cultura — café, milho, soja, sorgo, trigo, feijão,
-algodão, pastagens, cana e citros —, com os alvos que realmente aparecem em cada uma (no café:
-ferrugem, cercosporiose, phoma, mancha aureolada, antracnose, rizoctoniose e nematoides; broca,
-bicho-mineiro, ácaro-vermelho, cochonilha, cigarra, lagarta-dos-cafezais). O checklist pré-saída
+A calda separa os **alvos em quatro grupos** — **doenças**, **insetos**, **ácaros e outras pragas** (nematoides, lesmas) e **plantas daninhas** —, cada um com a lista da cultura e vários alvos por grupo (chips). A lista junta as curadas do `kb.js` (café, milho, soja, sorgo, trigo, feijão, algodão, pastagens, cana e citros) com tudo o que o AGROFIT registra para a cultura; o índice é classificado pelo nome e pela classe dos produtos (herbicida → daninha, fungicida → doença, inseticida → inseto, acaricida/nematicida → outras pragas). O registro na bula confere cada produto só com o grupo que a classe dele ataca (herbicida × daninha, fungicida × doença…) e reconhece o alvo pelo nome científico. Somam-se **nível de infestação**, **estádio fenológico** e **parte da planta alvo**, que ficam no laudo e no código de conferência. O checklist pré-saída
 passa a cobrar o que esses campos afirmam: alvo confirmado no talhão, ponta escolhida para a parte
 da planta onde ele está, e carência e fitotoxidez conferidas para o estádio.
 

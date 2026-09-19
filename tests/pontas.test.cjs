@@ -484,3 +484,16 @@ test('área por tanque é o volume dividido pela taxa de aplicação', () => {
   const faixa = P.calcular({ modo: 'faixa', volumeHa: 200, velocidade: 4.5, larguraFaixa: 1.6, bicosPorPassada: 2, entreLinhas: 3.5, ponta: 'tj-aixr', iso: '04', tanque: 600 });
   perto(faixa.ficha.haPorTanque, 600 / faixa.volumeLavoura, 0.01);  // na faixa vale o L/ha de lavoura
 });
+
+test('velocidade pelo cronômetro: 50 m em 22,5 s = 8 km/h; várias passadas usam o tempo médio', () => {
+  const um = P.velocidadeMedida(50, '22,5');
+  perto(um.velocidade, 8, 0.01); assert.equal(um.n, 1); assert.equal(um.amplitude, null);
+  const duas = P.velocidadeMedida(50, '22 23');
+  assert.equal(duas.n, 2); perto(duas.tempoMedio, 22.5, 0.001); perto(duas.velocidade, 8, 0.01);
+  perto(duas.amplitude, 4.4, 0.05);
+  assert.equal(P.velocidadeMedida(50, ''), null);
+  assert.equal(P.velocidadeMedida(0, '20'), null);
+  assert.equal(P.velocidadeMedida(50, [20, 0, 'x']).n, 1, 'tempo zero ou inválido é descartado');
+  perto(P.tempoNoPercurso(50, 8), 22.5, 0.05);
+  assert.equal(P.tempoNoPercurso(50, 0), 0);
+});

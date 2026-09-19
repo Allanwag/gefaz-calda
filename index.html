@@ -26,11 +26,14 @@
       <div class="card-hd"><h2>1 · Contexto da aplicação</h2><span class="hint">Tudo entra no cálculo</span></div>
       <div class="grid2">
         <label>Cultura<select id="fCultura"></select></label>
-        <label>Alvo (praga/doença/daninha)<input id="fAlvo" list="dlAlvos" placeholder="ex.: Hemileia vastatrix"><datalist id="dlAlvos"></datalist></label>
-        <label>Doença alvo<input id="fDoenca" list="dlDoencas" placeholder="lista da cultura"><datalist id="dlDoencas"></datalist></label>
-        <label>Praga alvo<input id="fPraga" list="dlPragas" placeholder="lista da cultura"><datalist id="dlPragas"></datalist></label>
-        <label>Nível de infestação<select id="fSeveridade"></select></label>
         <label>Estádio fenológico<input id="fEstadio" list="dlEstadios" placeholder="lista da cultura"><datalist id="dlEstadios"></datalist></label>
+      </div>
+      <div class="subcard" id="alvosBox">
+        <div class="sub-hd"><b>Alvos da aplicação</b><span class="hint" id="alvosResumo">escolha da lista da cultura ou digite · dá para marcar mais de um por grupo</span></div>
+        <div class="alvos-grid" id="alvosGrid"></div>
+      </div>
+      <div class="grid2">
+        <label>Nível de infestação<select id="fSeveridade"></select></label>
         <label>Parte da planta alvo<select id="fParte"></select></label>
         <label>Equipamento<select id="fEquip"></select></label>
         <label>Volume de calda (L/ha)<input id="fVolume" type="number" min="1" step="1" value="400"></label>
@@ -108,6 +111,14 @@
         <label>Velocidade (km/h)<input id="pVel" type="number" min="0.5" step="0.1" value="8"></label>
         <label>Volume de calda (L/ha)<input id="pVol" type="number" min="1" step="1" value="100"></label>
       </div>
+      <div class="subcard">
+        <div class="sub-hd"><b>Velocidade pelo cronômetro</b><span class="hint">percurso marcado no talhão, com o trator na marcha e rotação de trabalho</span></div>
+        <div class="grid2">
+          <label>Percurso medido (m)<input id="pDist" type="number" min="10" step="5" value="50"></label>
+          <label>Tempo no percurso (s) — uma ou mais passadas<input id="pTempo" inputmode="decimal" placeholder="ex.: 22,5  ou  22,5 23,1 (ida e volta)"></label>
+        </div>
+        <div id="pVelCalc" class="small"></div>
+      </div>
       <div class="grid2" id="camposArea">
         <label>Espaçamento entre bicos (m)<input id="pEsp" type="number" min="0.1" step="0.05" value="0.5"></label>
         <label>Nº de bicos<input id="pNb" type="number" min="1" step="1" value="40"></label>
@@ -170,8 +181,6 @@
       <div class="card-hd"><h2>Calibração a campo</h2><span class="hint">coleta nos bicos · aferição de desgaste</span></div>
       <div class="grid2">
         <label>Tempo de coleta (s)<input id="cSeg" type="number" min="5" step="5" value="60"></label>
-        <label>Percurso medido (m)<input id="cDist" type="number" min="10" step="5" value="50"></label>
-        <label>Tempo do percurso (s)<input id="cTempo" type="number" min="1" step="0.1" placeholder="cronômetro"></label>
         <label>Pressão no manômetro (bar)<input id="cPress" type="number" min="0.3" step="0.1"></label>
       </div>
       <label>Volume coletado por bico (mL, separados por vírgula ou espaço)<input id="cColetas" placeholder="ex.: 820 790 900 810 830"></label>

@@ -227,10 +227,112 @@
     if (bio.length && n > 1) alertas.push({ tipo: 'biologica', severidade: 'info', titulo: 'Biológico na calda', detalhe: `${bio.map(i => i.nome).join(', ')}: organismo vivo — preparar por último, aplicar em até 4–6 h, sem cloro na água, fim de tarde.`, conduta: 'Consultar tabela de efeitos colaterais do fabricante (Koppert/Biobest) para cada parceiro.', produtos: bio.map(i => i.id), confianca: 0.85, fonte: 'Koppert Side Effects; Biobest Side Effects manual' });
   }
 
+
+  // ── Alvos: doenças · insetos · ácaros e outras pragas · plantas daninhas ──
+  const CATEGORIAS_ALVO = [
+    { id: 'doenca', nome: 'Doenças', icone: '🍂', dica: 'fungos, bactérias e vírus' },
+    { id: 'inseto', nome: 'Insetos', icone: '🐛', dica: 'lagartas, percevejos, pulgões, cigarrinhas, besouros…' },
+    { id: 'praga', nome: 'Ácaros e outras pragas', icone: '🕷️', dica: 'ácaros, nematoides, lesmas e caracóis' },
+    { id: 'daninha', nome: 'Plantas daninhas', icone: '🌿', dica: 'folhas largas, gramíneas e ciperáceas' }
+  ];
+  const ROTULO_CATEGORIA = Object.fromEntries(CATEGORIAS_ALVO.map(c => [c.id, c.nome]));
+  const RE_PRAGA = /\b(acaro|acaros|nematoide|nematoides|lesma|lesmas|caracol|caracois|caramujo|molusco|moluscos|tetranychus|brevipalpus|polyphagotarsonemus|steneotarsonemus|oligonychus|mononychellus|panonychus|phyllocoptruta|aculops|eriophyes|meloidogyne|pratylenchus|heterodera|globodera|rotylenchulus|helicotylenchus|tylenchulus|radopholus|xiphinema|aphelenchoides|belonolaimus|nacobbus)\b/;
+  const RE_DOENCA = /\b(ferrugem|mancha|oidio|antracnose|mofo|podridao|murcha|requeima|mildio|cercosporiose|helmintosporiose|brusone|giberela|septoriose|carvao|escaldadura|gomose|verrugose|cancro|greening|hlb|leprose|mosaico|crestamento|ramularia|ramulose|rizoctoniose|damping|tombamento|sarna|pinta preta|fusarium|phytophthora|sclerotinia|colletotrichum)\b/;
+  const RE_INSETO = /\b(coro|coros|bicho|lagarta|lagartas|percevejo|percevejos|pulgao|pulgoes|cigarrinha|cigarra|broca|mosca|moscas|trips|tripes|besouro|besourinho|gorgulho|caruncho|cochonilha|cupim|cupins|formiga|formigas|larva|vaquinha|curuquere|bicudo|mariposa|traca|psilideo|mosquito|barata|saltao)\b/;
+  const RE_DANINHA = /\b(capim|buva|corda-de-viola|trapoeraba|picao|caruru|bredo|guanxuma|leiteiro|amendoim-bravo|mamona|erva|braquiaria|tiririca)\b/;
+  /* classe do produto do AGROFIT → categorias de alvo que ele ataca */
+  function categoriasDaClasse(cl) {
+    const c = norm(cl), out = [];
+    if (/herbicida/.test(c)) out.push('daninha');
+    if (/fungicida|bactericida/.test(c)) out.push('doenca');
+    if (/inseticida|formicida|cupinicida|feromonio|semioquimico|agente biologico/.test(c)) out.push('inseto');
+    if (/acaricida|nematicida|moluscicida/.test(c)) out.push('praga');
+    return out;
+  }
+  /* classe do produto na calda → categorias de alvo que ele pode atacar */
+  const CLASSE_PARA_CATEGORIAS = { Herbicida: ['daninha'], Fungicida: ['doenca'], 'Cúprico': ['doenca'], Inseticida: ['inseto', 'praga'], Acaricida: ['praga', 'inseto'], Nematicida: ['praga'] };
+  function categoriaPorNome(nome) {
+    const n = norm(nome);
+    if (RE_PRAGA.test(n)) return 'praga';
+    if (RE_DOENCA.test(n)) return 'doenca';
+    if (RE_DANINHA.test(n)) return 'daninha';
+    return null;
+  }
+  // tira o número de desambiguação do AGROFIT e o "-" de quem só tem nome científico
+  const limparAlvo = s => String(s || '').replace(/\s*\(\d+\)/g, '').replace(/^\s*-\s*(?=\()/, '').replace(/^\(([^()]+)\)$/, '$1').replace(/\s+/g, ' ').trim();
+  const latimDe = s => { const m = /\(([^()]*)\)\s*$/.exec(String(s || '')); return m ? norm(m[1]) : ''; };
+  const baseDe = s => norm(limparAlvo(s).replace(/\s*\([^()]*\)\s*$/, ''));
+  const ehSpp = x => /\bspp?\b\.?/.test(x);
+  /* categoria de cada alvo do índice: o nome decide quando é inequívoco (ácaro, nematoide);
+     herbicida decide daninha; senão vale a maioria das classes dos produtos registrados para ele */
+  function classificarAlvos(agro) {
+    const votos = agro.alvos.map(() => ({ doenca: 0, inseto: 0, praga: 0, daninha: 0 }));
+    agro.produtos.forEach(p => {
+      const cats = categoriasDaClasse(p.cl || '');
+      if (!cats.length) return;
+      Object.values(p.a || {}).forEach(arr => arr.forEach(i => cats.forEach(c => { votos[i][c]++; })));
+    });
+    return agro.alvos.map((nome, i) => {
+      const v = votos[i], porNome = categoriaPorNome(nome);
+      const melhor = Object.keys(v).sort((a, b) => v[b] - v[a])[0];
+      if (porNome === 'praga') return 'praga';
+      if (RE_INSETO.test(norm(nome)) && v.inseto > 0 && v.inseto >= v.daninha) return 'inseto';
+      if (v.daninha > 0 && v.daninha >= v.doenca + v.inseto + v.praga) return 'daninha';
+      if (porNome) return porNome;
+      return v[melhor] > 0 ? melhor : 'inseto';
+    });
+  }
+  /* lista sem repetição (mesmo binômio latino ou mesmo nome) por categoria, para uma cultura:
+     as curadas do kb.js primeiro, depois tudo o que o AGROFIT registra para a cultura */
+  function alvosDaCultura(agro, catAlvo, cultura, curadas) {
+    const out = { doenca: [], inseto: [], praga: [], daninha: [] }, visto = new Set();
+    const add = (cat, nome) => {
+      const limpo = limparAlvo(nome), lat = latimDe(limpo), chave = lat && !ehSpp(lat) ? lat : baseDe(limpo);
+      if (!chave || visto.has(cat + '|' + chave)) return;
+      visto.add(cat + '|' + chave); out[cat].push(limpo);
+    };
+    const c = curadas || {};
+    (c.doencas || []).forEach(n => add(categoriaPorNome(n) === 'praga' ? 'praga' : 'doenca', n));
+    (c.pragas || []).forEach(n => add(categoriaPorNome(n) === 'praga' ? 'praga' : 'inseto', n));
+    (c.daninhas || []).forEach(n => add('daninha', n));
+    const ci = agro ? agro.culturas.findIndex(x => norm(x) === norm(cultura)) : -1;
+    if (ci >= 0) {
+      const usados = new Set();
+      agro.produtos.forEach(p => (p.a[ci] || []).forEach(i => usados.add(i)));
+      [...usados].map(i => ({ nome: agro.alvos[i], cat: catAlvo[i] })).sort((a, b) => limparAlvo(a.nome).localeCompare(limparAlvo(b.nome), 'pt')).forEach(x => add(x.cat, x.nome));
+    }
+    Object.keys(out).forEach(k => out[k].sort((a, b) => a.localeCompare(b, 'pt')));
+    return out;
+  }
+  /* lista plana [{cat, nome}] dos alvos do contexto; aceita o formato novo (opts.alvos) e o antigo (alvo/doenca/praga) */
+  function alvosLista(opts) {
+    const o = opts || {}, out = [];
+    const quebra = s => String(s || '').split(/;\s*/).map(x => x.trim()).filter(Boolean);
+    if (o.alvos && typeof o.alvos === 'object') {
+      CATEGORIAS_ALVO.forEach(c => (o.alvos[c.id] || []).forEach(n => { if (String(n).trim()) out.push({ cat: c.id, nome: String(n).trim() }); }));
+      return out;
+    }
+    quebra(o.alvo).forEach(n => out.push({ cat: categoriaPorNome(n) || null, nome: n }));
+    quebra(o.doenca).forEach(n => out.push({ cat: 'doenca', nome: n }));
+    quebra(o.praga).forEach(n => out.push({ cat: categoriaPorNome(n) === 'praga' ? 'praga' : 'inseto', nome: n }));
+    return out;
+  }
+  /* o alvo escolhido é o alvo da bula? compara o binômio latino, o nome popular e, por último, o texto */
+  function alvoCombina(sel, agro) {
+    const ls = latimDe(sel), la = latimDe(agro), bs = baseDe(sel), ba = baseDe(agro);
+    if (ls && la) {
+      const g = x => x.split(' ')[0];
+      if (ls === la || (g(ls) === g(la) && (ehSpp(ls) || ehSpp(la)))) return true;
+    }
+    if (bs && ba && (bs === ba || (bs.length >= 4 && ba.includes(bs)) || (ba.length >= 4 && bs.includes(ba)))) return true;
+    const n = norm(agro), a = norm(sel);
+    return n.includes(a) || a.includes(n.split(' (')[0]);
+  }
+
   // ── Registro (Agrofit) ──
   function analisarRegistro(itens, opts, alertas) {
     const cultura = opts.cultura ? norm(opts.cultura) : '';
-    const alvo = opts.alvo ? norm(opts.alvo) : '';
+    const alvosSel = alvosLista(opts);
     return itens.map(it => {
       const r = it.registro; // {culturas:[...], alvos:{Cultura:[...]}} preenchido pelo app a partir do Agrofit
       const isAgro = ['Herbicida', 'Fungicida', 'Inseticida', 'Acaricida', 'Nematicida', 'Bioracional', 'Cúprico'].includes(it.classe) || temTag(it, 'biologico');
@@ -242,9 +344,12 @@
       const ok = !cultura || cults.includes(cultura) || cults.includes('todas as culturas');
       const alvos = (r.alvos && (r.alvos[opts.cultura] || [])) || [];
       let alvoOk = null;
-      if (ok && cultura && alvo && alvos.length) alvoOk = alvos.some(a => norm(a).includes(alvo) || alvo.includes(norm(a).split(' (')[0]));
+      const catsProd = CLASSE_PARA_CATEGORIAS[it.classe];
+      // só conta o alvo da categoria que a classe do produto ataca (herbicida × daninha, fungicida × doença…)
+      const alvosConf = alvosSel.filter(s => !catsProd || !s.cat || catsProd.includes(s.cat));
+      if (ok && cultura && alvosConf.length && alvos.length) alvoOk = alvosConf.some(s => alvos.some(a => alvoCombina(s.nome, a)));
       if (!ok) alertas.push({ tipo: 'legal', severidade: 'alta', titulo: `${it.nome} sem registro para ${opts.cultura}`, detalhe: `Culturas registradas: ${(r.culturas || []).slice(0, 8).join(', ')}${(r.culturas || []).length > 8 ? '…' : ''}.`, conduta: 'Uso fora da bula é infração e responsabilidade do RT. Substituir por produto registrado na cultura.', produtos: [it.id], confianca: 0.95, fonte: 'AGROFIT/MAPA; IN 40/2018' });
-      else if (alvoOk === false) alertas.push({ tipo: 'legal', severidade: 'media', titulo: `${it.nome}: alvo "${opts.alvo}" não consta na bula para ${opts.cultura}`, detalhe: `Alvos registrados: ${alvos.slice(0, 6).join('; ')}${alvos.length > 6 ? '…' : ''}.`, conduta: 'Conferir nome do alvo ou escolher produto com o alvo registrado.', produtos: [it.id], confianca: 0.8, fonte: 'AGROFIT/MAPA' });
+      else if (alvoOk === false) alertas.push({ tipo: 'legal', severidade: 'media', titulo: `${it.nome}: alvo "${alvosConf.map(s => s.nome).join('; ')}" não consta na bula para ${opts.cultura}`, detalhe: `Alvos registrados: ${alvos.slice(0, 6).join('; ')}${alvos.length > 6 ? '…' : ''}.`, conduta: 'Conferir nome do alvo ou escolher produto com o alvo registrado.', produtos: [it.id], confianca: 0.8, fonte: 'AGROFIT/MAPA' });
       return { id: it.id, nome: it.nome, registrado: ok, alvoOk, culturas: r.culturas || [], alvos };
     });
   }
@@ -330,7 +435,8 @@
     if (res.jarTest.obrigatorio) c.push('Jar test realizado na proporção real e sem precipitado/espuma/separação');
     c.push('Dose por hectare conferida (não só dose/100 L)');
     c.push(`Volume de calda ${opts.volumeHa || '?'} L/ha adequado ao equipamento (${opts.equipamento || 'não informado'})`);
-    if (opts.doenca || opts.praga) c.push(`Alvo confirmado no talhão${opts.severidade ? ' (' + opts.severidade + ')' : ''}: ${[opts.doenca, opts.praga].filter(Boolean).join(' + ')} — produto registrado para esse alvo`);
+    const alvosCtx = alvosLista(opts);
+    if (alvosCtx.length) c.push(`Alvo confirmado no talhão${opts.severidade ? ' (' + opts.severidade + ')' : ''}: ${alvosCtx.map(s => s.nome).join(' + ')} — produto registrado para esse alvo`);
     if (opts.parte) c.push(`Alvo está em "${opts.parte}": ponta, volume e classe de gota escolhidos para atingir essa parte`);
     if (opts.estadio) c.push(`Estádio "${opts.estadio}": carência, fitotoxidez e janela de aplicação conferidas para esse momento da cultura`);
     c.push('Bulas consultadas para restrições de mistura e intervalos de segurança');
@@ -424,7 +530,7 @@
       'fazenda=' + String(d.fazenda || '').trim(),
       'talhao=' + v('talhao'),
       'cultura=' + (opts.cultura || ''),
-      'alvo=' + [opts.alvo, opts.doenca, opts.praga, opts.severidade, opts.estadio, opts.parte].map(x => String(x || '').trim()).filter(Boolean).join('/'),
+      'alvo=' + [...alvosLista(opts).map(s => s.nome), opts.severidade, opts.estadio, opts.parte].map(x => String(x || '').trim()).filter(Boolean).join('/'),
       'equipamento=' + (opts.equipamento || '') + ' volume=' + (opts.volumeHa || '') + ' area=' + (opts.area || '') + ' tanque=' + (opts.tanque || ''),
       'agua=' + [a.ph, a.dureza, a.turbidez, a.fonte].map(x => x == null ? '' : String(x).trim()).join('/'),
       'maquina=' + v('maquina') + ' operador=' + v('operador') + ' rt=' + v('responsavel') + '/' + v('crea') + ' receituario=' + v('receituario'),
@@ -504,5 +610,5 @@
     return { rotulo: rot[res.status], contagem: n, frase: `${rot[res.status]} · ${n.alta} crítico(s), ${n.media} restrição(ões), ${n.baixa} atenção · confiança ${Math.round(res.confianca * 100)} %` };
   }
 
-  return { analisar, resolverItem, resolverAtivos, dosePorHa, chaveDoConjunto, PASSO_FORMULACAO, PASSOS, norm, versao: VERSAO, CAMPOS_RASTREIO, codigoDe };
+  return { analisar, resolverItem, resolverAtivos, dosePorHa, chaveDoConjunto, PASSO_FORMULACAO, PASSOS, norm, alvosLista, alvoCombina, categoriaPorNome, classificarAlvos, alvosDaCultura, CATEGORIAS_ALVO, ROTULO_CATEGORIA, versao: VERSAO, CAMPOS_RASTREIO, codigoDe };
 });

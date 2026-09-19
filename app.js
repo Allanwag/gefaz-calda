@@ -90,20 +90,77 @@ function buscarAgrofit(q) {
   }
   return res.sort((a, b) => b.score - a.score || a.p.m.localeCompare(b.p.m)).slice(0, 25);
 }
-function atualizarAlvos() {
-  if (!AGRO) return;
-  const cult = norm($('#fCultura').value);
-  const ci = AGRO.culturas.findIndex(c => norm(c) === cult);
-  const set = new Set();
-  if (ci >= 0) AGRO.produtos.forEach(p => (p.a[ci] || []).forEach(i => set.add(AGRO.alvos[i])));
-  $('#dlAlvos').innerHTML = [...set].sort().map(a => `<option value="${esc(a)}">`).join('');
+/* ───────── alvos: doenças · insetos · ácaros e outras pragas · plantas daninhas ───────── */
+const CATS_ALVO = E.CATEGORIAS_ALVO;
+let alvosSel = { doenca: [], inseto: [], praga: [], daninha: [] };
+let alvosCat = { doenca: [], inseto: [], praga: [], daninha: [] };
+let catAlvoAgro = null;
+function montarAlvos() {
+  $('#alvosGrid').innerHTML = CATS_ALVO.map(c => `<div class="alvo-grupo" data-cat="${c.id}">
+      <b><span>${c.icone} ${esc(c.nome)}</span><small id="n-${c.id}"></small></b>
+      <div class="alvo-in"><input id="in-${c.id}" list="dl-${c.id}" placeholder="${esc(c.dica)}" autocomplete="off" aria-label="${esc(c.nome)}"><button type="button" class="btn sm" data-add="${c.id}" title="Adicionar" aria-label="Adicionar ${esc(c.nome)}">＋</button></div>
+      <datalist id="dl-${c.id}"></datalist>
+      <div class="chips alvo-chips" id="ch-${c.id}"></div></div>`).join('');
+  CATS_ALVO.forEach(c => {
+    const inp = $('#in-' + c.id);
+    const add = livre => { const v = inp.value.trim(); if (!v) return; if (adicionarAlvo(c.id, v, livre)) inp.value = ''; };
+    inp.onchange = () => add(false);
+    inp.onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); add(true); } };
+    $('[data-add="' + c.id + '"]').onclick = () => add(true);
+  });
 }
+function acharNoCatalogo(cat, texto) {
+  const n = norm(texto), lista = alvosCat[cat] || [];
+  const exato = lista.find(x => norm(x) === n);
+  if (exato) return exato;
+  const parecidos = lista.filter(x => E.alvoCombina(texto, x));
+  return parecidos.length === 1 ? parecidos[0] : null;
+}
+function adicionarAlvo(cat, texto, livre) {
+  const nome = acharNoCatalogo(cat, texto) || (livre ? texto.trim() : null);
+  if (!nome) return false;
+  if (!alvosSel[cat].some(x => norm(x) === norm(nome))) { alvosSel[cat].push(nome); renderAlvos(); }
+  return true;
+}
+function catDoAlvo(nome) {
+  for (const c of CATS_ALVO) if (acharNoCatalogo(c.id, nome)) return c.id;
+  if (AGRO && catAlvoAgro) { const i = AGRO.alvos.findIndex(a => E.alvoCombina(nome, a)); if (i >= 0) return catAlvoAgro[i]; }
+  return E.categoriaPorNome(nome) || 'praga';
+}
+function renderAlvos() {
+  CATS_ALVO.forEach(c => {
+    $('#ch-' + c.id).innerHTML = alvosSel[c.id].map((n, i) => `<span class="chip sel" title="${esc(n)}">${esc(n)}<button type="button" data-rm="${c.id}:${i}" aria-label="Remover ${esc(n)}">×</button></span>`).join('');
+    const n = alvosCat[c.id].length;
+    $('#n-' + c.id).textContent = n ? n + ' na cultura' : '';
+  });
+  $$('#alvosGrid [data-rm]').forEach(b => b.onclick = () => { const [c, i] = b.dataset.rm.split(':'); alvosSel[c].splice(+i, 1); renderAlvos(); });
+}
+function definirAlvos(sel) {
+  alvosSel = { doenca: [], inseto: [], praga: [], daninha: [] };
+  const ja = new Set();
+  CATS_ALVO.forEach(c => ((sel || {})[c.id] || []).forEach(n => { if (String(n).trim() && !ja.has(c.id + norm(n))) { ja.add(c.id + norm(n)); alvosSel[c.id].push(String(n).trim()); } }));
+  renderAlvos();
+}
+function alvosLegados(c) {
+  if (c.alvos && typeof c.alvos === 'object') return c.alvos;
+  const sel = { doenca: [], inseto: [], praga: [], daninha: [] };
+  E.alvosLista(c).forEach(a => { const cat = a.cat || catDoAlvo(a.nome); sel[cat].push(acharNoCatalogo(cat, a.nome) || a.nome); });
+  return sel;
+}
+function textoAlvos(sel, curto) {
+  const base = n => String(n).replace(/\s*\([^()]*\)\s*$/, '').trim() || n;
+  return CATS_ALVO.map(c => (sel[c.id] || []).map(n => curto ? base(n) : n)).flat();
+}
+function atualizarAlvos() { atualizarListasCultura(); }
 function atualizarListasCultura() {
-  const lista = (KB.alvosCultura || {})[$('#fCultura').value] || { doencas: [], pragas: [], estadios: [] };
+  const cultura = $('#fCultura').value;
+  const lista = (KB.alvosCultura || {})[cultura] || { doencas: [], pragas: [], estadios: [] };
   const opts = arr => arr.map(x => `<option value="${esc(x)}">`).join('');
-  $('#dlDoencas').innerHTML = opts(lista.doencas);
-  $('#dlPragas').innerHTML = opts(lista.pragas);
+  if (AGRO && !catAlvoAgro) catAlvoAgro = E.classificarAlvos(AGRO);
+  alvosCat = E.alvosDaCultura(AGRO, catAlvoAgro, cultura, lista);
+  CATS_ALVO.forEach(c => { const dl = $('#dl-' + c.id); if (dl) dl.innerHTML = opts(alvosCat[c.id]); });
   $('#dlEstadios').innerHTML = opts(lista.estadios);
+  if ($('#alvosGrid').children.length) renderAlvos();
 }
 
 /* ───────── busca unificada ───────── */
@@ -213,8 +270,9 @@ function atualizarTalhoes() {
 function lerContexto() {
   return {
     rastreio: lerRastreio(),
-    cultura: $('#fCultura').value, alvo: $('#fAlvo').value.trim(), equipamento: $('#fEquip').value,
-    doenca: $('#fDoenca').value.trim(), praga: $('#fPraga').value.trim(), severidade: $('#fSeveridade').value,
+    cultura: $('#fCultura').value, equipamento: $('#fEquip').value,
+    alvos: JSON.parse(JSON.stringify(alvosSel)), alvo: textoAlvos(alvosSel).join('; '),
+    doenca: alvosSel.doenca.join('; '), praga: [...alvosSel.inseto, ...alvosSel.praga].join('; '), daninha: alvosSel.daninha.join('; '), severidade: $('#fSeveridade').value,
     estadio: $('#fEstadio').value.trim(), parte: $('#fParte').value,
     volumeHa: num($('#fVolume').value), area: num($('#fArea').value), tanque: num($('#fTanque').value),
     agua: { ph: $('#fPh').value === '' ? null : num($('#fPh').value), dureza: $('#fDureza').value === '' ? null : num($('#fDureza').value), turbidez: $('#fTurbidez').value, fonte: $('#fFonte').value },
@@ -224,9 +282,7 @@ function lerContexto() {
 function aplicarContexto(c) {
   if (!c) return;
   if (c.cultura) $('#fCultura').value = KB.culturas.includes(c.cultura) ? c.cultura : (KB.culturas.find(x => norm(x) === norm(c.cultura)) || 'Outra');
-  if (c.alvo != null) $('#fAlvo').value = c.alvo;
-  if (c.doenca != null) $('#fDoenca').value = c.doenca;
-  if (c.praga != null) $('#fPraga').value = c.praga;
+  if (c.alvos || c.alvo != null || c.doenca != null || c.praga != null) { atualizarListasCultura(); definirAlvos(alvosLegados(c)); }
   if (c.severidade) $('#fSeveridade').value = c.severidade;
   if (c.estadio != null) $('#fEstadio').value = c.estadio;
   if (c.parte) $('#fParte').value = c.parte;
@@ -256,10 +312,10 @@ function regulagemDoLaudo() {
   if (sel.value.startsWith('s')) {
     const salva = DB.regulagens[+sel.value.slice(1)];
     if (!salva) return null;
-    try { const g = PT.calcular(salva.entrada); g.nome = salva.nome; g.origem = 'regulagem salva em ' + salva.data; return g; } catch (e) { return null; }
+    try { const g = PT.calcular(salva.entrada); g.entrada = salva.entrada; g.nome = salva.nome; g.origem = 'regulagem salva em ' + salva.data; return g; } catch (e) { return null; }
   }
   if (regulagem) return { ...regulagem, origem: 'aba Pontas', calibracao: ultimaCalibracao };
-  if (DB.config.pontas) { try { const g = PT.calcular(DB.config.pontas); g.origem = 'última regulagem da aba Pontas'; return g; } catch (e) { return null; } }
+  if (DB.config.pontas) { try { const g = PT.calcular(DB.config.pontas); g.entrada = DB.config.pontas; g.origem = 'última regulagem da aba Pontas'; return g; } catch (e) { return null; } }
   return null;
 }
 function notaRegulagem() {
@@ -308,7 +364,7 @@ function renderResultado() {
   const phBar = phMin != null && !r.ph.faixaVazia ? `<div class="ph-bar"><div class="range" style="left:${(phMin - 3) / 8 * 100}%;width:${(phMax - phMin) / 8 * 100}%"></div>${r.ph.aguaPh != null ? `<div class="mark" style="left:${Math.min(Math.max((r.ph.aguaPh - 3) / 8 * 100, 0), 100)}%">água ${r.ph.aguaPh}</div>` : ''}</div><div class="small muted">Escala 3–11 · faixa alvo ${phMin.toFixed(1)}–${phMax.toFixed(1)}${r.ph.precisaCorrigir ? ' · <b>' + esc(r.ph.sugestao) + '</b>' : ''}</div>` : (r.ph.faixaVazia ? '<div class="alert warn">Sem faixa de pH comum — ver alerta.</div>' : '<div class="small muted">Nenhum produto com faixa de pH cadastrada.</div>');
   el.innerHTML = `
   <div class="print-only"><h1>Laudo de compatibilidade de calda — ${esc(DB.config.fazenda)}</h1><p>${r.rastreio ? '<b>' + esc(r.rastreio.codigo) + '</b> · ' : ''}${esc(r.data)} · Gefaz Calda ${E.versao} · KB ${KB.versao}${AGRO ? ' · Agrofit ' + esc(AGRO.gerado) : ''}${r.rastreio && r.rastreio.campos[0].valor ? ' · talhão ' + esc(r.rastreio.campos[0].valor) : ''}</p></div>
-  <div class="status ${r.status}"><div><h2>${esc(r.resumo.rotulo)}</h2><div class="sub">${esc(ctx.cultura)}${ctx.alvo ? ' · ' + esc(ctx.alvo) : ''} · ${esc((KB.equipamentos[ctx.equipamento] || {}).nome || ctx.equipamento)} · ${ctx.volumeHa} L/ha · ${r.itens.length} produtos</div><div class="sub">${[ctx.doenca, ctx.praga, ctx.severidade, ctx.estadio, ctx.parte].filter(Boolean).map(esc).join(' · ')}</div><div class="sub">${esc(r.resumo.frase)}</div></div><div class="score" title="Índice de risco (100 = sem alertas)">${r.score}</div></div>
+  <div class="status ${r.status}"><div><h2>${esc(r.resumo.rotulo)}</h2><div class="sub">${esc(ctx.cultura)} · ${esc((KB.equipamentos[ctx.equipamento] || {}).nome || ctx.equipamento)} · ${ctx.volumeHa} L/ha · ${r.itens.length} produtos</div><div class="sub">${CATS_ALVO.filter(c => ((ctx.alvos || {})[c.id] || []).length).map(c => '<b>' + esc(c.nome) + ':</b> ' + ctx.alvos[c.id].map(esc).join('; ')).join(' · ')}</div><div class="sub">${[ctx.severidade, ctx.estadio, ctx.parte].filter(Boolean).map(esc).join(' · ')}</div><div class="sub">${esc(r.resumo.frase)}</div></div><div class="score" title="Índice de risco (100 = sem alertas)">${r.score}</div></div>
   <div class="card"><div class="kpis">
     <div class="kpi"><b>${r.resumo.contagem.alta}</b><small>críticos</small></div><div class="kpi"><b>${r.resumo.contagem.media}</b><small>restrições</small></div><div class="kpi"><b>${Math.round(r.confianca * 100)} %</b><small>confiança</small></div>
     <div class="kpi"><b>${BRL(r.custo.totalHa)}</b><small>custo total/ha</small></div><div class="kpi"><b>${r.jarTest.obrigatorio ? 'Sim' : 'Recomendado'}</b><small>jar test</small></div></div>
@@ -346,7 +402,7 @@ function blocoRegulagem(r) {
       <div class="kpi"><b>${fmt(g.pressao, 2)} bar</b><small>${g.pressaoCalculada ? 'pressão necessária' : 'pressão fixada'}</small></div>
       <div class="kpi"><b>${fmt(g.vazaoPorBico, 3)}</b><small>L/min por bico</small></div>
       <div class="kpi"><b>${fmt(g.vazaoTotal, 1)}</b><small>L/min no conjunto</small></div>
-      <div class="kpi"><b>${fmt(g.velocidade, 1)}</b><small>km/h</small></div>
+      <div class="kpi"><b>${fmt(g.velocidade, 1)}</b><small>km/h${(vm => vm ? ' · medida em ' + fmt(vm.distancia, 0) + ' m: ' + fmt(vm.tempoMedio, 1) + ' s' : '')(g.entrada && PT.velocidadeMedida(g.entrada.distancia, g.entrada.tempos))}</small></div>
       <div class="kpi"><b>${fmt(g.volumeEntregue, 0)}</b><small>L/ha ${g.modo === 'faixa' ? 'de lavoura' : 'aplicados'}</small></div>
       ${g.modo === 'faixa'
       ? `<div class="kpi"><b>${fmt(g.larguraFaixa, 2)} m</b><small>faixa em ${fmt(g.entreLinhas, 1)} m de rua</small></div><div class="kpi"><b>${fmt(g.economia, 0)} %</b><small>economia de produto</small></div>`
@@ -418,9 +474,9 @@ function renderJar() {
 }
 
 /* ───────── histórico e caldas ───────── */
-function caldaComoReceita() { const ctx = lerContexto(); return { id: uid(), nome: `Calda ${ctx.cultura}${ctx.alvo ? ' — ' + ctx.alvo : ''} ${hoje()}`, cultura: ctx.cultura, alvo: ctx.alvo, doenca: ctx.doenca, praga: ctx.praga, severidade: ctx.severidade, estadio: ctx.estadio, parte: ctx.parte, volumeHa: ctx.volumeHa, itens: calda.itens.map(i => ({ nome: i.nome, dose: i.dose, unidade: i.unidade, classe: i.classe, formulacao: i.formulacao, preco: i.preco, ativos: i.ativos, ingredientes: i.ingredientes, registro: i.registro, tags: i.tags, fonte: i.fonte })), agua: ctx.agua, equipamento: ctx.equipamento, area: ctx.area, tanque: ctx.tanque, obs: ctx.obs, fonte: 'gefaz-calda', status: resultado ? resultado.status : null }; }
+function caldaComoReceita() { const ctx = lerContexto(); return { id: uid(), nome: `Calda ${ctx.cultura}${ctx.alvo ? ' — ' + textoAlvos(ctx.alvos, true).slice(0, 3).join(', ') + (textoAlvos(ctx.alvos).length > 3 ? '…' : '') : ''} ${hoje()}`, cultura: ctx.cultura, alvo: ctx.alvo, alvos: ctx.alvos, doenca: ctx.doenca, praga: ctx.praga, severidade: ctx.severidade, estadio: ctx.estadio, parte: ctx.parte, volumeHa: ctx.volumeHa, itens: calda.itens.map(i => ({ nome: i.nome, dose: i.dose, unidade: i.unidade, classe: i.classe, formulacao: i.formulacao, preco: i.preco, ativos: i.ativos, ingredientes: i.ingredientes, registro: i.registro, tags: i.tags, fonte: i.fonte })), agua: ctx.agua, equipamento: ctx.equipamento, area: ctx.area, tanque: ctx.tanque, obs: ctx.obs, fonte: 'gefaz-calda', status: resultado ? resultado.status : null }; }
 function salvarCalda() { if (!calda.itens.length) return toast('Nada para salvar', 'err'); const nome = prompt('Nome da calda', caldaComoReceita().nome); if (!nome) return; const c = caldaComoReceita(); c.nome = nome; DB.caldas.unshift(c); saveDB(); toast('Calda salva'); renderHistorico(); }
-function carregarReceita(rec) { calda.itens = rec.itens.map(i => ({ id: uid(), ...i, dose: +i.dose || 0, unidade: i.unidade || 'L/ha' })); aplicarContexto({ cultura: rec.cultura, alvo: rec.alvo, volumeHa: rec.volumeHa, area: rec.area, tanque: rec.tanque, equipamento: rec.equipamento, agua: rec.agua, obs: rec.obs }); renderItens(); navTo('calda'); toast(`Receita “${rec.nome}” carregada`); }
+function carregarReceita(rec) { calda.itens = rec.itens.map(i => ({ id: uid(), ...i, dose: +i.dose || 0, unidade: i.unidade || 'L/ha' })); aplicarContexto({ cultura: rec.cultura, alvo: rec.alvo, alvos: rec.alvos, doenca: rec.doenca, praga: rec.praga, severidade: rec.severidade, estadio: rec.estadio, parte: rec.parte, volumeHa: rec.volumeHa, area: rec.area, tanque: rec.tanque, equipamento: rec.equipamento, agua: rec.agua, obs: rec.obs }); renderItens(); navTo('calda'); toast(`Receita “${rec.nome}” carregada`); }
 function renderHistorico() {
   const badge = s => `<span class="pill ${{ compativel: 'ok', restricoes: 'warn', incompativel: 'bad', testar: 'info' }[s] || 'muted'}">${esc(STATUS_LABEL[s] || s || '—')}</span>`;
   $('#listaCaldas').innerHTML = DB.caldas.length ? DB.caldas.map((c, i) => `<div class="row"><div><b>${esc(c.nome)}</b><small>${esc(c.cultura)} · ${c.itens.length} produtos · ${c.volumeHa} L/ha ${c.status ? badge(c.status) : ''}</small></div><div class="acts"><button class="btn sm" data-load="${i}">Carregar</button><button class="btn sm ghost danger" data-delc="${i}">✕</button></div></div>`).join('') : '<div class="small muted">Nenhuma calda salva.</div>';
@@ -554,6 +610,7 @@ function lerRegulagem() {
   return {
     modo, alvo: $('#pAlvo').value,
     velocidade: num($('#pVel').value), volumeHa: num($('#pVol').value),
+    distancia: num($('#pDist').value), tempos: $('#pTempo').value.trim(),
     espacamento: num($('#pEsp').value), nBicos: num($('#pNb').value),
     larguraFaixa: num($('#pLf').value), bicosPorPassada: num($('#pBf').value), entreLinhas: num($('#pEl').value), protecao: $('#pProt').checked,
     ponta: $('#pPonta').value, iso: $('#pIso').value, angulo: num($('#pAng').value),
@@ -567,17 +624,34 @@ function aplicarRegulagem(e) {
   if (e.modo) $('#pModo').value = e.modo;
   const set = (sel, v) => { if (v != null && v !== '') $(sel).value = v; };
   set('#pAlvo', e.alvo); set('#pVel', e.velocidade); set('#pVol', e.volumeHa);
+  set('#pDist', e.distancia); $('#pTempo').value = e.tempos || '';
   set('#pEsp', e.espacamento); set('#pNb', e.nBicos);
   set('#pLf', e.larguraFaixa); set('#pBf', e.bicosPorPassada); set('#pEl', e.entreLinhas); $('#pProt').checked = !!e.protecao;
   set('#pTq', e.tanque); set('#pArea', e.area);
   set('#pTemp', e.temperatura); set('#pUr', e.umidade); set('#pVento', e.vento); set('#pHora', e.hora);
-  camposPorModo();
+  camposPorModo(); atualizarVelocidade();
   if (e.ponta) { const p = PT.PONTA_MAP[e.ponta]; if (p) { $('#pMarca').value = p.marca; preencherModelos(e.ponta); } }
   if (e.iso != null) preencherIso(e.iso); else preencherIso();
   preencherAngulos(e.angulo);
   $('#pFixar').checked = !!e.fixarPressao;
   $('#pPress').value = e.fixarPressao && e.pressao ? e.pressao : '';
   atualizarVazaoAlvo();
+}
+/* velocidade pelo cronômetro: 3,6 × percurso ÷ tempo → preenche o campo de velocidade da regulagem */
+function atualizarVelocidade(dosCampos) {
+  const box = $('#pVelCalc'); if (!box) return;
+  const m = PT.velocidadeMedida($('#pDist').value, $('#pTempo').value);
+  if (m && dosCampos) $('#pVel').value = m.velocidade;
+  const vel = num($('#pVel').value), dist = num($('#pDist').value);
+  if (m) {
+    const dif = Math.abs(vel - m.velocidade) > 0.05;
+    box.innerHTML = `<div class="kpis"><div class="kpi"><b>${fmt(m.velocidade, 2)}</b><small>km/h medidos</small></div><div class="kpi"><b>${fmt(m.tempoMedio, 1)} s</b><small>${m.n > 1 ? 'tempo médio de ' + m.n + ' passadas' : 'em ' + fmt(m.distancia, 0) + ' m'}</small></div></div>`
+      + `<p class="muted small"><code>${esc(m.formula.formula)}</code> → ${esc(m.formula.calculo.replace(/(\d)\.(\d)/g, '$1,$2'))} = <b>${fmt(m.velocidade, 2)} km/h</b></p>`
+      + (m.amplitude != null && m.amplitude > 5 ? `<div class="alert warn">As passadas variam ${fmt(m.amplitude, 1)} % entre a mais lenta e a mais rápida — segure a mesma marcha e rotação e repita a medição.</div>` : '')
+      + (dif ? `<div class="alert info">O campo de velocidade está em ${fmt(vel, 2)} km/h, diferente da medida. Digite o tempo de novo para usar a medida.</div>` : '');
+  } else {
+    box.innerHTML = vel > 0 && dist > 0 ? `<p class="muted small">Para ${fmt(vel, 1)} km/h, o cronômetro deve marcar <b>${fmt(PT.tempoNoPercurso(dist, vel), 1)} s</b> em ${fmt(dist, 0)} m.</p>` : '';
+  }
 }
 function camposPorModo() {
   const faixa = $('#pModo').value === 'faixa';
@@ -727,8 +801,7 @@ function renderCalibracao() {
   const c = PT.calibracao({
     coletas, segundos: num($('#cSeg').value) || 60, pressao: num($('#cPress').value) || e.pressao, iso: e.iso,
     modo: e.modo, espacamento: e.espacamento, larguraFaixa: e.larguraFaixa, bicosPorPassada: e.bicosPorPassada,
-    velocidade: num($('#cTempo').value) > 0 ? PT.velocidadeCampo(num($('#cDist').value), num($('#cTempo').value)) : e.velocidade,
-    distancia: num($('#cDist').value), tempo: num($('#cTempo').value), volumeHa: e.volumeHa
+    velocidade: e.velocidade, distancia: e.distancia, tempo: (PT.velocidadeMedida(e.distancia, e.tempos) || {}).tempoMedio || 0, volumeHa: e.volumeHa
   });
   if (!c) return;
   ultimaCalibracao = c;
@@ -896,6 +969,8 @@ function initPontas() {
   $('#pAlvo').onchange = () => { preencherModelos($('#pPonta').value); preencherIso(); preencherAngulos(); recalc(); };
   $('#pMarca').onchange = () => { preencherModelos(); preencherIso(); preencherAngulos(); recalc(); };
   $('#pPonta').onchange = () => { preencherIso(); preencherAngulos(); recalc(); };
+  ['#pDist', '#pTempo'].forEach(s => { $(s).oninput = () => { atualizarVelocidade(true); recalc(); }; });
+  $('#pVel').addEventListener('input', () => atualizarVelocidade()); atualizarVelocidade();
   ['#pIso', '#pAng', '#pVel', '#pVol', '#pEsp', '#pNb', '#pLf', '#pBf', '#pEl', '#pTq', '#pArea', '#pPress'].forEach(s => { $(s).oninput = recalc; $(s).onchange = recalc; });
   $('#pFixar').onchange = recalc; $('#pProt').onchange = recalc;
   ['#pTemp', '#pUr', '#pVento', '#pHora'].forEach(s => { $(s).oninput = () => { renderClima(); recalc(); }; });
@@ -939,7 +1014,7 @@ function init() {
   $('#fEquip').innerHTML = Object.entries(KB.equipamentos).map(([k, e]) => `<option value="${k}" ${k === DB.config.equipamento ? 'selected' : ''}>${e.nome}</option>`).join('');
   $('#fSeveridade').innerHTML = '<option value=""></option>' + KB.severidades.map(s => `<option>${s}</option>`).join('');
   $('#fParte').innerHTML = '<option value=""></option>' + KB.partesAlvo.map(s => `<option>${s}</option>`).join('');
-  atualizarListasCultura();
+  montarAlvos(); atualizarListasCultura();
   $('#fVolume').value = DB.config.volumeHa; if (DB.config.ph != null) $('#fPh').value = DB.config.ph; if (DB.config.dureza != null) $('#fDureza').value = DB.config.dureza;
   $('#chipsRapidos').innerHTML = KB.comerciais.filter(c => c.tags && c.tags.includes('estoque-fazenda')).map(c => `<span class="chip" data-chip="${esc(c.nome)}">+ ${esc(c.nome)}</span>`).join('');
   $$('[data-chip]').forEach(ch => ch.onclick = () => { const c = KB.comerciais.find(x => x.nome === ch.dataset.chip); addItem({ id: uid(), nome: c.nome, classe: c.classe, formulacao: c.formulacao, unidade: 'mL/100L', dose: 0, fonte: 'fazenda' }); });
@@ -953,7 +1028,7 @@ function init() {
   $('#btnReceita').onclick = () => { if (!DB.receitas.length && !DB.caldas.length) return toast('Nenhuma receita importada ou calda salva — veja Integração', 'err'); modal(`<h2>Carregar</h2><div class="lista">${DB.caldas.map((r, i) => `<div class="row"><div><b>${esc(r.nome)}</b><small>calda salva · ${r.itens.length} itens</small></div><button class="btn sm" data-c="${i}">Carregar</button></div>`).join('')}${DB.receitas.map((r, i) => `<div class="row"><div><b>${esc(r.nome)}</b><small>${esc(r.fonte)} · ${esc(r.cultura || '')} · ${r.itens.length} itens</small></div><button class="btn sm" data-r="${i}">Carregar</button></div>`).join('')}</div><div class="row-btns"><button class="btn ghost" id="mCancel">Fechar</button></div>`); $('#mCancel').onclick = closeModal; $$('#modal [data-c]').forEach(b => b.onclick = () => { carregarReceita(DB.caldas[+b.dataset.c]); closeModal(); }); $$('#modal [data-r]').forEach(b => b.onclick = () => { carregarReceita(DB.receitas[+b.dataset.r]); closeModal(); }); };
   $('#btnAnalisar').onclick = () => analisar();
   $('#btnSalvarCalda').onclick = salvarCalda;
-  $('#btnLimpar').onclick = () => { if (!calda.itens.length || confirm('Limpar a calda atual?')) { calda = { itens: [], obs: '' }; $('#fObs').value = ''; $('#fAlvo').value = ''; renderItens(); } };
+  $('#btnLimpar').onclick = () => { if (!calda.itens.length || confirm('Limpar a calda atual?')) { calda = { itens: [], obs: '' }; $('#fObs').value = ''; definirAlvos(null); renderItens(); } };
   $$('#nav button').forEach(b => b.onclick = () => navTo(b.dataset.tab));
   $('#modal').onclick = e => { if (e.target.id === 'modal') closeModal(); };
   // integração

@@ -905,6 +905,18 @@
   const volumeAplicado = (q, velocidade, faixaPorBico) => (!(velocidade > 0) || !(faixaPorBico > 0)) ? 0 : round((600 * q) / (velocidade * faixaPorBico), 1);
   const velocidadeAlvo = (q, volumeHa, faixaPorBico) => (!(volumeHa > 0) || !(faixaPorBico > 0)) ? 0 : round((600 * q) / (volumeHa * faixaPorBico), 2);
   const velocidadeCampo = (distancia, segundos) => !(segundos > 0) ? 0 : round(3.6 * distancia / segundos, 2);
+  /* velocidade medida no percurso: v = 3,6 × d ÷ t. Aceita várias passadas (ida e volta,
+     repetições) — usa o tempo médio e mostra a dispersão, que denuncia marcha ou patinagem instável */
+  const tempoNoPercurso = (distancia, velocidade) => !(velocidade > 0) || !(distancia > 0) ? 0 : round(3.6 * distancia / velocidade, 1);
+  function velocidadeMedida(distancia, tempos) {
+    const d = num(distancia);
+    const t = (Array.isArray(tempos) ? tempos : String(tempos == null ? '' : tempos).split(/[\s;]+/)).map(num).filter(v => v > 0);
+    if (!(d > 0) || !t.length) return null;
+    const tm = t.reduce((a, b) => a + b, 0) / t.length;
+    const amplitude = t.length > 1 ? round(100 * (Math.max.apply(null, t) - Math.min.apply(null, t)) / tm, 1) : null;
+    return { distancia: d, tempos: t, n: t.length, tempoMedio: round(tm, 2), velocidade: velocidadeCampo(d, tm), amplitude,
+      formula: { nome: 'Velocidade no percurso', formula: 'v (km/h) = 3,6 × d (m) ÷ t (s)', calculo: '3,6 × ' + round(d, 1) + ' ÷ ' + round(tm, 2) + ' s' } };
+  }
 
   /* altura da barra: sobreposição dupla no alvo, por ângulo do leque
      (110° a 50 cm de espaçamento → 50 cm de altura; 80° → 75 cm — catálogo TeeJet) */
@@ -1332,7 +1344,7 @@
     ISO, ISO_MAP, GOTAS, GOTA_MAP, ALVOS, ALVO_MAP, TIPOS, PONTAS, PONTA_MAP, PRESETS,
     vazaoNominal, vazaoPonta, pressaoPara, novaVazao, novaPressao,
     tabelaDaPonta, tamanhosDaPonta, vazaoDaPonta, pressaoDaPonta, pressaoReferencia,
-    vazaoNecessaria, volumeAplicado, velocidadeAlvo, velocidadeCampo,
+    vazaoNecessaria, volumeAplicado, velocidadeAlvo, velocidadeCampo, velocidadeMedida, tempoNoPercurso,
     alturaBarra, alturaParaFaixa, larguraJato, fatorAltura, classeGota,
     calcular, selecionar, calibracao, cruzar, tabelaCruzada,
     clima, bulboUmido, pontoOrvalho, dpv, FAIXAS_DT, FAIXAS_VENTO

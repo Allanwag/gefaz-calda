@@ -42,7 +42,7 @@
     async analisar(mix, opts) {
       const E = await this.carregarMotor();
       const m = normalizar(mix);
-      return E.analisar(m.itens, Object.assign({ cultura: m.cultura, alvo: m.alvo, volumeHa: m.volumeHa, area: m.area, tanque: m.tanque, equipamento: m.equipamento, agua: m.agua, regraFazenda: m.regraFazenda }, opts || {}));
+      return E.analisar(m.itens, Object.assign({ cultura: m.cultura, alvo: m.alvo, alvos: m.alvos, doenca: m.doenca, praga: m.praga, volumeHa: m.volumeHa, area: m.area, tanque: m.tanque, equipamento: m.equipamento, agua: m.agua, regraFazenda: m.regraFazenda }, opts || {}));
     },
     // Conversores a partir dos formatos nativos de cada app
     dePVGest(receita, produtos, extra) {

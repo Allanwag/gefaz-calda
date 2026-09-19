@@ -212,3 +212,80 @@ test('produto sem lote é apontado nominalmente', () => {
   assert.ok(r.alertas.some(a => a.titulo === 'Sem lote registrado: Wetcit'));
   assert.deepEqual(r.rastreio.lotes.find(l => l.nome === 'Tebuconazol').lote, 'L-1');
 });
+
+/* ───────── alvos por categoria ───────── */
+const KBM = require('../kb.js');
+const AGRO_MINI = {
+  culturas: ['Café', 'Soja'],
+  alvos: ['ferrugem-do-cafeeiro (Hemileia vastatrix)', 'bicho-mineiro (Leucoptera coffeella)', 'capim-amargoso (Digitaria insularis)', 'Ácaro-vermelho (Oligonychus ilicis)', 'Coró (Lyogenis suturalis)', '- (Colletotrichum clivae)', 'picão-preto (1) (Bidens pilosa)', 'picão-preto (2) (Bidens pilosa)'],
+  produtos: [
+    { m: 'F', cl: 'Fungicida', c: [0], a: { 0: [0, 5] } },
+    { m: 'I', cl: 'Inseticida', c: [0], a: { 0: [1, 4] } },
+    { m: 'Fi', cl: 'Fungicida/Inseticida', c: [1], a: { 1: [4] } },
+    { m: 'H', cl: 'Herbicida', c: [0], a: { 0: [2, 6, 7] } },
+    { m: 'A', cl: 'Acaricida/Inseticida', c: [0], a: { 0: [3] } }
+  ]
+};
+
+test('classifica alvo do AGROFIT em doença, inseto, ácaro/outras pragas e planta daninha', () => {
+  const cat = E.classificarAlvos(AGRO_MINI);
+  assert.deepEqual(cat, ['doenca', 'inseto', 'daninha', 'praga', 'inseto', 'doenca', 'daninha', 'daninha']);
+});
+
+test('lista da cultura: curadas primeiro, sem repetir o mesmo binômio, sem numeração nem "-"', () => {
+  const cat = E.classificarAlvos(AGRO_MINI);
+  const l = E.alvosDaCultura(AGRO_MINI, cat, 'Café', { doencas: ['Ferrugem (Hemileia vastatrix)', 'Nematoides (Meloidogyne spp.)'], pragas: ['Broca-do-café (Hypothenemus hampei)'] });
+  assert.deepEqual(l.doenca, ['Colletotrichum clivae', 'Ferrugem (Hemileia vastatrix)']);
+  assert.ok(l.inseto.includes('Broca-do-café (Hypothenemus hampei)') && l.inseto.includes('bicho-mineiro (Leucoptera coffeella)'));
+  assert.deepEqual(l.praga, ['Nematoides (Meloidogyne spp.)', 'Ácaro-vermelho (Oligonychus ilicis)'].sort((a, b) => a.localeCompare(b, 'pt')), 'nematoide e ácaro caem em "outras pragas", não em doença/inseto');
+  assert.deepEqual(l.daninha, ['capim-amargoso (Digitaria insularis)', 'picão-preto (Bidens pilosa)']);
+  const semAgro = E.alvosDaCultura(null, null, 'Café', { doencas: ['Ferrugem (Hemileia vastatrix)'], pragas: [] });
+  assert.deepEqual(semAgro.doenca, ['Ferrugem (Hemileia vastatrix)'], 'sem índice do Agrofit ainda entrega as listas curadas');
+});
+
+test('alvoCombina reconhece o mesmo alvo por nome científico mesmo com nome popular diferente', () => {
+  assert.ok(E.alvoCombina('Ferrugem (Hemileia vastatrix)', 'ferrugem-do-cafeeiro (Hemileia vastatrix)'));
+  assert.ok(E.alvoCombina('Nematoides (Meloidogyne spp.)', 'Meloidoginose (Meloidogyne incognita)'), 'spp. vale para qualquer espécie do gênero');
+  assert.ok(E.alvoCombina('picão-preto', 'picão-preto (1) (Bidens pilosa)'));
+  assert.ok(!E.alvoCombina('Ferrugem (Hemileia vastatrix)', 'Cercosporiose (Cercospora coffeicola)'));
+});
+
+test('registro na bula só confere o alvo da categoria que a classe do produto ataca', () => {
+  const reg = alvos => ({ culturas: ['Café'], alvos: { 'Café': alvos } });
+  const herb = it('Herbicida X', 2, 'L/ha', { classe: 'Herbicida', registro: reg(['capim-amargoso (Digitaria insularis)']) });
+  const fung = it('Fungicida Y', 0.5, 'L/ha', { classe: 'Fungicida', registro: reg(['ferrugem-do-cafeeiro (Hemileia vastatrix)']) });
+  const alvos = { doenca: ['Ferrugem (Hemileia vastatrix)'], inseto: [], praga: [], daninha: ['capim-amargoso (Digitaria insularis)'] };
+  const r = E.analisar([herb, fung], { cultura: 'Café', volumeHa: 400, alvos });
+  assert.deepEqual(r.registro.map(g => g.alvoOk), [true, true], 'cada produto bate com o seu grupo de alvo');
+  assert.ok(!r.alertas.some(a => /não consta na bula/.test(a.titulo)));
+  const errado = E.analisar([herb], { cultura: 'Café', volumeHa: 400, alvos: { doenca: ['Ferrugem (Hemileia vastatrix)'], inseto: [], praga: [], daninha: [] } });
+  assert.equal(errado.registro[0].alvoOk, null, 'herbicida com só doença marcada: nada a conferir, não acusa falso erro');
+  const naoConsta = E.analisar([herb], { cultura: 'Café', volumeHa: 400, alvos: { doenca: [], inseto: [], praga: [], daninha: ['buva (Conyza bonariensis)'] } });
+  assert.equal(naoConsta.registro[0].alvoOk, false);
+  assert.ok(naoConsta.alertas.some(a => /buva.*não consta na bula/.test(a.titulo)));
+});
+
+test('formato antigo (alvo/doenca/praga em texto) continua valendo e entra no checklist', () => {
+  const fung = it('Fungicida Y', 0.5, 'L/ha', { classe: 'Fungicida', registro: { culturas: ['Café'], alvos: { 'Café': ['ferrugem-do-cafeeiro (Hemileia vastatrix)'] } } });
+  const r = E.analisar([fung], { cultura: 'Café', volumeHa: 400, alvo: 'Hemileia vastatrix', doenca: 'Ferrugem (Hemileia vastatrix)', praga: 'Broca-do-café (Hypothenemus hampei)' });
+  assert.equal(r.registro[0].alvoOk, true);
+  assert.ok(r.checklist.some(c => c.includes('Ferrugem (Hemileia vastatrix)') && c.includes('Broca-do-café')));
+  const l = E.alvosLista({ alvos: { doenca: ['A'], inseto: ['B'], praga: [], daninha: ['C'] } });
+  assert.deepEqual(l.map(x => x.cat + ':' + x.nome), ['doenca:A', 'inseto:B', 'daninha:C']);
+});
+
+test('os alvos escolhidos mudam o código de conferência do laudo', () => {
+  const itens = [it('Fungicida Y', 0.5, 'L/ha', { classe: 'Fungicida' })];
+  const a = E.analisar(itens, { volumeHa: 400, data: 'fixa', alvos: { doenca: ['Ferrugem'], inseto: [], praga: [], daninha: [] } });
+  const b = E.analisar(itens, { volumeHa: 400, data: 'fixa', alvos: { doenca: ['Cercosporiose'], inseto: [], praga: [], daninha: [] } });
+  assert.notEqual(a.rastreio.codigo, b.rastreio.codigo);
+});
+
+test('listas curadas do kb.js separam cada cultura em doença, inseto e outras pragas sem perder nada', () => {
+  const cat = E.classificarAlvos(AGRO_MINI);
+  Object.entries(KBM.alvosCultura).forEach(([cultura, cur]) => {
+    const l = E.alvosDaCultura(null, cat, cultura, cur);
+    const total = l.doenca.length + l.inseto.length + l.praga.length;
+    assert.equal(total, cur.doencas.length + cur.pragas.length, cultura + ': todo alvo curado aparece em algum grupo');
+  });
+});
