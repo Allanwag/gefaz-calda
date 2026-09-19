@@ -185,8 +185,8 @@ test('tabela cruzada respeita a faixa da ponta e marca o alvo', () => {
   assert.ok(alvo.length, 'deve existir ao menos uma combinação dentro de 5 % do alvo');
   alvo.forEach(c => perto(c.volume, 100, 5));
   const c2 = t.linhas.find(l => l.bar === 2).celulas.find(c => c.iso === '02');
-  perto(c2.vazao, 0.645, 0.005);
-  perto(c2.volume, 96.8, 0.5);
+  perto(c2.vazao, 0.65, 0.005);    // valor do catálogo TeeJet, não a ISO calculada (0,645)
+  perto(c2.volume, 97.5, 0.5);
 });
 
 test('proteção física rebaixa o alerta de deriva no café (e a ausência dela mantém alta)', () => {
@@ -326,11 +326,54 @@ test('toda ponta com tabela declara a fonte e cobre a faixa de pressão', () => 
   assert.ok(comTabela.length >= 9, `só ${comTabela.length} pontas com tabela`);
   comTabela.forEach(p => {
     const t = p.vazaoTabela;
-    assert.ok(/Catálogo/.test(t.fonte), `fonte fraca em ${p.id}`);
+    assert.ok(/Cat[áa]logo|Guide|Catalog/.test(t.fonte), `fonte fraca em ${p.id}`);
     // a tabela publicada pode passar da faixa útil (o fabricante imprime além dela),
     // mas tem de cobrir a faixa em que a ponta trabalha
     assert.ok(t.pressoes[0] <= p.pressao[1], `${p.id}: tabela começa depois da faixa útil`);
     assert.ok(t.pressoes[t.pressoes.length - 1] >= p.pressao[0], `${p.id}: tabela termina antes da faixa útil`);
     P.tamanhosDaPonta(p).forEach(s => assert.ok(P.vazaoDaPonta(p, s, p.pressao[0]) > 0, `${p.id} ${s} sem vazão`));
+  });
+});
+
+test('tabela TeeJet vale para toda a linha de jato plano da marca', () => {
+  // catálogo TeeJet Brasil: mesma vazão em TT, AIXR, AI, TTI… muda a gota, não a vazão
+  ['tj-tt', 'tj-aixr', 'tj-ai', 'tj-tti', 'tj-dg', 'tj-xr'].forEach(id => {
+    perto(P.vazaoDaPonta(id, '02', 3), 0.79, 0.005);
+    perto(P.vazaoDaPonta(id, '03', 2), 0.96, 0.005);
+  });
+  perto(P.vazaoDaPonta('tj-tt', '01', 1), 0.23, 0.005);
+  perto(P.vazaoDaPonta('tj-tt', '08', 6), 4.47, 0.01);
+  perto(P.vazaoDaPonta('tj-ai', '02', 8), 1.29, 0.01);     // acima da tabela: extrapola em √p
+  // cada família só oferece os tamanhos do seu catálogo, não os da tabela inteira
+  assert.deepEqual(P.tamanhosDaPonta('tj-dg'), ['015', '02', '025', '03', '04', '05']);
+  assert.ok(!P.tamanhosDaPonta('tj-ttj60').includes('01'));
+});
+
+test('tabela Hypro bate com o guia e difere ~1 % da TeeJet', () => {
+  perto(P.vazaoDaPonta('hy-ga', '015', 1), 0.346, 0.002);
+  perto(P.vazaoDaPonta('hy-ga', '035', 5), 1.807, 0.005);
+  perto(P.vazaoDaPonta('hy-uld', '04', 5), 2.066, 0.005);
+  perto(P.vazaoDaPonta('hy-uld', '08', 3), 3.200, 0.005);
+  perto(P.vazaoDaPonta('hy-3d', '02', 1), 0.462, 0.002);
+  // Hypro publica 0,800 L/min para a 02 a 3 bar; TeeJet publica 0,79
+  const hy = P.vazaoDaPonta('hy-ga', '02', 3), tj = P.vazaoDaPonta('tj-tt', '02', 3);
+  assert.ok(hy > tj, 'a nominal da Hypro é a arredondada');
+  assert.ok(Math.abs(hy - tj) / tj < 0.02, 'mas a diferença fica dentro de 2 %');
+});
+
+test('ULDM 130° entrou com ultragrossa em toda a faixa', () => {
+  const p = P.PONTA_MAP['hy-uldm'];
+  assert.ok(p && p.angulos[0] === 130);
+  [2, 3, 4, 5].forEach(bar => assert.equal(P.classeGota(p, bar, '03').id, 'UG'));
+  perto(P.vazaoDaPonta('hy-uldm', '03', 3), 1.200, 0.005);
+  const s = P.selecionar({ modo: 'faixa', larguraFaixa: 1.6, bicosPorPassada: 2, entreLinhas: 3.5, volumeHa: 200, velocidade: 4.5, alvo: 'herbicida-cafe', marca: 'Hypro', limite: 10 });
+  assert.ok(s.opcoes.some(o => o.ponta === 'hy-uldm'), 'ULDM deve aparecer para herbicida no café');
+});
+
+test('pontas de numeração própria sem tabela ficam marcadas para conferir', () => {
+  ['tj-tf', 'tj-tx', 'hy-dt', 'hy-xt'].forEach(id => {
+    const p = P.PONTA_MAP[id];
+    assert.ok(p.confirmar, `${id} deveria estar marcada para conferir`);
+    assert.ok(/ISO|equival/i.test(p.nota), `${id} deveria explicar a escala na nota`);
   });
 });

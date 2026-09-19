@@ -464,7 +464,7 @@ function preencherIso(sel) {
   const p = PT.PONTA_MAP[$('#pPonta').value];
   const sizes = p ? PT.tamanhosDaPonta(p) : PT.ISO.map(i => i.id);
   const tab = p ? PT.tabelaDaPonta(p) : null;
-  const pRef = tab ? tab.pressoes[0] : 3;
+  const pRef = p ? PT.pressaoReferencia(p) : 3;
   $('#pIso').innerHTML = sizes.map(s => {
     const i = PT.ISO_MAP[s], q = PT.vazaoDaPonta(p, s, pRef);
     const cor = i ? i.cor : s.charAt(0).toUpperCase() + s.slice(1);

@@ -139,6 +139,45 @@
     }
   };
 
+  /* TeeJet — catálogo Brasil "Bicos para área total". A vazão é a mesma em
+     todas as famílias de jato plano da marca (muda a gota, não a vazão), por
+     isso uma tabela só serve para todas elas. Note que a TeeJet publica a
+     nominal de 3 bar em 0,79 L/min para a 02, enquanto Hypro, Magnojet e
+     Albuz publicam 0,80 — ~1 % de diferença entre catálogos.               */
+  const TAB_TJ = {
+    fonte: 'Catálogo TeeJet Brasil — Bicos para área total (p. 7 a 18)',
+    pressoes: [1, 2, 3, 4, 5, 6],
+    valores: {
+      '01': [0.23, 0.32, 0.39, 0.45, 0.50, 0.55],
+      '015': [0.34, 0.48, 0.59, 0.68, 0.76, 0.83],
+      '02': [0.46, 0.65, 0.79, 0.91, 1.02, 1.12],
+      '025': [0.57, 0.81, 0.99, 1.14, 1.28, 1.40],
+      '03': [0.68, 0.96, 1.18, 1.36, 1.52, 1.67],
+      '04': [0.91, 1.29, 1.58, 1.82, 2.04, 2.23],
+      '05': [1.14, 1.61, 1.97, 2.27, 2.54, 2.79],
+      '06': [1.37, 1.94, 2.37, 2.74, 3.06, 3.35],
+      '08': [1.82, 2.58, 3.16, 3.65, 4.08, 4.47]
+    }
+  };
+  /* Hypro (Pentair) — Crop Spraying Guide. Também vale para toda a linha de
+     jato plano da marca; os valores de 1 bar vêm das tabelas GuardianAIR e 3D
+     e os de 06/08 das tabelas Ultra Lo-Drift.                              */
+  const TAB_HYPRO = {
+    fonte: 'Pentair Hypro — Crop Spraying Guide (GuardianAIR, ULD e 3D)',
+    pressoes: [1, 2, 3, 4, 5],
+    valores: {
+      '015': [0.346, 0.490, 0.600, 0.693, 0.775],
+      '02': [0.462, 0.653, 0.800, 0.924, 1.033],
+      '025': [0.577, 0.816, 1.000, 1.155, 1.291],
+      '03': [0.693, 0.980, 1.200, 1.386, 1.550],
+      '035': [0.808, 1.143, 1.400, 1.616, 1.807],
+      '04': [0.924, 1.306, 1.600, 1.848, 2.066],
+      '05': [1.155, 1.633, 2.000, 2.309, 2.582],
+      '06': [1.386, 1.960, 2.400, 2.771, 3.098],
+      '08': [1.848, 2.613, 3.200, 3.695, 4.131]
+    }
+  };
+
   /* Magnojet — catálogo 2025 (magnojet.com.br). As pressões são as do
      catálogo em bar (15 a 150 PSI, conforme a linha). Os valores batem com a
      ISO 10625 dentro de ~1 % nas pontas de jato plano; o cone MAG tem escala
@@ -219,7 +258,7 @@
     /* ── TeeJet ── */
     {
       id: 'tj-xr', marca: 'TeeJet', modelo: 'XR TeeJet (XR110 / XR80)', tipo: 'leque', angulos: [110, 80],
-      sizes: ['01', '015', '02', '025', '03', '04', '05', '06', '08'], pressao: [1, 4], material: 'Polímero (VP) ou inox (VS)',
+      sizes: ['01', '015', '02', '025', '03', '04', '05', '06', '08'], pressao: [1, 4], material: 'Polímero (VP) ou inox (VS)', vazaoTabela: TAB_TJ,
       gotasPorBar: { 1: 'M', 1.5: 'F', 2: 'F', 3: 'F', 4: 'F' },
       usos: ['fungicida', 'inseticida', 'herbicida-contato', 'foliar'],
       nota: 'Faixa ampliada: mantém o padrão de 1 a 4 bar. Cobertura boa, deriva alta — evite em dia de vento.',
@@ -227,7 +266,7 @@
     },
     {
       id: 'tj-xrc', marca: 'TeeJet', modelo: 'XRC TeeJet (cerâmica)', tipo: 'leque', angulos: [110, 80],
-      sizes: ['015', '02', '025', '03', '04', '05'], pressao: [1, 4], material: 'Cerâmica',
+      sizes: ['015', '02', '025', '03', '04', '05'], pressao: [1, 4], material: 'Cerâmica', vazaoTabela: TAB_TJ,
       gotasPorBar: { 1: 'M', 1.5: 'F', 2: 'F', 3: 'F', 4: 'F' },
       usos: ['fungicida', 'inseticida', 'herbicida-contato'],
       nota: 'Mesmo padrão do XR com orifício cerâmico — vida útil muito maior em calda abrasiva (WG/WP).',
@@ -235,7 +274,7 @@
     },
     {
       id: 'tj-tt', marca: 'TeeJet', modelo: 'TT TeeJet (Turbo TeeJet)', tipo: 'leque-defletor', angulos: [110],
-      sizes: ['01', '015', '02', '025', '03', '04', '05', '06', '08'], pressao: [1, 6], material: 'Polímero (VP)',
+      sizes: ['01', '015', '02', '025', '03', '04', '05', '06', '08'], pressao: [1, 6], material: 'Polímero (VP)', vazaoTabela: TAB_TJ,
       gotasPorBar: { 1: 'MG', 2: 'G', 3: 'M', 4: 'M', 5: 'F', 6: 'F' },
       usos: ['herbicida-sistemico', 'herbicida-contato', 'dessecacao', 'foliar'],
       nota: 'Jato defletor de grande ângulo e bordas suaves: bom para sistêmico e de contato, deriva controlada abaixo de 3 bar.',
@@ -243,7 +282,7 @@
     },
     {
       id: 'tj-aixr', marca: 'TeeJet', modelo: 'AIXR TeeJet', tipo: 'leque-inducao', angulos: [110],
-      sizes: ['015', '02', '025', '03', '04', '05', '06', '08'], pressao: [1, 6], material: 'Polímero (VP)',
+      sizes: ['015', '02', '025', '03', '04', '05', '06', '08'], pressao: [1, 6], material: 'Polímero (VP)', vazaoTabela: TAB_TJ,
       gotasPorBar: { 1: 'EG', 2: 'MG', 3: 'G', 4: 'G', 5: 'G', 6: 'M' },
       usos: ['herbicida-sistemico', 'pre-emergente', 'dessecacao', 'herbicida-cafe', 'foliar'],
       nota: 'Indução de ar que trabalha desde 1 bar — a mais versátil para herbicida com janela de vento apertada.',
@@ -251,7 +290,7 @@
     },
     {
       id: 'tj-ai', marca: 'TeeJet', modelo: 'AI TeeJet (AI110 / AI80)', tipo: 'leque-inducao', angulos: [110, 80],
-      sizes: ['015', '02', '025', '03', '04', '05', '06', '08'], pressao: [2, 8], material: 'Inox (VS)',
+      sizes: ['015', '02', '025', '03', '04', '05', '06', '08'], pressao: [2, 8], material: 'Inox (VS)', vazaoTabela: TAB_TJ,
       gotasPorBar: { 2: 'UG', 3: 'EG', 4: 'EG', 5: 'MG', 6: 'MG', 7: 'G', 8: 'G' },
       usos: ['herbicida-sistemico', 'pre-emergente', 'herbicida-cafe', 'dessecacao'],
       nota: 'Gota muito grossa com pré-orifício — deriva mínima. Não usar com filtro de ponta 4193A com válvula de retenção.',
@@ -259,7 +298,7 @@
     },
     {
       id: 'tj-aic', marca: 'TeeJet', modelo: 'AIC TeeJet (cerâmica)', tipo: 'leque-inducao', angulos: [110],
-      sizes: ['015', '02', '025', '03', '04', '05', '06', '08'], pressao: [2, 8], material: 'Cerâmica',
+      sizes: ['015', '02', '025', '03', '04', '05', '06', '08'], pressao: [2, 8], material: 'Cerâmica', vazaoTabela: TAB_TJ,
       gotasPorBar: { 2: 'UG', 3: 'EG', 4: 'EG', 5: 'MG', 6: 'MG', 7: 'G', 8: 'G' },
       usos: ['herbicida-sistemico', 'pre-emergente', 'herbicida-cafe'],
       nota: 'AI com orifício cerâmico: mesma gota, vida útil maior.',
@@ -267,7 +306,7 @@
     },
     {
       id: 'tj-tti', marca: 'TeeJet', modelo: 'TTI TeeJet (Turbo TeeJet Indução)', tipo: 'leque-inducao', angulos: [110],
-      sizes: ['015', '02', '025', '03', '04', '05', '06', '08'], pressao: [1, 7], material: 'Polímero (VP)',
+      sizes: ['015', '02', '025', '03', '04', '05', '06', '08'], pressao: [1, 7], material: 'Polímero (VP)', vazaoTabela: TAB_TJ,
       gotasPorBar: { 1: 'UG', 2: 'UG', 3: 'UG', 4: 'UG', 5: 'EG', 6: 'EG', 7: 'EG' },
       usos: ['herbicida-sistemico', 'pre-emergente', 'herbicida-cafe'],
       nota: 'Gota ultragrossa em toda a faixa: é a ponta de menor deriva do catálogo — indicada para 2,4-D, dicamba e aplicação dirigida no café.',
@@ -275,7 +314,7 @@
     },
     {
       id: 'tj-dg', marca: 'TeeJet', modelo: 'DG TeeJet (DriftGuard)', tipo: 'leque-pre-orificio', angulos: [110, 80],
-      sizes: ['015', '02', '025', '03', '04', '05'], pressao: [2, 5], material: 'Polímero (VP)',
+      sizes: ['015', '02', '025', '03', '04', '05'], pressao: [2, 5], material: 'Polímero (VP)', vazaoTabela: TAB_TJ,
       gotasPorBar: { 2: 'M', 2.5: 'M', 3: 'M', 4: 'M', 5: 'M' },
       usos: ['herbicida-contato', 'fungicida', 'dessecacao', 'foliar'],
       nota: 'Pré-orifício: gota média estável — meio-termo entre cobertura e deriva.',
@@ -283,7 +322,7 @@
     },
     {
       id: 'tj-ttj60', marca: 'TeeJet', modelo: 'TTJ60 (Turbo TeeJet Duplo)', tipo: 'leque-duplo', angulos: [110],
-      sizes: ['02', '025', '03', '04', '05'], pressao: [1.5, 6], material: 'Polímero (VP)',
+      sizes: ['02', '025', '03', '04', '05'], pressao: [1.5, 6], material: 'Polímero (VP)', vazaoTabela: TAB_TJ,
       gotasPorBar: { 1.5: 'G', 2: 'G', 3: 'G', 4: 'M', 5: 'M', 6: 'M' },
       usos: ['fungicida', 'inseticida', 'foliar'],
       nota: 'Dois jatos (para frente e para trás): penetra no dossel e cobre espiga/haste — fungicida e inseticida.',
@@ -291,7 +330,7 @@
     },
     {
       id: 'tj-aittj60', marca: 'TeeJet', modelo: 'AITTJ60 (duplo com indução de ar)', tipo: 'leque-duplo', angulos: [110],
-      sizes: ['02', '025', '03', '04', '05'], pressao: [1.5, 6], material: 'Polímero (VP)',
+      sizes: ['02', '025', '03', '04', '05'], pressao: [1.5, 6], material: 'Polímero (VP)', vazaoTabela: TAB_TJ,
       gotasPorBar: { 1.5: 'EG', 2: 'MG', 3: 'MG', 4: 'G', 5: 'G', 6: 'G' },
       usos: ['fungicida', 'inseticida', 'herbicida-sistemico', 'foliar'],
       nota: 'Duplo com indução de ar: penetração do duplo com a deriva controlada da indução.',
@@ -299,7 +338,7 @@
     },
     {
       id: 'tj-ai3070', marca: 'TeeJet', modelo: 'AI3070 (duplo assimétrico 30°/70°)', tipo: 'leque-duplo', angulos: [110],
-      sizes: ['015', '02', '025', '03', '04'], pressao: [1.5, 6], material: 'Polímero (VP)',
+      sizes: ['015', '02', '025', '03', '04'], pressao: [1.5, 6], material: 'Polímero (VP)', vazaoTabela: TAB_TJ,
       gotasPorBar: { 1.5: 'EG', 2: 'MG', 3: 'G', 4: 'G', 5: 'M', 6: 'M' },
       usos: ['fungicida', 'inseticida', 'foliar'],
       nota: 'Jatos de 30° e 70° com indução de ar — deposição nos dois lados do alvo vertical.',
@@ -307,7 +346,7 @@
     },
     {
       id: 'tj-even', marca: 'TeeJet', modelo: 'TP…E (jato plano de faixa uniforme)', tipo: 'faixa-uniforme', angulos: [80, 95],
-      sizes: ['01', '015', '02', '025', '03', '04'], pressao: [1, 4], material: 'Latão / inox / polímero',
+      sizes: ['01', '015', '02', '025', '03', '04'], pressao: [1, 4], material: 'Latão / inox / polímero', vazaoTabela: TAB_TJ,
       gotasPorBar: { 1: 'M', 2: 'F', 3: 'F', 4: 'F' },
       usos: ['herbicida-cafe', 'herbicida-contato', 'pre-emergente'],
       nota: 'Deposição uniforme de borda a borda (não foi feita para sobrepor): é a ponta da aplicação em FAIXA — linha de plantio, canteiro, faixa do café. Largura da faixa = ângulo × altura.',
@@ -316,17 +355,17 @@
     {
       id: 'tj-tf', marca: 'TeeJet', modelo: 'TF (Flood / leque defletor)', tipo: 'flood', angulos: [130, 145],
       sizes: ['02', '025', '03', '04', '05', '06', '08', '10'], pressao: [0.7, 3], material: 'Inox / polímero',
-      gotasFaixa: ['UG', 'EG', 'MG'],
+      gotasFaixa: ['UG', 'EG', 'MG'], confirmar: true,
       usos: ['herbicida-cafe', 'pre-emergente', 'herbicida-sistemico'],
-      nota: 'Grande ângulo a baixa pressão e gota muito grossa — é o tipo montado nas barras de herbicida de café (padrão do Jacto PH-400, ~500 µm a 1 bar).',
+      nota: 'Grande ângulo a baixa pressão e gota muito grossa — é o tipo montado nas barras de herbicida de café (padrão do Jacto PH-400, ~500 µm a 1 bar). Atenção: a TeeJet numera a linha flood pela vazão em gpm (TF-VS2, VS5…), não pelo código ISO — o cálculo aqui usa a escala ISO, confira a equivalência na tabela do fabricante.',
       fonte: 'Catálogo TeeJet + Jacto PH-400 (SBCPD)'
     },
     {
       id: 'tj-tx', marca: 'TeeJet', modelo: 'TX ConeJet (cone vazio)', tipo: 'cone-vazio', angulos: [80],
       sizes: ['01', '015', '02', '03', '04', '05'], pressao: [3, 20], material: 'Cerâmica / inox',
-      gotasFaixa: ['M', 'F', 'MF'],
+      gotasFaixa: ['M', 'F', 'MF'], confirmar: true,
       usos: ['fungicida', 'inseticida', 'foliar'],
-      nota: 'Cone vazio de alta pressão — turbo atomizador e aplicação em café/citros, onde a cobertura vale mais que a deriva.',
+      nota: 'Cone vazio de alta pressão — turbo atomizador e aplicação em café/citros, onde a cobertura vale mais que a deriva. Atenção: a linha ConeJet é numerada por disco/núcleo (TX-6, TX-10…), não pelo código ISO — o cálculo aqui usa a escala ISO, confira a equivalência na tabela do fabricante. Para cone com tabela fechada, use a Albuz ATI/ATR ou a Magnojet MAG.',
       fonte: 'Catálogo TeeJet Brasil — ConeJet'
     },
     /* ── Magnojet ── */
@@ -546,15 +585,23 @@
     /* ── Hypro (Pentair) ── */
     {
       id: 'hy-uld', marca: 'Hypro', modelo: 'ULD Ultra Lo-Drift', tipo: 'leque-inducao', angulos: [120],
-      sizes: ['015', '02', '025', '03', '04', '05', '06'], pressao: [1, 8], material: 'Poliacetal',
+      sizes: ['015', '02', '025', '03', '04', '05', '06', '08'], pressao: [1, 8], material: 'Poliacetal', vazaoTabela: TAB_HYPRO,
       gotasFaixa: ['UG', 'EG', 'MG'],
       usos: ['herbicida-sistemico', 'pre-emergente', 'herbicida-cafe', 'dessecacao'],
-      nota: 'A ponta de menor deriva da linha Hypro: gota grande cheia de ar, 120° de abertura e faixa de 1 a 8 bar. Indicada pelo fabricante para daninhas — sistêmico, pré-emergente e dessecação.',
-      fonte: 'Hypro — Selecting the Right Spray Nozzle (guia de seleção)'
+      nota: 'Gota grossa cheia de ar e pluma fechada: até 90 % de redução de deriva (4 estrelas no LERAP inglês), 120° de 1 a 8 bar. Para sistêmico, pré-emergente e dessecação em alvo grande — não para produto de contato em alvo pequeno.',
+      fonte: 'Pentair Hypro — Crop Spraying Guide (p. 10)'
+    },
+    {
+      id: 'hy-uldm', marca: 'Hypro', modelo: 'ULDM Ultra Lo-Drift MAX', tipo: 'leque-inducao', angulos: [130],
+      sizes: ['02', '025', '03', '04', '05', '06', '08'], pressao: [2, 5], material: 'Poliacetal', vazaoTabela: TAB_HYPRO,
+      gotasPorBar: { 2: 'UG', 3: 'UG', 4: 'UG', 5: 'UG' },
+      usos: ['herbicida-sistemico', 'pre-emergente', 'herbicida-cafe', 'dessecacao'],
+      nota: 'Ultragrossa em toda a faixa (2 a 5 bar) e 95 % de redução de deriva: é a ponta de quando não pode haver deriva nenhuma — 2,4-D e dirigida ao lado de café. O ângulo de 130° pede barra mais baixa. Não usar em alvo pequeno nem com produto de contato.',
+      fonte: 'Pentair Hypro — Crop Spraying Guide (p. 11)'
     },
     {
       id: 'hy-ga', marca: 'Hypro', modelo: 'GuardianAIR', tipo: 'leque-inducao', angulos: [110, 80],
-      sizes: ['015', '02', '025', '03', '04', '05', '06'], pressao: [1, 8], material: 'Poliacetal',
+      sizes: ['015', '02', '025', '03', '04', '05', '06'], pressao: [1, 8], material: 'Poliacetal', vazaoTabela: TAB_HYPRO,
       gotasFaixa: ['MG', 'G', 'M'],
       usos: ['fungicida', 'inseticida', 'herbicida-sistemico', 'dessecacao', 'foliar'],
       nota: 'Indução de ar que mantém o ângulo do leque de 1 a 8 bar: cobertura de fungicida e inseticida com deriva controlada. Existe em 80° e 110°.',
@@ -562,7 +609,7 @@
     },
     {
       id: 'hy-gat', marca: 'Hypro', modelo: 'GuardianAIR Twin', tipo: 'leque-duplo', angulos: [110],
-      sizes: ['015', '02', '025', '03', '04', '05'], pressao: [2, 8], material: 'Poliacetal',
+      sizes: ['015', '02', '025', '03', '04', '05'], pressao: [2, 8], material: 'Poliacetal', vazaoTabela: TAB_HYPRO,
       gotasFaixa: ['MG', 'G', 'M'],
       usos: ['fungicida', 'inseticida', 'foliar', 'herbicida-sistemico'],
       nota: 'Dois jatos com indução de ar num corpo só: deposição na frente e atrás do alvo, para espiga, haste e dossel fechado.',
@@ -570,7 +617,7 @@
     },
     {
       id: 'hy-grd', marca: 'Hypro', modelo: 'Guardian (pré-orifício)', tipo: 'leque-pre-orificio', angulos: [120],
-      sizes: ['015', '02', '025', '03', '04', '05'], pressao: [1, 8], material: 'Poliacetal',
+      sizes: ['015', '02', '025', '03', '04', '05'], pressao: [1, 8], material: 'Poliacetal', vazaoTabela: TAB_HYPRO,
       gotasFaixa: ['G', 'M'],
       usos: ['fungicida', 'inseticida', 'herbicida-contato', 'foliar'],
       nota: '120° com pré-orifício: gota média a grossa numa faixa de pressão larga. Meio-termo entre cobertura e deriva quando não dá para usar indução de ar.',
@@ -578,7 +625,7 @@
     },
     {
       id: 'hy-ld', marca: 'Hypro', modelo: 'LD Lo-Drift', tipo: 'leque-pre-orificio', angulos: [110, 80],
-      sizes: ['015', '02', '025', '03', '04', '05'], pressao: [1, 5], material: 'Poliacetal',
+      sizes: ['015', '02', '025', '03', '04', '05'], pressao: [1, 5], material: 'Poliacetal', vazaoTabela: TAB_HYPRO,
       gotasFaixa: ['M', 'F'],
       usos: ['fungicida', 'inseticida', 'herbicida-contato', 'foliar'],
       nota: 'A antideriva original da Hypro: pré-orifício que corta boa parte das gotas finas de um leque comum, mantendo cobertura.',
@@ -586,7 +633,7 @@
     },
     {
       id: 'hy-3d', marca: 'Hypro', modelo: '3D (leque inclinado)', tipo: 'leque', angulos: [100],
-      sizes: ['015', '02', '025', '03', '04', '05'], pressao: [0.7, 6], material: 'Poliacetal',
+      sizes: ['015', '02', '025', '03', '04', '05'], pressao: [0.7, 6], material: 'Poliacetal', vazaoTabela: TAB_HYPRO,
       gotasFaixa: ['M', 'F'],
       usos: ['fungicida', 'inseticida', 'foliar', 'herbicida-contato'],
       nota: 'Jato inclinado de 100° para montar alternado na barra (um para a frente, outro para trás) — cobre os dois lados sem ponta dupla. Homologada para PWM (bico pulsado).',
@@ -594,7 +641,7 @@
     },
     {
       id: 'hy-vp', marca: 'Hypro', modelo: 'VP FanTip (pressão variável)', tipo: 'leque', angulos: [110, 80],
-      sizes: ['01', '015', '02', '025', '03', '04', '05', '06'], pressao: [1, 5], material: 'Poliacetal',
+      sizes: ['01', '015', '02', '025', '03', '04', '05', '06'], pressao: [1, 5], material: 'Poliacetal', vazaoTabela: TAB_HYPRO,
       gotasFaixa: ['M', 'F'],
       usos: ['fungicida', 'inseticida', 'herbicida-contato', 'foliar'],
       nota: 'Leque de uso geral com orifício elíptico, estável de 1 a 5 bar — a ponta padrão de barra quando a deriva não é o problema do dia.',
@@ -602,7 +649,7 @@
     },
     {
       id: 'hy-even', marca: 'Hypro', modelo: 'E FanTip (faixa uniforme)', tipo: 'faixa-uniforme', angulos: [80],
-      sizes: ['01', '015', '02', '025', '03', '04'], pressao: [2, 4], material: 'Poliacetal',
+      sizes: ['01', '015', '02', '025', '03', '04'], pressao: [2, 4], material: 'Poliacetal', vazaoTabela: TAB_HYPRO,
       gotasFaixa: ['M', 'F'],
       usos: ['herbicida-cafe', 'herbicida-contato', 'pre-emergente'],
       nota: 'Deposição uniforme de borda a borda para aplicação em FAIXA (linha de plantio, canteiro, faixa do café) — não sobrepõe. Também existe na versão costal (1 a 3 bar).',
@@ -701,10 +748,18 @@
     if (tamanho == null) return p.vazaoTabela;
     return p.vazaoTabela.valores[String(tamanho)] ? p.vazaoTabela : null;
   }
+  function pressaoReferencia(ponta) {
+    const p = typeof ponta === 'string' ? PONTA_MAP[ponta] : ponta;
+    if (!p) return 3;
+    return Math.min(Math.max(3, p.pressao[0]), p.pressao[1]);
+  }
   function tamanhosDaPonta(ponta) {
     const p = typeof ponta === 'string' ? PONTA_MAP[ponta] : ponta;
     if (!p) return [];
-    return p.vazaoTabela ? Object.keys(p.vazaoTabela.valores) : p.sizes;
+    if (!p.vazaoTabela) return p.sizes;
+    // a tabela da marca costuma cobrir mais tamanhos do que a família oferece
+    const chaves = Object.keys(p.vazaoTabela.valores);
+    return (p.sizes && p.sizes.length) ? p.sizes.filter(s => chaves.indexOf(String(s)) >= 0) : chaves;
   }
   function vazaoDaPonta(ponta, tamanho, bar) {
     const t = tabelaDaPonta(ponta, tamanho);
@@ -827,8 +882,8 @@
     let pressao = num(e.pressao), qReal = qNecessaria, pressaoCalculada = null, gota = null, vazaoNom = 0;
     const tabela = tabelaDaPonta(ponta, iso);
     if (iso && (ISO_MAP[iso] || tabela)) {
-      const pRef = tabela ? tabela.pressoes[0] : 3;
-      vazaoNom = tabela ? tabela.valores[iso][0] : vazaoNominal(iso);
+      const pRef = tabela ? pressaoReferencia(ponta) : 3;
+      vazaoNom = tabela ? vazaoDaPonta(ponta, iso, pRef) : vazaoNominal(iso);
       if (e.fixarPressao && pressao > 0) {
         qReal = vazaoDaPonta(ponta, iso, pressao);
         F('Vazão da ponta na pressão', tabela ? 'tabela do fabricante, interpolada em √p' : 'q = q₃bar × √(p ÷ 3)',
@@ -1105,7 +1160,7 @@
     versao: '1.0.0',
     ISO, ISO_MAP, GOTAS, GOTA_MAP, ALVOS, ALVO_MAP, TIPOS, PONTAS, PONTA_MAP, PRESETS,
     vazaoNominal, vazaoPonta, pressaoPara, novaVazao, novaPressao,
-    tabelaDaPonta, tamanhosDaPonta, vazaoDaPonta, pressaoDaPonta,
+    tabelaDaPonta, tamanhosDaPonta, vazaoDaPonta, pressaoDaPonta, pressaoReferencia,
     vazaoNecessaria, volumeAplicado, velocidadeAlvo, velocidadeCampo,
     alturaBarra, alturaParaFaixa, larguraJato, fatorAltura, classeGota,
     calcular, selecionar, calibracao, cruzar, tabelaCruzada

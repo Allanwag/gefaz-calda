@@ -47,20 +47,27 @@ caldas salvas, histórico de análises, jar tests, regulagens de pontas, configu
 A aba **Pontas** resolve a outra metade da aplicação: que ponta usar, em que pressão e a que
 velocidade — e quanto disso vira volume de calda.
 
-* **Catálogo por família** — 52 famílias das cinco marcas que rodam no Brasil, com tipo de jato,
+* **Catálogo por família** — 53 famílias das cinco marcas que rodam no Brasil, com tipo de jato,
   ângulo, faixa útil de pressão, material, tamanhos e classe de gota, cada uma com a sua fonte:
   TeeJet (XR, XRC, TT, AIXR, AI, AIC, TTI, DG, TTJ60, AITTJ60, AI3070, TP…E, TF flood, TX),
   Albuz (AXI, AXI TWIN, ADI, APE, AVI, AVI TWIN, AVI-UC, CVI, CVI TWIN, MVI, ATR, ATI, TVI, ATF),
-  Hypro (ULD, GuardianAIR, GuardianAIR Twin, Guardian, LD, 3D, VP, E FanTip, DeflecTip, HCX, XT),
+  Hypro (ULD, ULDM, GuardianAIR, GuardianAIR Twin, Guardian, LD, 3D, VP, E FanTip, DeflecTip, HCX, XT),
   Magnojet (AD, ADGA, AD-IA, AD-IA/D, MUG, MUG-CV, BD, MAG) e Jacto (JTT, J3D, JDF, AIRMIX).
-  Nove famílias trazem a **tabela de vazão publicada** em vez da vazão nominal ISO: os cones da
-  Albuz (ATR, ATI, TVI e o cone cheio ATF), de 3 a 25 bar, incluindo a escala de cores europeia da
-  ATR (branco → roxo), que não é ISO; e a linha Magnojet (AD, AD-IA, MUG, MUG-CV e o cone MAG), de
-  15 a 150 PSI, com a numeração própria MAG1 a MAG6. O motor interpola em √p entre as linhas da
-  tabela (exato nos pontos publicados) e extrapola pela lei da raiz quadrada fora dela, então
-  regulagem, seleção e tabela cruzada funcionam também nessas pontas. A APE, que usa a escala
-  europeia mas cuja tabela não está embutida, fica declarada como escala própria: o app não calcula
-  a vazão dela nem a sugere.
+  **Trinta famílias trazem a tabela de vazão publicada** em vez da vazão nominal calculada: a linha
+  de jato plano da TeeJet (catálogo Brasil, 1 a 6 bar), a da Hypro (Crop Spraying Guide, 1 a 5 bar),
+  a linha Magnojet (AD, AD-IA, MUG, MUG-CV e o cone MAG, 15 a 150 PSI) e os cones da Albuz (ATR,
+  ATI, TVI e o cone cheio ATF, 3 a 25 bar). Duas dessas escalas não são ISO e só existem em tabela:
+  as cores europeias da ATR (branco → roxo) e a numeração MAG1 a MAG6. O motor interpola em √p entre
+  as linhas da tabela (exato nos pontos publicados) e extrapola pela lei da raiz quadrada fora dela.
+
+  Por que isso muda alguma coisa: para a ponta 02 a 3 bar a TeeJet publica 0,79 L/min e Hypro,
+  Magnojet e Albuz publicam 0,80 — ~1 % de diferença entre catálogos da mesma norma. Com a tabela
+  embutida, o app mostra o número do catálogo que está na mão do operador.
+
+  Ficam de fora as pontas numeradas por vazão em gpm ou por disco e núcleo, que não têm equivalência
+  ISO direta (TeeJet TF flood e TX ConeJet, Hypro DeflecTip e Boom X Tender) e a Albuz APE: essas
+  saem marcadas como "conferir catálogo", com a escala explicada na própria ficha.
+
 * **Vazão pela norma, não pela marca** — a vazão sai da ISO 10625 (vazão nominal a 3 bar por
   tamanho e cor) e da lei da raiz quadrada `q₂ = q₁ × √(p₂ ÷ p₁)`. É assim que o catálogo do
   fabricante é montado; por isso o cálculo bate com qualquer marca. Os valores conferem com a
