@@ -468,7 +468,7 @@ function preencherIso(sel) {
   $('#pIso').innerHTML = sizes.map(s => {
     const i = PT.ISO_MAP[s], q = PT.vazaoDaPonta(p, s, pRef);
     const cor = i ? i.cor : s.charAt(0).toUpperCase() + s.slice(1);
-    return `<option value="${esc(s)}">${esc(s)}${i ? ' · ' + cor : ''}${q ? ' · ' + fmt(q, 2) + ' L/min a ' + fmt(pRef, 0) + ' bar' : ' (sem tabela)'}</option>`;
+    return `<option value="${esc(s)}">${esc(s)}${i ? ' · ' + cor : ''}${q ? ' · ' + fmt(q, 2) + ' L/min a ' + fmt(pRef, 1) + ' bar' : ' (sem tabela)'}</option>`;
   }).join('');
   if (sel && sizes.indexOf(sel) >= 0) $('#pIso').value = sel;
 }
@@ -718,7 +718,7 @@ function initPontas() {
   $('#pAlvo').innerHTML = PT.ALVOS.map(a => `<option value="${a.id}">${esc(a.nome)}</option>`).join('');
   $('#chipsPreset').innerHTML = PT.PRESETS.map(p => `<span class="chip" data-preset="${esc(p.id)}" title="${esc(p.nota)}">${esc(p.nome)}</span>`).join('');
   preencherMarcas(); preencherModelos(); preencherIso(); preencherAngulos();
-  const recalc = () => { atualizarVazaoAlvo(); if (regulagem) calcularRegulagem(true); };
+  const recalc = () => { atualizarVazaoAlvo(); if (regulagem) calcularRegulagem(true); else renderTabelaCruzada(); };
   $('#pModo').onchange = () => { camposPorModo(); recalc(); };
   $('#pAlvo').onchange = () => { preencherModelos($('#pPonta').value); preencherIso(); preencherAngulos(); recalc(); };
   $('#pMarca').onchange = () => { preencherModelos(); preencherIso(); preencherAngulos(); recalc(); };

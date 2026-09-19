@@ -139,6 +139,76 @@
     }
   };
 
+  /* Magnojet — catálogo 2025 (magnojet.com.br). As pressões são as do
+     catálogo em bar (15 a 150 PSI, conforme a linha). Os valores batem com a
+     ISO 10625 dentro de ~1 % nas pontas de jato plano; o cone MAG tem escala
+     própria (MAG1 a MAG6) e só existe em tabela.                            */
+  const TAB_MJ_AD = {          // jato plano antideriva, 15–60 PSI
+    fonte: 'Catálogo Magnojet 2025, p. 25 (AD)',
+    pressoes: [1.03, 1.38, 2.07, 2.76, 3.45, 4.14],
+    valores: {
+      '01': [0.23, 0.27, 0.33, 0.38, 0.43, 0.47],
+      '015': [0.35, 0.41, 0.50, 0.58, 0.64, 0.70],
+      '02': [0.47, 0.54, 0.66, 0.77, 0.86, 0.94],
+      '025': [0.59, 0.68, 0.83, 0.96, 1.07, 1.17],
+      '03': [0.70, 0.81, 1.00, 1.15, 1.29, 1.41],
+      '04': [0.94, 1.08, 1.33, 1.53, 1.72, 1.88],
+      '05': [1.17, 1.36, 1.66, 1.92, 2.14, 2.35]
+    }
+  };
+  const TAB_MJ_ADIA = {        // jato plano com indução de ar, 30–110 PSI
+    fonte: 'Catálogo Magnojet 2025, p. 29 (AD-IA)',
+    pressoes: [2.07, 2.76, 3.45, 4.14, 4.83, 5.52, 6.21, 6.89, 7.58],
+    valores: {
+      '015': [0.50, 0.58, 0.64, 0.70, 0.76, 0.81, 0.86, 0.91, 0.95],
+      '02': [0.66, 0.77, 0.86, 0.94, 1.01, 1.08, 1.15, 1.21, 1.27],
+      '025': [0.83, 0.96, 1.07, 1.17, 1.27, 1.36, 1.44, 1.52, 1.59],
+      '03': [1.00, 1.15, 1.29, 1.41, 1.52, 1.63, 1.73, 1.82, 1.91],
+      '04': [1.33, 1.53, 1.72, 1.88, 2.03, 2.17, 2.30, 2.43, 2.54],
+      '05': [1.66, 1.92, 2.14, 2.35, 2.54, 2.71, 2.88, 3.03, 3.18],
+      '06': [1.99, 2.30, 2.57, 2.82, 3.04, 3.25, 3.45, 3.64, 3.82],
+      '08': [2.66, 3.07, 3.43, 3.76, 4.06, 4.34, 4.60, 4.85, 5.09]
+    }
+  };
+  const TAB_MJ_MUG = {         // Magno Ultra Grossa, jato plano, 30–100 PSI
+    fonte: 'Catálogo Magnojet 2025, p. 16 (MUG)',
+    pressoes: [2.07, 2.76, 3.45, 4.14, 4.83, 5.52, 6.21, 6.89],
+    valores: {
+      '015': [0.50, 0.58, 0.64, 0.70, 0.76, 0.81, 0.86, 0.91],
+      '02': [0.66, 0.77, 0.86, 0.94, 1.01, 1.08, 1.15, 1.21],
+      '025': [0.83, 0.96, 1.07, 1.17, 1.27, 1.36, 1.44, 1.52],
+      '03': [1.00, 1.15, 1.29, 1.41, 1.52, 1.63, 1.73, 1.82],
+      '035': [1.16, 1.34, 1.50, 1.64, 1.78, 1.90, 2.01, 2.12],
+      '04': [1.33, 1.53, 1.72, 1.88, 2.03, 2.17, 2.30, 2.43],
+      '05': [1.66, 1.92, 2.14, 2.35, 2.54, 2.71, 2.88, 3.03]
+    }
+  };
+  const TAB_MJ_MUGCV = {       // Magno Ultra Grossa cone vazio, 30–80 PSI
+    fonte: 'Catálogo Magnojet 2025, p. 18 (MUG-CV)',
+    pressoes: [2.07, 2.76, 3.45, 4.14, 4.83, 5.52],
+    valores: {
+      '015': [0.50, 0.58, 0.64, 0.70, 0.76, 0.81],
+      '02': [0.66, 0.77, 0.86, 0.94, 1.01, 1.08],
+      '025': [0.83, 0.96, 1.07, 1.17, 1.27, 1.36],
+      '03': [1.00, 1.15, 1.29, 1.41, 1.52, 1.63],
+      '035': [1.16, 1.34, 1.50, 1.64, 1.78, 1.90],
+      '04': [1.33, 1.53, 1.72, 1.88, 2.03, 2.17]
+    }
+  };
+  const TAB_MJ_MAG = {         // cone vazio cerâmico, escala própria, 60–150 PSI
+    fonte: 'Catálogo Magnojet 2025, p. 54 (MAG)',
+    pressoes: [4.14, 4.83, 5.52, 6.21, 6.89, 7.58, 8.27, 8.96, 9.65, 10.34],
+    valores: {
+      'MAG1': [0.32, 0.34, 0.36, 0.38, 0.41, 0.42, 0.44, 0.46, 0.48, 0.50],
+      'MAG1.5': [0.43, 0.45, 0.48, 0.52, 0.54, 0.56, 0.58, 0.60, 0.62, 0.66],
+      'MAG2': [0.64, 0.68, 0.72, 0.76, 0.80, 0.84, 0.88, 0.92, 0.94, 1.00],
+      'MAG3': [0.88, 0.94, 1.00, 1.06, 1.12, 1.18, 1.24, 1.28, 1.33, 1.34],
+      'MAG4': [1.25, 1.34, 1.42, 1.51, 1.60, 1.68, 1.76, 1.85, 1.92, 2.00],
+      'MAG5': [1.60, 1.72, 1.84, 1.93, 2.00, 2.12, 2.20, 2.28, 2.38, 2.44],
+      'MAG6': [2.10, 2.24, 2.40, 2.54, 2.66, 2.80, 2.94, 3.06, 3.16, 3.24]
+    }
+  };
+
   /* ───────── Catálogo de pontas ─────────
      gotasPorBar: classe lida no catálogo do fabricante para a ponta 02
        (tamanhos maiores → uma classe mais grossa; menores → mais fina).
@@ -261,12 +331,20 @@
     },
     /* ── Magnojet ── */
     {
-      id: 'mj-ad', marca: 'Magnojet', modelo: 'AD (leque antideriva)', tipo: 'leque-pre-orificio', angulos: [110],
-      sizes: ['01', '015', '02', '025', '03', '04', '05'], pressao: [1.0, 4.1], material: 'Cerâmica 99 % alumina',
-      gotasFaixa: ['G', 'M', 'F'],
-      usos: ['herbicida-sistemico', 'herbicida-contato', 'fungicida', 'dessecacao'],
-      nota: 'Gotas de ~300–400 µm. Sistêmicos e de contato; cerâmica de alta alumina segura a vazão por muito mais horas.',
-      fonte: 'Magnojet / DRS Pulverizadores — ficha da ponta AD'
+      id: 'mj-ad', marca: 'Magnojet', modelo: 'AD (leque antideriva com pré-orifício)', tipo: 'leque-pre-orificio', angulos: [110],
+      sizes: ['01', '015', '02', '025', '03', '04', '05'], pressao: [1.03, 4.14], material: 'Cerâmica 99 % alumina', vazaoTabela: TAB_MJ_AD,
+      gotasPorBar: { 1.03: 'M', 1.38: 'M', 2.07: 'M', 2.76: 'M', 3.45: 'M', 4.14: 'M' },
+      usos: ['herbicida-sistemico', 'herbicida-contato', 'fungicida', 'dessecacao', 'foliar'],
+      nota: 'Pré-orifício equilibra a pressão interna e o orifício cerâmico segura o padrão do leque: gotas de ~300–400 µm de 15 a 60 PSI. Compatível com PWM (bico pulsado). Herbicida de contato e sistêmico em pós, inseticida, fungicida e foliar.',
+      fonte: 'Catálogo Magnojet 2025 (p. 25) + DRS Pulverizadores'
+    },
+    {
+      id: 'mj-mug-cv', marca: 'Magnojet', modelo: 'MUG-CV — cone vazio ultragrosso (indução de ar)', tipo: 'cone-vazio', angulos: [90],
+      sizes: ['015', '02', '025', '03', '035', '04'], pressao: [2.07, 5.52], material: 'Cerâmica', vazaoTabela: TAB_MJ_MUGCV,
+      gotasPorBar: { 2.07: 'UG', 2.76: 'UG', 3.45: 'UG', 4.14: 'UG', 4.83: 'UG', 5.52: 'UG' },
+      usos: ['herbicida-sistemico', 'pre-emergente', 'herbicida-cafe', 'dessecacao'],
+      nota: 'Cone vazio de 90° com venturi e pré-orifício, 30 a 80 PSI: gota ultragrossa em toda a faixa, coisa rara num cone. Recomendada pelo fabricante para 2,4-D, glifosato e sistêmicos perto de cultura sensível — e é a opção de cone para a barra dirigida do café.',
+      fonte: 'Catálogo Magnojet 2025 (p. 18)'
     },
     {
       id: 'mj-adga', marca: 'Magnojet', modelo: 'ADGA (antideriva de grande ângulo)', tipo: 'leque-defletor', angulos: [120],
@@ -278,11 +356,11 @@
     },
     {
       id: 'mj-ad-ia', marca: 'Magnojet', modelo: 'AD-IA (indução de ar)', tipo: 'leque-inducao', angulos: [110, 80],
-      sizes: ['01', '015', '02', '025', '03', '04', '05', '06', '08'], pressao: [2.1, 7.6], material: 'Cerâmica',
-      gotasFaixa: ['UG', 'EG', 'MG', 'G'],
+      sizes: ['015', '02', '025', '03', '04', '05', '06', '08'], pressao: [2.07, 7.58], material: 'Cerâmica', vazaoTabela: TAB_MJ_ADIA,
+      gotasPorBar: { 2.07: 'UG', 2.76: 'EG', 3.45: 'EG', 4.14: 'EG', 4.83: 'MG', 5.52: 'MG', 6.21: 'MG', 6.89: 'MG', 7.58: 'G' },
       usos: ['herbicida-sistemico', 'pre-emergente', 'herbicida-cafe', 'dessecacao'],
-      nota: 'Venturi: gota grossa a ultragrossa. Indicada pelo fabricante para herbicida pré e pós-emergente sistêmico.',
-      fonte: 'Magnojet / DRS Pulverizadores — ficha da ponta AD-IA'
+      nota: 'Venturi com pré-orifício, 30 a 110 PSI: ultragrossa a 2 bar, vai afinando até grossa a 7,6 bar. Indicada pelo fabricante para herbicida sistêmico em pré e pós, e para aplicação perto de cultura sensível ou bordadura. Também em 80°.',
+      fonte: 'Catálogo Magnojet 2025 (p. 29)'
     },
     {
       id: 'mj-ad-ia-d', marca: 'Magnojet', modelo: 'AD-IA/D (indução de ar, jato duplo)', tipo: 'leque-duplo', angulos: [110],
@@ -293,12 +371,12 @@
       fonte: 'Magnojet — linha AD-IA/D'
     },
     {
-      id: 'mj-mug', marca: 'Magnojet', modelo: 'MUG (FastCap, indução de ar)', tipo: 'leque-inducao', angulos: [110],
-      sizes: ['015', '02', '025', '03', '04', '05'], pressao: [2.1, 7.6], material: 'Polímero + cerâmica',
-      gotasFaixa: ['EG', 'MG', 'G'],
-      usos: ['herbicida-sistemico', 'pre-emergente', 'dessecacao'],
-      nota: 'Linha FastCap (troca rápida) com indução de ar.',
-      fonte: 'Magnojet — linha MUG'
+      id: 'mj-mug', marca: 'Magnojet', modelo: 'MUG — Magno Ultra Grossa (indução de ar)', tipo: 'leque-inducao', angulos: [110],
+      sizes: ['015', '02', '025', '03', '035', '04', '05'], pressao: [2.07, 6.89], material: 'Cerâmica', vazaoTabela: TAB_MJ_MUG,
+      gotasPorBar: { 2.07: 'UG', 2.76: 'UG', 3.45: 'UG', 4.14: 'UG', 4.83: 'UG', 5.52: 'UG', 6.21: 'UG', 6.89: 'UG' },
+      usos: ['herbicida-sistemico', 'pre-emergente', 'dessecacao', 'herbicida-cafe'],
+      nota: 'Ultragrossa em toda a faixa (30 a 100 PSI), com jato inclinado 30° — dá para montar tudo para a frente ou alternado na barra. Índice de risco de deriva de 1 %, homologada para dicamba no Brasil e nos EUA; feita para 2,4-D e glifosato perto de cultura sensível.',
+      fonte: 'Catálogo Magnojet 2025 (p. 16)'
     },
     {
       id: 'mj-bd', marca: 'Magnojet', modelo: 'BD (leque com pré-orifício)', tipo: 'leque-pre-orificio', angulos: [110],
@@ -309,12 +387,13 @@
       fonte: 'Magnojet — linha BD'
     },
     {
-      id: 'mj-mag', marca: 'Magnojet', modelo: 'MAG (cone vazio)', tipo: 'cone-vazio', angulos: [80],
-      sizes: ['01', '02', '03', '04', '05', '06'], pressao: [3, 20], material: 'Cerâmica',
-      gotasFaixa: ['M', 'F'],
+      id: 'mj-mag', marca: 'Magnojet', modelo: 'MAG (cone vazio cerâmico)', tipo: 'cone-vazio', angulos: [80],
+      sizes: ['MAG1', 'MAG1.5', 'MAG2', 'MAG3', 'MAG4', 'MAG5', 'MAG6'], escalaPropria: true, vazaoTabela: TAB_MJ_MAG,
+      pressao: [4.14, 10.34], material: 'Cerâmica',
+      gotasFaixa: ['F', 'MF'],
       usos: ['fungicida', 'inseticida', 'foliar'],
-      nota: 'Cone vazio para turbo atomizador e pulverização de alta pressão (café, citros).',
-      fonte: 'Magnojet — linha MAG'
+      nota: 'Cone vazio de 60 a 150 PSI para turbo atomizador e alta pressão (café, citros). A numeração é PRÓPRIA (MAG1 a MAG6), não ISO — a vazão sai da tabela do catálogo. Gota muito fina a fina: cobertura máxima, deriva alta.',
+      fonte: 'Catálogo Magnojet 2025 (p. 54)'
     },
     /* ── Jacto (linha própria e Albuz) ── */
     {

@@ -28,7 +28,7 @@ Gefaz360 Codex — ver [INTEGRACAO.md](INTEGRACAO.md).
 | Arquivo | Papel |
 |---|---|
 | `index.html`, `app.css`, `app.js` | Interface (abas Calda · Resultado · Jar test · Pontas · Histórico · Integração · Fontes) |
-| `pontas.js` | Catálogo de pontas (TeeJet, Magnojet, Jacto/Albuz) e motor de regulagem: vazão ISO 10625, classe de gota ASABE S572.1, área total × faixa dirigida, cruzamento vazão × pressão, calibração a campo |
+| `pontas.js` | Catálogo de pontas (TeeJet, Albuz, Hypro, Magnojet, Jacto) e motor de regulagem: vazão ISO 10625 e tabelas de vazão dos fabricantes, classe de gota ASABE S572.1, área total × faixa dirigida, cruzamento vazão × pressão, calibração a campo |
 | `engine.js` | Motor puro (sem DOM): `GCEngine.analisar(itens, opts)` → status, alertas, matriz de pares, pH, ordem, jar test, custo, ficha de tanque, checklist |
 | `kb.js` | Base de conhecimento: ~120 ingredientes ativos (classe, grupo, MoA, faixa de pH, tags), produtos comerciais da fazenda, 41 regras de pares com confiança e fonte, fontes |
 | `data/agrofit-index.json` | Índice compacto do AGROFIT (marca, formulação, ativos, classe, culturas, alvos para café/milho/soja/sorgo/trigo/feijão/algodão/pastagens) — 1,5 MB |
@@ -47,18 +47,20 @@ caldas salvas, histórico de análises, jar tests, regulagens de pontas, configu
 A aba **Pontas** resolve a outra metade da aplicação: que ponta usar, em que pressão e a que
 velocidade — e quanto disso vira volume de calda.
 
-* **Catálogo por família** — 51 famílias das cinco marcas que rodam no Brasil, com tipo de jato,
+* **Catálogo por família** — 52 famílias das cinco marcas que rodam no Brasil, com tipo de jato,
   ângulo, faixa útil de pressão, material, tamanhos e classe de gota, cada uma com a sua fonte:
   TeeJet (XR, XRC, TT, AIXR, AI, AIC, TTI, DG, TTJ60, AITTJ60, AI3070, TP…E, TF flood, TX),
   Albuz (AXI, AXI TWIN, ADI, APE, AVI, AVI TWIN, AVI-UC, CVI, CVI TWIN, MVI, ATR, ATI, TVI, ATF),
   Hypro (ULD, GuardianAIR, GuardianAIR Twin, Guardian, LD, 3D, VP, E FanTip, DeflecTip, HCX, XT),
-  Magnojet (AD, ADGA, AD-IA, AD-IA/D, MUG, BD, MAG) e Jacto (JTT, J3D, JDF, AIRMIX).
-  Os cones da Albuz (ATR, ATI, TVI e o cone cheio ATF) trazem a **tabela de vazão publicada** —
-  de 3 a 25 bar, incluindo a escala de cores europeia da ATR (branco → roxo), que não é ISO. O motor
-  interpola em √p entre as linhas da tabela (exato nos pontos publicados) e extrapola pela lei da
-  raiz quadrada fora dela, então regulagem, seleção e tabela cruzada funcionam também nessas pontas.
-  A APE, que usa a mesma escala europeia mas cuja tabela não está embutida, fica declarada como
-  escala própria: o app não calcula a vazão dela nem a sugere.
+  Magnojet (AD, ADGA, AD-IA, AD-IA/D, MUG, MUG-CV, BD, MAG) e Jacto (JTT, J3D, JDF, AIRMIX).
+  Nove famílias trazem a **tabela de vazão publicada** em vez da vazão nominal ISO: os cones da
+  Albuz (ATR, ATI, TVI e o cone cheio ATF), de 3 a 25 bar, incluindo a escala de cores europeia da
+  ATR (branco → roxo), que não é ISO; e a linha Magnojet (AD, AD-IA, MUG, MUG-CV e o cone MAG), de
+  15 a 150 PSI, com a numeração própria MAG1 a MAG6. O motor interpola em √p entre as linhas da
+  tabela (exato nos pontos publicados) e extrapola pela lei da raiz quadrada fora dela, então
+  regulagem, seleção e tabela cruzada funcionam também nessas pontas. A APE, que usa a escala
+  europeia mas cuja tabela não está embutida, fica declarada como escala própria: o app não calcula
+  a vazão dela nem a sugere.
 * **Vazão pela norma, não pela marca** — a vazão sai da ISO 10625 (vazão nominal a 3 bar por
   tamanho e cor) e da lei da raiz quadrada `q₂ = q₁ × √(p₂ ÷ p₁)`. É assim que o catálogo do
   fabricante é montado; por isso o cálculo bate com qualquer marca. Os valores conferem com a

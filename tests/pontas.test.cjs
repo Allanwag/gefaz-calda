@@ -292,3 +292,45 @@ test('tabela cruzada de ponta com tabela usa as pressões do fabricante', () => 
   assert.ok(t.tabela && /Albuz/.test(t.tabela), 'deve declarar a fonte da tabela');
   perto(t.linhas.find(l => l.bar === 10).celulas.find(c => c.iso === 'marrom').vazao, 0.67, 0.01);
 });
+
+test('tabelas Magnojet batem com o catálogo', () => {
+  perto(P.vazaoDaPonta('mj-ad', '02', 3.45), 0.86, 0.01);        // AD, 50 PSI
+  perto(P.vazaoDaPonta('mj-ad', '01', 1.03), 0.23, 0.01);        // AD, 15 PSI
+  perto(P.vazaoDaPonta('mj-ad-ia', '03', 2.07), 1.00, 0.01);     // AD-IA, 30 PSI
+  perto(P.vazaoDaPonta('mj-ad-ia', '08', 7.58), 5.09, 0.02);     // AD-IA, 110 PSI
+  perto(P.vazaoDaPonta('mj-mug', '035', 4.14), 1.64, 0.01);      // MUG, 60 PSI
+  perto(P.vazaoDaPonta('mj-mug-cv', '02', 5.52), 1.08, 0.01);    // MUG-CV, 80 PSI
+  perto(P.vazaoDaPonta('mj-mag', 'MAG3', 8.27), 1.24, 0.01);     // MAG, 120 PSI (escala própria)
+  perto(P.vazaoDaPonta('mj-mag', 'MAG6', 4.14), 2.10, 0.01);
+});
+
+test('classe de gota da Magnojet acompanha a pressão', () => {
+  assert.equal(P.classeGota('mj-ad-ia', 2.07, '02').id, 'UG');   // ultragrossa a 30 PSI
+  assert.equal(P.classeGota('mj-ad-ia', 4.14, '02').id, 'EG');
+  assert.equal(P.classeGota('mj-ad-ia', 7.58, '02').id, 'G');    // e só grossa a 110 PSI
+  assert.equal(P.classeGota('mj-mug', 5, '02').id, 'UG');        // MUG é ultragrossa em toda a faixa
+  assert.equal(P.classeGota('mj-mug-cv', 3, '02').id, 'UG');
+  assert.equal(P.classeGota('mj-ad', 2, '02').id, 'M');
+});
+
+test('cone MAG, de escala própria, agora pode ser regulado e sugerido', () => {
+  const r = P.calcular({ modo: 'faixa', volumeHa: 400, velocidade: 3.5, larguraFaixa: 3.5, bicosPorPassada: 12, entreLinhas: 3.5, ponta: 'mj-mag', iso: 'MAG2', alvo: 'fungicida' });
+  assert.ok(r.pressao >= 4.14 && r.pressao <= 10.34, `pressão ${r.pressao} fora da faixa da MAG`);
+  perto(r.vazaoPorBico, 0.681, 0.005);
+  const s = P.selecionar({ modo: 'area', espacamento: 0.5, volumeHa: 150, velocidade: 6, alvo: 'fungicida', marca: 'Magnojet', limite: 30 });
+  assert.ok(s.opcoes.some(o => o.ponta === 'mj-mag'), 'MAG deve entrar na seleção agora que tem tabela');
+});
+
+test('toda ponta com tabela declara a fonte e cobre a faixa de pressão', () => {
+  const comTabela = P.PONTAS.filter(p => p.vazaoTabela);
+  assert.ok(comTabela.length >= 9, `só ${comTabela.length} pontas com tabela`);
+  comTabela.forEach(p => {
+    const t = p.vazaoTabela;
+    assert.ok(/Catálogo/.test(t.fonte), `fonte fraca em ${p.id}`);
+    // a tabela publicada pode passar da faixa útil (o fabricante imprime além dela),
+    // mas tem de cobrir a faixa em que a ponta trabalha
+    assert.ok(t.pressoes[0] <= p.pressao[1], `${p.id}: tabela começa depois da faixa útil`);
+    assert.ok(t.pressoes[t.pressoes.length - 1] >= p.pressao[0], `${p.id}: tabela termina antes da faixa útil`);
+    P.tamanhosDaPonta(p).forEach(s => assert.ok(P.vazaoDaPonta(p, s, p.pressao[0]) > 0, `${p.id} ${s} sem vazão`));
+  });
+});
