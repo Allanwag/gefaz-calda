@@ -137,6 +137,43 @@ mostra a mesma conta com o volume da regulagem, e as duas têm botão para adota
 área. Em aplicação em faixa a conta usa o L/ha de lavoura, não o da faixa — senão a área sairia
 inflada na mesma proporção da economia de produto.
 
+## Regulagem no laudo e rastreabilidade
+
+O laudo deixou de ser só a receita. Ele agora carrega **a regulagem com que a calda foi aplicada** e
+**o registro de quem aplicou** — as duas coisas que um caderno de campo, uma certificação ou a defesa
+do responsável técnico numa autuação pedem depois, quando já não há como reconstituir.
+
+**A regulagem entra anexada e conferida.** Em `3 · Rastreabilidade` escolhe-se o que vai no laudo: a
+regulagem atual da aba Pontas, uma das salvas, ou nenhuma. O laudo então mostra ponta, tamanho ISO e
+cor, ângulo, classe de gota, pressão, vazão por bico e do conjunto, velocidade, arranjo (bicos e
+espaçamento, ou faixa e entrelinha), altura, rendimento, a condição do ar registrada (Delta T, vento,
+bulbo úmido, ponto de orvalho) e a calibração a campo, se houver — com as fórmulas que produziram
+cada número.
+
+A conferência que justifica tudo isso: **o volume que a regulagem entrega é comparado com o volume
+para o qual as doses foram calculadas.** Acima de 5 % de desvio vira restrição, acima de 15 % vira
+alerta crítico, porque o erro de volume é erro de dose na mesma proporção — a calda montada para 300
+L/ha aplicada por uma barra que entrega 250 põe 20 % a mais de produto em cada hectare. Em aplicação
+em faixa a comparação usa o L/ha de lavoura, não o da faixa. Sem regulagem anexada o laudo diz
+isso na cara: registra a receita, mas não prova com que ponta, pressão e velocidade ela foi aplicada.
+
+**O registro de campo** tem talhão (da lista importada do PVGest/Gefaz360, que ao ser escolhido já
+traz a área), trator/pulverizador, operador, responsável técnico e CREA, número do receituário e
+horário de início e término. Máquina, operador e RT voltam sozinhos na próxima aplicação; talhão,
+receituário e horário ficam em branco de propósito, porque são de cada aplicação. Cada produto ganhou
+campo de **lote** — é o lote que liga a embalagem ao que foi aplicado, e por ele que se faz recall,
+se investiga fitotoxidez e se responde a resíduo acima do LMR. Campo exigido em branco e produto sem
+lote viram pendência apontada nominalmente, sem travar o laudo.
+
+**Código de conferência.** Cada laudo sai com um código (`GC-XXXXXXX`), um hash FNV-1a de 32 bits
+sobre a versão canônica do registro: data, fazenda, talhão, cultura, alvo, equipamento, volume, área,
+água, máquina, operador, RT, receituário, janela de horário, cada produto com dose e lote, a
+regulagem, a condição do ar e o veredito. Mudou qualquer um desses, muda o código. O texto canônico
+vai no próprio laudo, então o código é recalculável por quem recebe (`GCEngine.codigoDe(texto)`), e o
+código também entra no checklist pré-saída e no histórico. **Não é assinatura digital**: prova que
+dois registros são o mesmo, não quem os emitiu — por isso o laudo impresso traz linhas de assinatura
+do operador e do responsável técnico.
+
 ## Rodar localmente
 
 ```powershell

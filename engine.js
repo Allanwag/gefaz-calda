@@ -12,9 +12,11 @@
 })(typeof self !== 'undefined' ? self : this, function (KB) {
   'use strict';
 
+  const VERSAO = '1.1.0';
   const SEV = { alta: 3, media: 2, baixa: 1, info: 0 };
   const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
   const uniq = a => [...new Set(a)];
+  const fmtn = v => (v == null || v === '' ? '?' : String(Math.round((+v || 0) * 100) / 100).replace('.', ','));
   const round = (v, d = 2) => Math.round((+v || 0) * Math.pow(10, d)) / Math.pow(10, d);
 
   // ── Formulações: código → passo de adição (Embrapa, Documentos 437, 2021) ──
@@ -335,8 +337,107 @@
     c.push('Condições climáticas: T < 30 °C, UR > 55 %, vento 3–15 km/h (ΔT 2–8)');
     if (opts.equipamento === 'drone') c.push('Modelo do drone confirmado; restrição UBV verificada no rótulo');
     if (res.alertas.some(a => a.tipo === 'legal')) c.push('Receituário agronômico emitido com a mistura e suas incompatibilidades (IN 40/2018)');
+    if (res.regulagem) {
+      const g = res.regulagem;
+      c.push(`Ponta ${g.ponta ? g.ponta.marca + ' ' + g.ponta.modelo + (g.iso ? ' ' + g.iso : '') : 'selecionada'} instalada em todos os bicos, sem mistura de modelos nem de desgastes`);
+      c.push(`Pressão ${fmtn(g.pressao)} bar e velocidade ${fmtn(g.velocidade)} km/h conferidas no manômetro e no relógio (volume alvo ${fmtn(g.volumeDosado)} L/ha)`);
+      if (g.clima && g.clima.deltaT != null) c.push(`Delta T ${fmtn(g.clima.deltaT)} e vento ${fmtn(g.clima.vento)} km/h medidos no talhão, não na sede`);
+    }
+    if (res.rastreio) c.push(`Talhão, operador, máquina, lotes e horário anotados no caderno de campo (laudo ${res.rastreio.codigo})`);
     c.push('Custo da aplicação calculado e registrado');
     return c;
+  }
+
+  // ── Regulagem anexada ao laudo ──
+  // A dose por hectare só vale se a barra entregar o volume de calda para o qual
+  // ela foi calculada. A regulagem da aba Pontas entra no laudo e é conferida
+  // contra o volume da calda: o desvio entre os dois é erro de dose na lavoura.
+  function conferirRegulagem(opts, alertas) {
+    const g = opts.regulagem;
+    if (!g) {
+      alertas.push({ tipo: 'operacional', severidade: 'baixa', titulo: 'Laudo sem regulagem anexada', detalhe: 'A dose por hectare depende do volume de calda que a barra realmente entrega. Sem a regulagem, o laudo registra a receita mas não prova com que ponta, pressão e velocidade ela foi aplicada.', conduta: 'Calcular a regulagem na aba Pontas e anexá-la ao laudo antes de imprimir.', produtos: [], confianca: 1, fonte: 'ISO 10625; ASABE S572.1' });
+      return null;
+    }
+    const vol = +opts.volumeHa || 0;
+    const entregue = g.modo === 'faixa' ? +g.volumeLavoura : +g.volumeAplicado;
+    const desvio = vol && entregue ? round((entregue - vol) / vol * 100, 1) : null;
+    if (desvio != null && Math.abs(desvio) > 5) {
+      const grave = Math.abs(desvio) > 15;
+      alertas.push({
+        tipo: 'operacional', severidade: grave ? 'alta' : 'media',
+        titulo: `Regulagem entrega ${round(entregue, 0)} L/ha e as doses foram calculadas para ${vol} L/ha`,
+        detalhe: `Desvio de ${desvio > 0 ? '+' : ''}${desvio} %${g.modo === 'faixa' ? ' (L/ha de lavoura, já descontada a fração tratada)' : ''}. O produto por hectare sai ${desvio > 0 ? 'diluído' : 'concentrado'} na mesma proporção: a calda foi montada para um volume e a barra entrega outro.`,
+        conduta: desvio > 0 ? 'Baixar a pressão ou acelerar até bater o volume — ou refazer as doses para o volume real.' : 'Subir a pressão ou reduzir a velocidade — ou refazer as doses para o volume real.',
+        produtos: [], confianca: 0.95, fonte: 'Calibração — q = (V × v × e) ÷ 600'
+      });
+    }
+    (g.avisos || []).filter(a => a.nivel === 'alta' || a.nivel === 'media').forEach(a => {
+      alertas.push({ tipo: 'operacional', severidade: a.nivel, titulo: a.texto, detalhe: 'Ponto levantado pela regulagem anexada a este laudo.', conduta: a.conduta, produtos: [], confianca: 0.9, fonte: 'Regulagem (aba Pontas)' });
+    });
+    return {
+      modo: g.modo, volumeEntregue: entregue == null ? null : round(entregue, 1), volumeDosado: vol, desvio,
+      ponta: g.ponta, iso: g.iso, cor: g.cor, angulo: g.angulo, gota: g.gota,
+      pressao: g.pressao, pressaoCalculada: g.pressaoCalculada,
+      vazaoPorBico: g.vazaoPorBico, vazaoTotal: g.vazaoTotal,
+      velocidade: g.velocidade, nBicos: g.nBicos, espacamento: g.espacamento,
+      larguraTrabalho: g.larguraTrabalho, larguraFaixa: g.larguraFaixa, entreLinhas: g.entreLinhas,
+      fracaoTratada: g.fracaoTratada, economia: g.economia, protecao: g.protecao,
+      altura: g.ehCone ? null : (g.modo === 'faixa' ? g.alturaFaixa : g.altura), ehCone: g.ehCone,
+      rendimento: g.rendimento, ficha: g.ficha, clima: g.clima, formulas: g.formulas,
+      avisos: g.avisos || [], nome: g.nome || null, origem: g.origem || null, calibracao: g.calibracao || null
+    };
+  }
+
+  // ── Rastreabilidade ──
+  // O código de conferência é um hash FNV-1a de 32 bits da versão canônica do
+  // laudo. Ele casa o papel impresso com o registro em JSON: mexeu numa dose, num
+  // lote, na regulagem ou no talhão, o código muda. Não é assinatura digital —
+  // prova que dois registros são o mesmo, não quem os emitiu.
+  const CAMPOS_RASTREIO = [
+    { chave: 'talhao', rotulo: 'Talhão', exigido: true },
+    { chave: 'maquina', rotulo: 'Trator / pulverizador', exigido: true },
+    { chave: 'operador', rotulo: 'Operador (aplicador)', exigido: true },
+    { chave: 'responsavel', rotulo: 'Responsável técnico', exigido: true },
+    { chave: 'crea', rotulo: 'CREA / CFTA do RT', exigido: false },
+    { chave: 'receituario', rotulo: 'Receituário agronômico nº', exigido: false },
+    { chave: 'inicio', rotulo: 'Início da aplicação', exigido: true },
+    { chave: 'termino', rotulo: 'Término da aplicação', exigido: false }
+  ];
+  function hash32(str) {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+    return h >>> 0;
+  }
+  function codigoDe(canonico) { return 'GC-' + hash32(String(canonico)).toString(36).toUpperCase().padStart(7, '0'); }
+
+  function rastreio(res, opts) {
+    const d = opts.rastreio || {};
+    const campos = CAMPOS_RASTREIO.map(c => ({ chave: c.chave, rotulo: c.rotulo, exigido: c.exigido, valor: String(d[c.chave] == null ? '' : d[c.chave]).trim() }));
+    const pendencias = campos.filter(c => c.exigido && !c.valor).map(c => c.rotulo);
+    const lotes = res.itens.map(i => ({ id: i.id, nome: i.nome, lote: String(i.lote || '').trim() }));
+    const semLote = lotes.filter(l => !l.lote).map(l => l.nome);
+    const g = res.regulagem, a = opts.agua || {};
+    const v = k => (campos.find(c => c.chave === k) || {}).valor || '';
+    const linhas = [
+      'gefaz-calda/' + VERSAO + (opts.kbVersao ? ' kb/' + opts.kbVersao : ''),
+      'data=' + (res.data || ''),
+      'fazenda=' + String(d.fazenda || '').trim(),
+      'talhao=' + v('talhao'),
+      'cultura=' + (opts.cultura || ''),
+      'alvo=' + [opts.alvo, opts.doenca, opts.praga, opts.severidade, opts.estadio, opts.parte].map(x => String(x || '').trim()).filter(Boolean).join('/'),
+      'equipamento=' + (opts.equipamento || '') + ' volume=' + (opts.volumeHa || '') + ' area=' + (opts.area || '') + ' tanque=' + (opts.tanque || ''),
+      'agua=' + [a.ph, a.dureza, a.turbidez, a.fonte].map(x => x == null ? '' : String(x).trim()).join('/'),
+      'maquina=' + v('maquina') + ' operador=' + v('operador') + ' rt=' + v('responsavel') + '/' + v('crea') + ' receituario=' + v('receituario'),
+      'janela=' + v('inicio') + '>' + v('termino'),
+      ...res.itens.map(i => 'item=' + norm(i.nome) + '|' + (+i.dose || 0) + '|' + (i.unidade || '') + '|lote:' + String(i.lote || '').trim()).sort(),
+      'regulagem=' + (g ? [g.ponta ? g.ponta.id : 'sem-ponta', g.iso || '', g.angulo || '', g.pressao || '', g.vazaoPorBico || '', g.velocidade || '', g.volumeEntregue || '', g.gota ? g.gota.id : ''].join('|') : 'nenhuma'),
+      'clima=' + (g && g.clima && g.clima.deltaT != null ? [g.clima.temperatura, g.clima.umidade, g.clima.vento, g.clima.deltaT].join('/') : ''),
+      'veredito=' + res.status
+    ];
+    const canonico = linhas.join('\n');
+    if (pendencias.length) res.alertas.push({ tipo: 'operacional', severidade: 'baixa', titulo: 'Rastreabilidade incompleta: ' + pendencias.join(', '), detalhe: 'O caderno de campo, as certificações e a defesa do RT numa autuação pedem quem aplicou, com qual máquina, em qual talhão e quando.', conduta: 'Preencher os campos de rastreabilidade antes de imprimir o laudo.', produtos: [], confianca: 1, fonte: 'IN 40/2018; caderno de campo' });
+    if (semLote.length) res.alertas.push({ tipo: 'operacional', severidade: 'baixa', titulo: 'Sem lote registrado: ' + semLote.join(', '), detalhe: 'O lote liga a embalagem ao que foi aplicado — é por ele que se faz recall, se investiga fitotoxidez e se responde a resíduo acima do LMR.', conduta: 'Anotar o lote de cada embalagem aberta no momento da mistura.', produtos: [], confianca: 1, fonte: 'Rastreabilidade de insumos' });
+    return { codigo: codigoDe(canonico), canonico, campos, pendencias, completo: !pendencias.length, lotes, semLote, emitido: res.data || null, fazenda: String(d.fazenda || '').trim() };
   }
 
   // ── Matriz de pares ──
@@ -361,7 +462,7 @@
       if (ult.resultado === 'incompativel') return 'incompativel';
     }
     if (bloq.length) return 'incompativel';
-    if (alertas.some(a => SEV[a.severidade] === 2)) return 'restricoes';
+    if (alertas.some(a => SEV[a.severidade] >= 2)) return 'restricoes';
     if (itens.some(i => !i.conhecido) || itens.length >= 3) return 'testar';
     return 'compativel';
   }
@@ -369,7 +470,7 @@
   function analisar(itensBrutos, opts) {
     opts = opts || {};
     const itens = (itensBrutos || []).map(resolverItem);
-    if (!itens.length) return { status: 'vazio', itens, alertas: [], pares: [], ph: {}, ordem: [], jarTest: null, custo: null, tanque: null, checklist: [], registro: [], confianca: 0, score: 0 };
+    if (!itens.length) return { status: 'vazio', itens, alertas: [], pares: [], ph: {}, ordem: [], jarTest: null, custo: null, tanque: null, checklist: [], registro: [], regulagem: null, rastreio: null, confianca: 0, score: 0 };
     const alertasPares = [];
     regrasDePares(itens, opts, alertasPares);
     const alertas = mesclarPorRegra(alertasPares);
@@ -377,10 +478,12 @@
     analisarAgua(itens, opts, alertas);
     regrasDeConjunto(itens, opts, alertas);
     const registro = analisarRegistro(itens, opts, alertas);
+    const regulagem = conferirRegulagem(opts, alertas);
     alertas.sort((a, b) => SEV[b.severidade] - SEV[a.severidade]);
     const historico = (opts.historicoJar || []).filter(h => h.chave === chaveDoConjunto(itens));
     const status = statusGlobal(alertas, itens, historico);
-    const res = { status, itens, alertas, ph, registro, chave: chaveDoConjunto(itens) };
+    const res = { status, itens, alertas, ph, registro, regulagem, data: opts.data || null, chave: chaveDoConjunto(itens) };
+    res.rastreio = rastreio(res, opts);
     res.pares = matriz(itens, alertas);
     res.ordem = ordemDeAdicao(itens, opts);
     res.jarTest = jarTest(itens, opts, status);
@@ -401,5 +504,5 @@
     return { rotulo: rot[res.status], contagem: n, frase: `${rot[res.status]} · ${n.alta} crítico(s), ${n.media} restrição(ões), ${n.baixa} atenção · confiança ${Math.round(res.confianca * 100)} %` };
   }
 
-  return { analisar, resolverItem, resolverAtivos, dosePorHa, chaveDoConjunto, PASSO_FORMULACAO, PASSOS, norm, versao: '1.0.0' };
+  return { analisar, resolverItem, resolverAtivos, dosePorHa, chaveDoConjunto, PASSO_FORMULACAO, PASSOS, norm, versao: VERSAO, CAMPOS_RASTREIO, codigoDe };
 });

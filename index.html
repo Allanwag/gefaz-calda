@@ -61,7 +61,23 @@
     </div>
 
     <div class="card">
-      <div class="card-hd"><h2>3 · Observações</h2></div>
+      <div class="card-hd"><h2>3 · Rastreabilidade</h2><span class="hint">quem, onde, com quê e quando — vai no laudo</span></div>
+      <div class="grid2">
+        <label>Talhão<input id="fTalhao" list="dlTalhoes" placeholder="importe do PVGest/Gefaz360 ou digite"><datalist id="dlTalhoes"></datalist></label>
+        <label>Trator / pulverizador<input id="fMaquina" placeholder="ex.: MF 4275 + Jacto Arbus 2000"></label>
+        <label>Operador (aplicador)<input id="fOperador" placeholder="nome de quem aplica"></label>
+        <label>Responsável técnico<input id="fResponsavel" placeholder="engº agrônomo"></label>
+        <label>CREA / CFTA<input id="fCrea" placeholder="ex.: CREA-MG 000000/D"></label>
+        <label>Receituário agronômico nº<input id="fReceituario" placeholder="número do receituário"></label>
+        <label>Início da aplicação<input id="fInicio" type="datetime-local"></label>
+        <label>Término da aplicação<input id="fTermino" type="datetime-local"></label>
+        <label style="grid-column:1/-1">Regulagem anexada ao laudo<select id="fRegulagem"></select></label>
+      </div>
+      <p class="small muted" id="fRegNota"></p>
+    </div>
+
+    <div class="card">
+      <div class="card-hd"><h2>4 · Observações</h2></div>
       <textarea id="fObs" rows="2" placeholder="Estádio da cultura, modelo do drone, condições esperadas…"></textarea>
       <div class="row-btns sticky-actions">
         <button class="btn primary big" id="btnAnalisar">🧪 Analisar compatibilidade</button>

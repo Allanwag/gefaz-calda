@@ -112,3 +112,103 @@ test('produto desconhecido fica como não testado', () => {
   assert.ok(r.itens[0].conhecido === false);
   assert.ok(r.pares[0].status === 'nao-testado' || r.status === 'restricoes');
 });
+
+/* ═══════ regulagem no laudo e rastreabilidade ═══════ */
+const PT = require('../pontas.js');
+
+const regBase = () => PT.calcular({ modo: 'area', velocidade: 8, volumeHa: 150, espacamento: 0.5, nBicos: 40, ponta: 'tj-tt', iso: '04', angulo: 110 });
+const rastreioCheio = {
+  fazenda: 'Fazenda Santa Clara', talhao: 'Gleba 4', maquina: 'MF 4275 + Jacto Arbus 2000',
+  operador: 'João da Silva', responsavel: 'Maria Souza', crea: 'CREA-MG 123456/D',
+  receituario: 'RA-2026-0771', inicio: '2026-09-19T06:30', termino: '2026-09-19T10:10'
+};
+const itLote = (nome, dose, unidade, lote, extra) => Object.assign({ id: nome, nome, dose, unidade, lote }, extra || {});
+
+test('a regulagem entra no laudo com ponta, pressão e volume entregue', () => {
+  const g = regBase();
+  const r = E.analisar([it('Tebuconazol', 0.5, 'L/ha', { formulacao: 'EC' })], { volumeHa: 150, regulagem: g, data: 'fixa' });
+  assert.ok(r.regulagem, 'o laudo tem de carregar a regulagem');
+  assert.equal(r.regulagem.ponta.marca, 'TeeJet');
+  assert.equal(r.regulagem.volumeDosado, 150);
+  assert.ok(Math.abs(r.regulagem.volumeEntregue - 150) <= 150 * 0.05);
+  assert.ok(Math.abs(r.regulagem.desvio) <= 5, 'sem desvio quando o volume da calda é o da regulagem');
+  assert.ok(!r.alertas.some(a => /Regulagem entrega/.test(a.titulo)), 'volume batendo não gera alerta');
+  // o checklist passa a cobrar a ponta e a pressão que o laudo afirma
+  assert.ok(r.checklist.some(c => /TeeJet TT/.test(c)));
+  assert.ok(r.checklist.some(c => /Pressão .* bar e velocidade .* km\/h/.test(c)));
+});
+
+test('volume da regulagem diferente do volume da calda vira alerta de dose', () => {
+  const g = regBase(); // 150 L/ha
+  const r = E.analisar([it('Tebuconazol', 0.5, 'L/ha', { formulacao: 'EC' })], { volumeHa: 300, regulagem: g, data: 'fixa' });
+  const al = r.alertas.find(a => /Regulagem entrega/.test(a.titulo));
+  assert.ok(al, 'tem de acusar o descompasso');
+  assert.equal(al.severidade, 'alta'); // desvio de -50 %
+  assert.equal(al.tipo, 'operacional');
+  assert.ok(r.regulagem.desvio < -15);
+  assert.notEqual(r.status, 'compativel', 'laudo com volume errado não sai compatível');
+  // desvio pequeno é restrição, não crítico
+  const brando = E.analisar([it('Tebuconazol', 0.5, 'L/ha', { formulacao: 'EC' })], { volumeHa: 165, regulagem: g, data: 'fixa' });
+  assert.equal(brando.alertas.find(a => /Regulagem entrega/.test(a.titulo)).severidade, 'media');
+});
+
+test('em faixa o laudo confere o L/ha de lavoura, não o da faixa', () => {
+  const g = PT.calcular({ modo: 'faixa', velocidade: 5, volumeHa: 200, larguraFaixa: 1.6, bicosPorPassada: 4, entreLinhas: 3.6, ponta: 'tj-tf', iso: 'TF-2.5', protecao: true });
+  const r = E.analisar([it('Glifosato', 3, 'L/ha', { formulacao: 'SL' })], { volumeHa: g.volumeLavoura, regulagem: g, data: 'fixa' });
+  assert.equal(r.regulagem.modo, 'faixa');
+  assert.ok(Math.abs(r.regulagem.volumeEntregue - g.volumeLavoura) < 0.5);
+  assert.ok(r.regulagem.volumeEntregue < g.volumeAplicado, 'lavoura é menor que faixa');
+  assert.ok(!r.alertas.some(a => /Regulagem entrega/.test(a.titulo)));
+});
+
+test('laudo sem regulagem avisa que não prova como foi aplicado', () => {
+  const r = E.analisar([it('Tebuconazol', 0.5, 'L/ha', { formulacao: 'EC' })], { volumeHa: 150, data: 'fixa' });
+  assert.equal(r.regulagem, null);
+  assert.ok(r.alertas.some(a => a.titulo === 'Laudo sem regulagem anexada'));
+});
+
+test('condição do ar crítica da regulagem sobe para os alertas do laudo', () => {
+  const g = PT.calcular({ modo: 'area', velocidade: 8, volumeHa: 150, espacamento: 0.5, nBicos: 40, ponta: 'tj-tt', iso: '04', temperatura: 34, umidade: 25, vento: 4 });
+  const r = E.analisar([it('Tebuconazol', 0.5, 'L/ha', { formulacao: 'EC' })], { volumeHa: 150, regulagem: g, data: 'fixa' });
+  const al = r.alertas.find(a => /Delta T/.test(a.titulo));
+  assert.ok(al, 'o Delta T crítico tem de aparecer no laudo');
+  assert.equal(al.severidade, 'alta');
+  assert.equal(al.fonte, 'Regulagem (aba Pontas)');
+  assert.ok(r.checklist.some(c => /Delta T .* e vento .* medidos no talhão/.test(c)));
+});
+
+test('código de conferência muda com qualquer mudança no registro', () => {
+  const base = { volumeHa: 150, cultura: 'Café', regulagem: regBase(), rastreio: rastreioCheio, data: '19/09/2026 07:00', kbVersao: '1.0' };
+  const itens = [itLote('Tebuconazol', 0.5, 'L/ha', 'L-2026-88', { formulacao: 'EC' })];
+  const r = E.analisar(itens, base);
+  assert.match(r.rastreio.codigo, /^GC-[0-9A-Z]{7}$/);
+  assert.equal(r.rastreio.completo, true);
+  assert.deepEqual(r.rastreio.pendencias, []);
+  assert.equal(E.analisar(itens, base).rastreio.codigo, r.rastreio.codigo, 'mesmo registro, mesmo código');
+  const outraDose = E.analisar([itLote('Tebuconazol', 0.6, 'L/ha', 'L-2026-88', { formulacao: 'EC' })], base);
+  assert.notEqual(outraDose.rastreio.codigo, r.rastreio.codigo, 'mudou a dose, muda o código');
+  const outroLote = E.analisar([itLote('Tebuconazol', 0.5, 'L/ha', 'L-2026-99', { formulacao: 'EC' })], base);
+  assert.notEqual(outroLote.rastreio.codigo, r.rastreio.codigo, 'mudou o lote, muda o código');
+  const outroTalhao = E.analisar(itens, { ...base, rastreio: { ...rastreioCheio, talhao: 'Gleba 5' } });
+  assert.notEqual(outroTalhao.rastreio.codigo, r.rastreio.codigo, 'mudou o talhão, muda o código');
+  const outraPressao = E.analisar(itens, { ...base, regulagem: PT.calcular({ modo: 'area', velocidade: 6, volumeHa: 150, espacamento: 0.5, nBicos: 40, ponta: 'tj-tt', iso: '04', angulo: 110 }) });
+  assert.notEqual(outraPressao.rastreio.codigo, r.rastreio.codigo, 'mudou a regulagem, muda o código');
+  // o código é reproduzível a partir do texto canônico publicado no laudo
+  assert.equal(E.codigoDe(r.rastreio.canonico), r.rastreio.codigo);
+});
+
+test('campos exigidos em branco viram pendência e alerta, sem travar o laudo', () => {
+  const r = E.analisar([itLote('Tebuconazol', 0.5, 'L/ha', 'L-1', { formulacao: 'EC' })], { volumeHa: 150, regulagem: regBase(), rastreio: { talhao: 'Gleba 4' }, data: 'fixa' });
+  assert.equal(r.rastreio.completo, false);
+  assert.deepEqual(r.rastreio.pendencias, ['Trator / pulverizador', 'Operador (aplicador)', 'Responsável técnico', 'Início da aplicação']);
+  const al = r.alertas.find(a => /Rastreabilidade incompleta/.test(a.titulo));
+  assert.ok(al && al.severidade === 'baixa', 'falta de registro é apontada, não bloqueia');
+  assert.ok(r.checklist.some(c => c.includes(r.rastreio.codigo)));
+});
+
+test('produto sem lote é apontado nominalmente', () => {
+  const r = E.analisar([itLote('Tebuconazol', 0.5, 'L/ha', 'L-1', { formulacao: 'EC' }), it('Wetcit', 50, 'mL/100L')], { volumeHa: 150, rastreio: rastreioCheio, data: 'fixa' });
+  assert.deepEqual(r.rastreio.semLote, ['Wetcit']);
+  assert.ok(r.alertas.some(a => a.titulo === 'Sem lote registrado: Wetcit'));
+  assert.deepEqual(r.rastreio.lotes.find(l => l.nome === 'Tebuconazol').lote, 'L-1');
+});
