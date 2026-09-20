@@ -402,6 +402,17 @@ function registrarAplicacaoTalhoes(ctx, res) {
   });
 }
 function atualizarTalhoes() { renderTalhoes(); }
+/* Retrato do histórico dos talhões marcados até este laudo (tirado antes de registrar a análise atual).
+   Vai no laudo impresso e no JSON; não entra no código de conferência, que é só da calda e do registro de campo. */
+function historicoDosTalhoes(ctx) {
+  const atuais = calda.itens.map(i => norm(i.nome));
+  return splitTalhoes(ctx.rastreio.talhao).map(nome => {
+    const t = achaTalhao(nome), ap = ((t && t.aplicacoes) || []).map(a => ({ data: a.data, iso: a.iso, aplicada: !!a.aplicada, produtos: a.produtos, cultura: a.cultura, alvos: a.alvos, area: a.area, volumeHa: a.volumeHa, status: a.status, codigo: a.codigo }));
+    const aplicadas = ap.filter(a => a.aplicada);
+    const repete = [...new Set(aplicadas.slice(0, 3).flatMap(a => a.produtos.filter(p => atuais.includes(norm(p)))))];
+    return { nome: t ? t.nome : nome, cadastrado: !!t, area: t ? t.area || 0 : 0, cultura: t ? t.cultura || '' : '', total: ap.length, nAplicadas: aplicadas.length, ultimaAplicacao: aplicadas[0] || null, repete, registros: ap.slice(0, 8) };
+  });
+}
 function lerContexto() {
   return {
     rastreio: lerRastreio(),
@@ -476,6 +487,7 @@ function analisar(silencioso, registrarHistorico = true) {
   const opts = { ...ctx, regraFazenda: { acidificanteUltimo: !!DB.config.acidificanteUltimo }, custoOperacional: DB.config.custo, historicoJar: DB.jarTests, regulagem: regulagemDoLaudo(), kbVersao: KB.versao, data: agora() };
   resultado = E.analisar(calda.itens, opts);
   resultado.contexto = ctx; resultado.data = resultado.data || agora();
+  resultado.historicoTalhoes = historicoDosTalhoes(ctx);
   guardarPadroesRastreio();
   if (registrarHistorico) {
     DB.historico.unshift({ id: uid(), data: resultado.data, status: resultado.status, resumo: resultado.resumo.frase, codigo: resultado.rastreio ? resultado.rastreio.codigo : null, talhao: ctx.rastreio.talhao, itens: calda.itens.map(i => i.nome), calda: JSON.parse(JSON.stringify({ itens: calda.itens, ...ctx })) });
@@ -488,7 +500,7 @@ function analisar(silencioso, registrarHistorico = true) {
   if (!silencioso) navTo('resultado');
   return resultado;
 }
-function resumoExport() { if (!resultado) return null; const r = resultado; return { status: r.status, resumo: r.resumo, score: r.score, regulagem: r.regulagem, rastreio: r.rastreio, confianca: r.confianca, alertas: r.alertas, ph: r.ph, ordem: r.ordem.filter(p => p.itens.length || p.passo <= 2 || p.passo >= 11), custo: r.custo, tanque: r.tanque, checklist: r.checklist, registro: r.registro, jarTest: r.jarTest, data: r.data, contexto: r.contexto, versao: E.versao }; }
+function resumoExport() { if (!resultado) return null; const r = resultado; return { status: r.status, resumo: r.resumo, score: r.score, regulagem: r.regulagem, rastreio: r.rastreio, confianca: r.confianca, alertas: r.alertas, ph: r.ph, ordem: r.ordem.filter(p => p.itens.length || p.passo <= 2 || p.passo >= 11), custo: r.custo, tanque: r.tanque, checklist: r.checklist, registro: r.registro, jarTest: r.jarTest, data: r.data, contexto: r.contexto, historicoTalhoes: r.historicoTalhoes || [], versao: E.versao }; }
 
 const TIPO_LABEL = { legal: 'Registro / legal', quimica: 'Química', fisica: 'Física', agronomica: 'Agronômica', biologica: 'Biológica', ph: 'pH', agua: 'Água', resistencia: 'Resistência (MoA)', operacional: 'Operacional' };
 const STATUS_LABEL = { compativel: 'Compatível', restricoes: 'Compatível com restrições', incompativel: 'Incompatível', testar: 'Não testado — jar test', 'nao-testado': 'Não testado', atencao: 'Atenção' };
@@ -518,6 +530,7 @@ function renderResultado() {
   ${r.tanque ? `<div class="card"><div class="card-hd"><h2>Ficha de tanque</h2><span class="hint">${r.tanque.tanque} L · ${fmt(r.tanque.haPorCarga, 2)} ha por carga</span></div><div class="kpis"><div class="kpi"><b>${fmt(r.tanque.volumeTotal)}</b><small>L de calda</small></div><div class="kpi"><b>${r.tanque.cargasCheias}</b><small>cargas cheias</small></div><div class="kpi"><b>${fmt(r.tanque.ultimaCarga)}</b><small>L na última carga</small></div></div><table class="tb"><thead><tr><th>Produto (ordem)</th><th class="num">Por carga cheia</th><th class="num">Última carga</th><th class="num">Total</th></tr></thead><tbody>${r.tanque.porCargaCheia.map((i, k) => `<tr><td>${k + 1}. ${esc(i.nome)}</td><td class="num">${fmt(i.qtd, 3)} ${i.unidade}</td><td class="num">${r.tanque.ultimaCargaItens[k] ? fmt(r.tanque.ultimaCargaItens[k].qtd, 3) + ' ' + i.unidade : '—'}</td><td class="num">${fmt(r.tanque.totalPorProduto[k].qtd, 2)} ${i.unidade}</td></tr>`).join('')}</tbody></table></div>` : ''}
   <div class="card"><div class="card-hd"><h2>Registro MAPA (Agrofit)</h2></div><table class="tb"><thead><tr><th>Produto</th><th>${esc(ctx.cultura)}</th><th>Alvo</th></tr></thead><tbody>${r.registro.map(g => `<tr><td>${esc(g.nome)}</td><td>${g.registrado === null ? '<span class="tag">não verificado</span>' : g.registrado ? '<span class="tag reg">registrado</span>' : '<span class="tag noreg">sem registro</span>'}</td><td>${g.alvoOk === null ? (g.alvos.length ? `<small>${esc(g.alvos.slice(0, 4).join('; '))}${g.alvos.length > 4 ? '…' : ''}</small>` : '—') : g.alvoOk ? '<span class="tag reg">alvo na bula</span>' : '<span class="tag noreg">alvo não consta</span>'}</td></tr>`).join('')}</tbody></table></div>
   ${blocoRegulagem(r)}
+  ${blocoTalhao(r)}
   ${blocoRastreio(r)}
   <div class="card"><div class="card-hd"><h2>Checklist pré-saída</h2></div><ul class="check-list">${r.checklist.map(c => `<li><input type="checkbox"><span>${esc(c)}</span></li>`).join('')}</ul></div>
   ${ctx.obs ? `<div class="card"><div class="card-hd"><h2>Observações</h2></div><p>${esc(ctx.obs)}</p></div>` : ''}
@@ -557,6 +570,21 @@ function blocoRegulagem(r) {
   </div>`;
 }
 
+function blocoTalhao(r) {
+  const tl = r.historicoTalhoes || []; if (!tl.length) return '';
+  const rotulo = { compativel: 'compatível', restricoes: 'com restrições', incompativel: 'incompatível', testar: 'testar' };
+  return `<div class="card">
+    <div class="card-hd"><h2>Histórico do talhão</h2><span class="hint">até a emissão deste laudo · aplicadas = marcadas como feitas</span></div>
+    ${tl.map(t => {
+      const u = t.ultimaAplicacao, dias = u ? diasDesde(u.iso) : null;
+      const cab = `${t.area ? fmt(t.area, 2) + ' ha' : 'sem área cadastrada'}${t.cultura ? ' · ' + esc(t.cultura) : ''} · ${t.nAplicadas} aplicada(s) · ${t.total - t.nAplicadas} só análise`;
+      return `<div class="sub-hd">${esc(t.nome)} <span class="hint">${cab}</span></div>
+      ${u ? `<div class="small">Última aplicação: <b>${esc(soData(u))}</b>${dias != null ? ' (há ' + dias + ' dia(s))' : ''} — ${esc(u.produtos.join(' + '))}</div>` : `<div class="small muted">${t.total ? 'Nenhuma aplicação marcada como feita ainda.' : 'Talhão sem registros anteriores.'}</div>`}
+      ${t.repete.length ? `<div class="al media"><div class="t"><span>Produto repetido em aplicação recente</span></div><div class="d">${esc(t.repete.join(', '))} já entrou nas últimas aplicações deste talhão.</div><div class="c">→ Confira intervalo de segurança, número máximo de aplicações da bula e rotação de modo de ação.</div></div>` : ''}
+      ${t.registros.length ? `<table class="tb"><thead><tr><th>Data</th><th>Produtos</th><th>Alvos</th><th class="num">ha</th><th>Situação</th></tr></thead><tbody>${t.registros.map(a => `<tr><td>${esc(a.data)}</td><td>${esc(a.produtos.join(' + '))}</td><td>${esc(a.alvos || '—')}</td><td class="num">${a.area ? fmt(a.area, 1) : '—'}</td><td>${a.aplicada ? '<span class="tag reg">aplicada</span>' : '<span class="tag">só análise</span>'} <small>${esc(rotulo[a.status] || a.status || '')}</small></td></tr>`).join('')}</tbody></table>${t.total > t.registros.length ? `<div class="small muted">+ ${t.total - t.registros.length} registro(s) mais antigos no app.</div>` : ''}` : ''}`;
+    }).join('')}
+  </div>`;
+}
 function blocoRastreio(r) {
   const t = r.rastreio; if (!t) return '';
   const campo = k => (t.campos.find(c => c.chave === k) || {}).valor || '';
