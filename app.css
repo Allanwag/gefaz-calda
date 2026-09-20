@@ -150,9 +150,11 @@ label.check input[type=checkbox]{width:auto;flex:0 0 auto;margin:0}
 .alvos-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px 14px;margin-top:6px}
 .alvo-grupo>b{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:.85rem;margin-bottom:3px}
 .alvo-grupo>b small{font-weight:400;color:var(--ink2)}
-.alvo-in{display:flex;gap:6px}
-.alvo-in input{flex:1;min-width:0}
-.alvo-chips{margin:6px 0 0;min-height:0}
+.alvo-rows{display:flex;flex-direction:column;gap:5px}
+.alvo-row{display:flex;gap:6px}
+.alvo-row input{flex:1;min-width:0}
+.alvo-row input[data-i]{background:var(--g100);border-color:#a5d6a7}
+.alvo-mais{margin-top:6px}
 .chip.sel{display:inline-flex;align-items:center;gap:6px;background:var(--g100);border-color:#a5d6a7;cursor:default;max-width:100%}
 .chip.sel button{border:0;background:none;padding:0 2px;font-size:1rem;line-height:1;cursor:pointer;color:var(--ink2)}
 .chip.sel button:hover{color:var(--red)}

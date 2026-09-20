@@ -98,19 +98,49 @@ const CATS_ALVO = E.CATEGORIAS_ALVO;
 let alvosSel = { doenca: [], inseto: [], praga: [], daninha: [] };
 let alvosCat = { doenca: [], inseto: [], praga: [], daninha: [] };
 let catAlvoAgro = null;
+const MAX_CAMPOS_ALVO = 30;
+let alvosVazios = { doenca: 1, inseto: 1, praga: 1, daninha: 1 };
 function montarAlvos() {
   $('#alvosGrid').innerHTML = CATS_ALVO.map(c => `<div class="alvo-grupo" data-cat="${c.id}">
       <b><span>${c.icone} ${esc(c.nome)}</span><small id="n-${c.id}"></small></b>
-      <div class="alvo-in"><input id="in-${c.id}" list="dl-${c.id}" placeholder="${esc(c.dica)}" autocomplete="off" aria-label="${esc(c.nome)}"><button type="button" class="btn sm" data-add="${c.id}" title="Adicionar" aria-label="Adicionar ${esc(c.nome)}">＋</button></div>
+      <div class="alvo-rows" id="rows-${c.id}"></div>
       <datalist id="dl-${c.id}"></datalist>
-      <div class="chips alvo-chips" id="ch-${c.id}"></div></div>`).join('');
-  CATS_ALVO.forEach(c => {
-    const inp = $('#in-' + c.id);
-    const add = livre => { const v = inp.value.trim(); if (!v) return; if (adicionarAlvo(c.id, v, livre)) inp.value = ''; };
-    inp.onchange = () => add(false);
-    inp.onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); add(true); } };
-    $('[data-add="' + c.id + '"]').onclick = () => add(true);
-  });
+      <button type="button" class="btn sm ghost alvo-mais" data-mais="${c.id}">＋ Adicionar campo</button></div>`).join('');
+  const grid = $('#alvosGrid');
+  grid.onclick = ev => {
+    const b = ev.target.closest('button'); if (!b) return;
+    if (b.dataset.mais) { const c = b.dataset.mais; alvosVazios[c] = Math.min(MAX_CAMPOS_ALVO, alvosVazios[c] + 1); renderAlvos(c); return; }
+    if (b.dataset.rm) { const [c, i] = b.dataset.rm.split(':'); alvosSel[c].splice(+i, 1); renderAlvos(c); return; }
+    if (b.dataset.rmv) { const c = b.dataset.rmv; alvosVazios[c] = Math.max(1, alvosVazios[c] - 1); renderAlvos(c); return; }
+    if (b.dataset.ok) { const c = b.dataset.ok, inp = b.previousElementSibling; confirmarVazio(c, inp, true); }
+  };
+  grid.onchange = ev => {
+    const inp = ev.target; if (inp.tagName !== 'INPUT') return;
+    const c = inp.dataset.cat; if (!c) return;
+    if (inp.dataset.i != null) editarAlvo(c, +inp.dataset.i, inp);
+    else confirmarVazio(c, inp, false);
+  };
+  grid.onkeydown = ev => {
+    if (ev.key !== 'Enter' || ev.target.tagName !== 'INPUT') return;
+    ev.preventDefault();
+    const inp = ev.target, c = inp.dataset.cat;
+    if (inp.dataset.i != null) inp.blur(); else confirmarVazio(c, inp, true);
+  };
+}
+/* campo em branco: só entra o que está na lista da cultura (ou qualquer texto com Enter/＋) */
+function confirmarVazio(cat, inp, livre) {
+  const v = inp.value.trim(); if (!v) return;
+  if (!adicionarAlvo(cat, v, livre)) return;
+  alvosVazios[cat] = Math.max(1, alvosVazios[cat] - 1);
+  renderAlvos(cat, true);
+}
+/* campo já preenchido: troca o nome sem redesenhar (não perde o foco de quem clicou em outro botão) */
+function editarAlvo(cat, i, inp) {
+  const v = inp.value.trim();
+  if (!v) { alvosSel[cat].splice(i, 1); renderAlvos(cat); return; }
+  const nome = acharNoCatalogo(cat, v) || v;
+  if (alvosSel[cat].some((x, j) => j !== i && norm(x) === norm(nome))) { alvosSel[cat].splice(i, 1); renderAlvos(cat); return; }
+  alvosSel[cat][i] = nome; inp.value = nome; atualizarContagemAlvos();
 }
 function acharNoCatalogo(cat, texto) {
   const n = norm(texto), lista = alvosCat[cat] || [];
@@ -130,16 +160,26 @@ function catDoAlvo(nome) {
   if (AGRO && catAlvoAgro) { const i = AGRO.alvos.findIndex(a => E.alvoCombina(nome, a)); if (i >= 0) return catAlvoAgro[i]; }
   return E.categoriaPorNome(nome) || 'praga';
 }
-function renderAlvos() {
+function atualizarContagemAlvos() {
   CATS_ALVO.forEach(c => {
-    $('#ch-' + c.id).innerHTML = alvosSel[c.id].map((n, i) => `<span class="chip sel" title="${esc(n)}">${esc(n)}<button type="button" data-rm="${c.id}:${i}" aria-label="Remover ${esc(n)}">×</button></span>`).join('');
-    const n = alvosCat[c.id].length;
-    $('#n-' + c.id).textContent = n ? n + ' na cultura' : '';
+    const n = alvosCat[c.id].length, k = alvosSel[c.id].length;
+    $('#n-' + c.id).textContent = [k ? k + (k > 1 ? ' marcados' : ' marcado') : '', n ? n + ' na cultura' : ''].filter(Boolean).join(' · ');
   });
-  $$('#alvosGrid [data-rm]').forEach(b => b.onclick = () => { const [c, i] = b.dataset.rm.split(':'); alvosSel[c].splice(+i, 1); renderAlvos(); });
+}
+/* um campo por alvo marcado + campos em branco (botão "Adicionar campo"); só = grupo a redesenhar, foco = focar o 1º campo em branco */
+function renderAlvos(so, foco) {
+  CATS_ALVO.filter(c => !so || c.id === so).forEach(c => {
+    const cheios = alvosSel[c.id].map((n, i) => `<div class="alvo-row"><input list="dl-${c.id}" value="${esc(n)}" data-cat="${c.id}" data-i="${i}" autocomplete="off" aria-label="${esc(c.nome)} ${i + 1}"><button type="button" class="btn sm ghost" data-rm="${c.id}:${i}" title="Remover" aria-label="Remover ${esc(n)}">×</button></div>`);
+    const vazios = Array.from({ length: alvosVazios[c.id] }, (_, j) => `<div class="alvo-row"><input list="dl-${c.id}" data-cat="${c.id}" placeholder="${esc(c.dica)}" autocomplete="off" aria-label="${esc(c.nome)} (novo)"><button type="button" class="btn sm" data-ok="${c.id}" title="Adicionar" aria-label="Adicionar ${esc(c.nome)}">＋</button>${alvosVazios[c.id] > 1 ? `<button type="button" class="btn sm ghost" data-rmv="${c.id}" title="Tirar este campo" aria-label="Tirar campo em branco">×</button>` : ''}</div>`);
+    $('#rows-' + c.id).innerHTML = cheios.concat(vazios).join('');
+    $('[data-mais="' + c.id + '"]').disabled = alvosVazios[c.id] >= MAX_CAMPOS_ALVO;
+    if (foco) { const v = $('#rows-' + c.id + ' input:not([data-i])'); if (v) v.focus(); }
+  });
+  atualizarContagemAlvos();
 }
 function definirAlvos(sel) {
   alvosSel = { doenca: [], inseto: [], praga: [], daninha: [] };
+  alvosVazios = { doenca: 1, inseto: 1, praga: 1, daninha: 1 };
   const ja = new Set();
   CATS_ALVO.forEach(c => ((sel || {})[c.id] || []).forEach(n => { if (String(n).trim() && !ja.has(c.id + norm(n))) { ja.add(c.id + norm(n)); alvosSel[c.id].push(String(n).trim()); } }));
   renderAlvos();
