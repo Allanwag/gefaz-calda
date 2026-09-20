@@ -394,7 +394,7 @@ function registrarAplicacaoTalhoes(ctx, res) {
     let t = achaTalhao(nome);
     if (!t) { t = { nome, area: nomes.length === 1 ? ctx.area : 0, cultura: ctx.cultura, fonte: 'manual', aplicacoes: [] }; DB.talhoes.push(t); }
     t.aplicacoes = t.aplicacoes || [];
-    const reg = { data: res.data, iso: new Date().toISOString(), codigo, status: res.status, aplicada: !!ctx.rastreio.termino, chave, cultura: ctx.cultura, area: t.area || (nomes.length === 1 ? ctx.area : 0), volumeHa: ctx.volumeHa, produtos: calda.itens.map(i => i.nome), alvos: textoAlvos(ctx.alvos, true).join(', '), resumo: res.resumo.frase };
+    const reg = { data: res.data, iso: new Date().toISOString(), codigo, status: res.status, aplicada: !!ctx.rastreio.termino, chave, cultura: ctx.cultura, area: t.area || (nomes.length === 1 ? ctx.area : 0), volumeHa: ctx.volumeHa, produtos: calda.itens.map(i => i.nome), perfis: (res.itens || []).map(perfilProduto), alvos: textoAlvos(ctx.alvos, true).join(', '), resumo: res.resumo.frase };
     const ja = t.aplicacoes.find(a => a.chave === chave && !a.aplicada);
     if (ja) Object.assign(ja, reg);
     else if (!t.aplicacoes.some(a => a.chave === chave && a.aplicada && a.codigo === codigo)) t.aplicacoes.unshift({ id: uid(), ...reg });
@@ -402,15 +402,48 @@ function registrarAplicacaoTalhoes(ctx, res) {
   });
 }
 function atualizarTalhoes() { renderTalhoes(); }
+/* Perfil do produto para comparar com aplicações passadas: ingredientes ativos, códigos de modo de ação
+   (FRAC/IRAC/HRAC, do KB) e grupos químicos (KB ou AGROFIT, para quando o KB não tem o código). */
+const SEM_DEFESA = ['Adjuvante', 'Fertilizante Foliar'];
+function perfilProduto(i) {
+  const res = i.ativosResolvidos || [], ativos = res.map(a => a.nome), grupos = res.map(a => a.grupo).filter(Boolean);
+  (i.ingredientes || []).forEach(x => {
+    const m = String(x).match(/^(.*?)\s*(?:\(([^()]*)\))?\s*$/), nome = (m[1] || '').trim(), grupo = (m[2] || '').trim();
+    if (nome && !ativos.some(a => norm(a).includes(norm(nome)) || norm(nome).includes(norm(a)))) ativos.push(nome);
+    if (grupo) grupos.push(grupo);
+  });
+  const unicos = arr => { const v = new Set(); return arr.filter(x => { const k = norm(x); return k && !v.has(k) && v.add(k); }); };
+  return { nome: i.nome, defensivo: !SEM_DEFESA.includes(i.classe) && !(i.tags || []).includes('condicionador'), ativos: unicos(ativos), moa: unicos(i.moa || []), grupos: unicos(grupos) };
+}
+/* O que a calda de hoje repete das últimas 3 aplicações do talhão: produto, ingrediente ativo, modo de ação
+   e (só onde falta o código de MoA) grupo químico. Adjuvantes e foliares ficam de fora. */
+function repeticoesNoTalhao(atuais, aplicadas) {
+  const tipos = [['produto', p => [p.nome]], ['ativo', p => p.ativos], ['moa', p => p.moa], ['grupo', p => (p.moa.length ? [] : p.grupos)]];
+  const uniq = a => [...new Set(a)], out = [];
+  aplicadas.slice(0, 3).forEach(a => {
+    const prev = (a.perfis || a.produtos.map(n => ({ nome: n, defensivo: true, ativos: [], moa: [], grupos: [] }))).filter(p => p.defensivo !== false);
+    const linhas = [];
+    tipos.forEach(([tipo, get]) => {
+      const m = {};
+      atuais.filter(p => p.defensivo).forEach(p => get(p).forEach(v => { (m[norm(v)] = m[norm(v)] || { valor: v, atual: [], anterior: [] }).atual.push(p.nome); }));
+      prev.forEach(p => get(p).forEach(v => { const e = m[norm(v)]; if (e) e.anterior.push(p.nome); }));
+      Object.values(m).filter(e => e.anterior.length).forEach(e => linhas.push({ tipo, valor: e.valor, atual: uniq(e.atual), anterior: uniq(e.anterior), data: soData(a), iso: a.iso }));
+    });
+    const iguais = new Set(linhas.filter(l => l.tipo === 'produto').map(l => norm(l.valor)));
+    // produto idêntico já implica o mesmo ativo e o mesmo modo de ação: não repetir a linha
+    out.push(...linhas.filter(l => l.tipo === 'produto' || !(l.atual.every(n => iguais.has(norm(n))) && l.anterior.every(n => iguais.has(norm(n))))));
+  });
+  return out;
+}
 /* Retrato do histórico dos talhões marcados até este laudo (tirado antes de registrar a análise atual).
    Vai no laudo impresso e no JSON; não entra no código de conferência, que é só da calda e do registro de campo. */
-function historicoDosTalhoes(ctx) {
-  const atuais = calda.itens.map(i => norm(i.nome));
+function historicoDosTalhoes(ctx, res) {
+  const atuais = (res.itens || []).map(perfilProduto);
   return splitTalhoes(ctx.rastreio.talhao).map(nome => {
-    const t = achaTalhao(nome), ap = ((t && t.aplicacoes) || []).map(a => ({ data: a.data, iso: a.iso, aplicada: !!a.aplicada, produtos: a.produtos, cultura: a.cultura, alvos: a.alvos, area: a.area, volumeHa: a.volumeHa, status: a.status, codigo: a.codigo }));
-    const aplicadas = ap.filter(a => a.aplicada);
-    const repete = [...new Set(aplicadas.slice(0, 3).flatMap(a => a.produtos.filter(p => atuais.includes(norm(p)))))];
-    return { nome: t ? t.nome : nome, cadastrado: !!t, area: t ? t.area || 0 : 0, cultura: t ? t.cultura || '' : '', total: ap.length, nAplicadas: aplicadas.length, ultimaAplicacao: aplicadas[0] || null, repete, registros: ap.slice(0, 8) };
+    const t = achaTalhao(nome), tudo = (t && t.aplicacoes) || [];
+    const ap = tudo.map(a => ({ data: a.data, iso: a.iso, aplicada: !!a.aplicada, produtos: a.produtos, cultura: a.cultura, alvos: a.alvos, area: a.area, volumeHa: a.volumeHa, status: a.status, codigo: a.codigo }));
+    const aplicadas = tudo.filter(a => a.aplicada);
+    return { nome: t ? t.nome : nome, cadastrado: !!t, area: t ? t.area || 0 : 0, cultura: t ? t.cultura || '' : '', total: ap.length, nAplicadas: aplicadas.length, ultimaAplicacao: ap.find(a => a.aplicada) || null, repeticoes: repeticoesNoTalhao(atuais, aplicadas), registros: ap.slice(0, 8) };
   });
 }
 function lerContexto() {
@@ -487,7 +520,7 @@ function analisar(silencioso, registrarHistorico = true) {
   const opts = { ...ctx, regraFazenda: { acidificanteUltimo: !!DB.config.acidificanteUltimo }, custoOperacional: DB.config.custo, historicoJar: DB.jarTests, regulagem: regulagemDoLaudo(), kbVersao: KB.versao, data: agora() };
   resultado = E.analisar(calda.itens, opts);
   resultado.contexto = ctx; resultado.data = resultado.data || agora();
-  resultado.historicoTalhoes = historicoDosTalhoes(ctx);
+  resultado.historicoTalhoes = historicoDosTalhoes(ctx, resultado);
   guardarPadroesRastreio();
   if (registrarHistorico) {
     DB.historico.unshift({ id: uid(), data: resultado.data, status: resultado.status, resumo: resultado.resumo.frase, codigo: resultado.rastreio ? resultado.rastreio.codigo : null, talhao: ctx.rastreio.talhao, itens: calda.itens.map(i => i.nome), calda: JSON.parse(JSON.stringify({ itens: calda.itens, ...ctx })) });
@@ -580,7 +613,9 @@ function blocoTalhao(r) {
       const cab = `${t.area ? fmt(t.area, 2) + ' ha' : 'sem área cadastrada'}${t.cultura ? ' · ' + esc(t.cultura) : ''} · ${t.nAplicadas} aplicada(s) · ${t.total - t.nAplicadas} só análise`;
       return `<div class="sub-hd">${esc(t.nome)} <span class="hint">${cab}</span></div>
       ${u ? `<div class="small">Última aplicação: <b>${esc(soData(u))}</b>${dias != null ? ' (há ' + dias + ' dia(s))' : ''} — ${esc(u.produtos.join(' + '))}</div>` : `<div class="small muted">${t.total ? 'Nenhuma aplicação marcada como feita ainda.' : 'Talhão sem registros anteriores.'}</div>`}
-      ${t.repete.length ? `<div class="al media"><div class="t"><span>Produto repetido em aplicação recente</span></div><div class="d">${esc(t.repete.join(', '))} já entrou nas últimas aplicações deste talhão.</div><div class="c">→ Confira intervalo de segurança, número máximo de aplicações da bula e rotação de modo de ação.</div></div>` : ''}
+      ${(t.repeticoes || []).length ? `<div class="al media"><div class="t"><span>Repetido em aplicação recente deste talhão</span><span class="sev media">${t.repeticoes.length}</span></div>
+        ${t.repeticoes.map(l => `<div class="d"><b>${{ produto: 'Mesmo produto', ativo: 'Mesmo ingrediente ativo', moa: 'Mesmo modo de ação', grupo: 'Mesmo grupo químico' }[l.tipo]}: ${esc(l.valor)}</b> — ${esc(l.atual.join(', '))} agora × ${esc(l.anterior.join(', '))} em ${esc(l.data)}</div>`).join('')}
+        <div class="c">→ Alterne modos de ação (FRAC/IRAC/HRAC) entre aplicações, confira o intervalo de segurança e o número máximo de aplicações por ciclo na bula.</div><div class="f">Comparação com as últimas 3 aplicações marcadas como feitas · adjuvantes e foliares não entram · grupo químico só quando falta o código de modo de ação</div></div>` : ''}
       ${t.registros.length ? `<table class="tb"><thead><tr><th>Data</th><th>Produtos</th><th>Alvos</th><th class="num">ha</th><th>Situação</th></tr></thead><tbody>${t.registros.map(a => `<tr><td>${esc(a.data)}</td><td>${esc(a.produtos.join(' + '))}</td><td>${esc(a.alvos || '—')}</td><td class="num">${a.area ? fmt(a.area, 1) : '—'}</td><td>${a.aplicada ? '<span class="tag reg">aplicada</span>' : '<span class="tag">só análise</span>'} <small>${esc(rotulo[a.status] || a.status || '')}</small></td></tr>`).join('')}</tbody></table>${t.total > t.registros.length ? `<div class="small muted">+ ${t.total - t.registros.length} registro(s) mais antigos no app.</div>` : ''}` : ''}`;
     }).join('')}
   </div>`;

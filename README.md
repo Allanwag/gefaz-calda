@@ -157,8 +157,10 @@ isso na cara: registra a receita, mas não prova com que ponta, pressão e veloc
 mais; cadastre com ＋ Novo talhão ou importe do PVGest/Gefaz360). Marcar já lança a **área** (somada, se
 forem vários) e a cultura, e cada análise entra no **histórico do talhão** (aba Histórico → Talhões), onde
 você marca quais foram aplicadas de fato; a aba Calda avisa se o talhão foi pulverizado há até 7 dias. O **laudo** traz um bloco "Histórico do
-talhão" (retrato até a emissão: última aplicação, quantas foram feitas, aviso de produto repetido nas
-últimas três e a tabela dos 8 registros mais recentes), que também vai no JSON do laudo; ele não entra
+talhão" (retrato até a emissão: última aplicação, quantas foram feitas, aviso do que a calda repete
+das últimas três aplicações feitas — mesmo produto, mesmo **ingrediente ativo**, mesmo **modo de ação**
+(código FRAC/IRAC/HRAC do KB) e, onde falta o código, mesmo grupo químico; adjuvantes e foliares não
+contam — e a tabela dos 8 registros mais recentes), que também vai no JSON do laudo; ele não entra
 no código de conferência.
 Tem ainda trator/pulverizador, operador, responsável técnico e CREA, número do receituário e
 horário de início e término. Máquina, operador e RT voltam sozinhos na próxima aplicação; talhão,
