@@ -21,9 +21,20 @@ const norm = E.norm;
 /* ───────── armazenamento ───────── */
 let DB;
 function defaultDB() {
-  return { version: 1, config: { ph: 7.5, dureza: null, cultura: 'Café', equipamento: 'turbo', volumeHa: 400, custo: { barra: 60, turbo: 90, drone: 120, costal: 40, aviao: 110, 'herbicida-cafe': 55 }, acidificanteUltimo: false, fazenda: 'Fazenda', rastreio: { maquina: '', operador: '', responsavel: '', crea: '' } }, catalogo: [], receitas: [], talhoes: [], caldas: [], historico: [], jarTests: [], regulagens: [], intervalos: {}, carencias: {}, maxAplic: {}, pontasLivres: [] };
+  return { version: 1, config: { ph: 7.5, dureza: null, cultura: 'Café', equipamento: 'turbo', volumeHa: 400, custo: { barra: 60, turbo: 90, drone: 120, costal: 40, aviao: 110, 'herbicida-cafe': 55 }, acidificanteUltimo: false, fazenda: 'Fazenda', rastreio: { maquina: '', operador: '', responsavel: '', crea: '' }, backup: { ultimo: null, lembrarDias: 7, adiadoAte: null }, meta: { pct: 100, de: '', ate: '' } }, catalogo: [], receitas: [], talhoes: [], caldas: [], historico: [], jarTests: [], regulagens: [], pontasLivres: [], estoque: [], movEstoque: [], tarefas: [], realizacoes: [], intervalos: {}, carencias: {}, maxAplic: {}, reentradas: {}, fichaNomes: {}, mapEstoque: {} };
 }
-function loadDB() { try { DB = JSON.parse(localStorage.getItem(LS)) || null; } catch { DB = null; } const d = defaultDB(); if (!DB || !DB.version) DB = d; DB.config = { ...d.config, ...(DB.config || {}) }; DB.config.custo = { ...d.config.custo, ...(DB.config.custo || {}) }; DB.config.rastreio = { ...d.config.rastreio, ...(DB.config.rastreio || {}) }; ['catalogo', 'receitas', 'talhoes', 'caldas', 'historico', 'jarTests', 'regulagens', 'pontasLivres'].forEach(k => { if (!Array.isArray(DB[k])) DB[k] = []; }); if (!DB.intervalos || typeof DB.intervalos !== 'object' || Array.isArray(DB.intervalos)) DB.intervalos = {}; if (!DB.carencias || typeof DB.carencias !== 'object' || Array.isArray(DB.carencias)) DB.carencias = {}; if (!DB.maxAplic || typeof DB.maxAplic !== 'object' || Array.isArray(DB.maxAplic)) DB.maxAplic = {}; }
+const DB_LISTAS = ['catalogo', 'receitas', 'talhoes', 'caldas', 'historico', 'jarTests', 'regulagens', 'pontasLivres', 'estoque', 'movEstoque', 'tarefas', 'realizacoes'];
+const DB_MAPAS = ['intervalos', 'carencias', 'maxAplic', 'reentradas', 'fichaNomes', 'mapEstoque'];
+/* completa o que faltar num banco antigo, importado ou restaurado de backup */
+function normalizarDB() {
+  const d = defaultDB();
+  if (!DB || !DB.version) DB = d;
+  DB.config = { ...d.config, ...(DB.config || {}) };
+  ['custo', 'rastreio', 'backup', 'meta'].forEach(k => { DB.config[k] = { ...d.config[k], ...(DB.config[k] || {}) }; });
+  DB_LISTAS.forEach(k => { if (!Array.isArray(DB[k])) DB[k] = []; });
+  DB_MAPAS.forEach(k => { if (!DB[k] || typeof DB[k] !== 'object' || Array.isArray(DB[k])) DB[k] = {}; });
+}
+function loadDB() { try { DB = JSON.parse(localStorage.getItem(LS)) || null; } catch { DB = null; } normalizarDB(); }
 function saveDB() { try { localStorage.setItem(LS, JSON.stringify(DB)); } catch (e) { toast('Não foi possível salvar (armazenamento cheio?)', 'err'); } }
 
 /* ───────── estado da calda ───────── */
@@ -240,6 +251,21 @@ function renderBusca(q) {
 }
 
 /* ───────── itens ───────── */
+/* intervalo, carência, máximo de aplicações e reentrada vêm da bula: digita-se uma vez por produto e o app lembra */
+const FICHA_CAMPOS = { intervalo: 'intervalos', carencia: 'carencias', maxAplic: 'maxAplic', reentrada: 'reentradas' };
+function salvarFichaProduto(nome, campo, valor) { // valor vazio/nulo apaga o campo
+  const k = norm(nome), mapa = DB[FICHA_CAMPOS[campo]];
+  const n = valor === '' || valor == null ? null : num(valor);
+  const zeroVale = campo === 'carencia' || campo === 'reentrada'; // 0 = sem carência / sem restrição
+  if (n === null || n < 0 || (n === 0 && !zeroVale)) delete mapa[k]; else mapa[k] = campo === 'maxAplic' ? Math.round(n) : n;
+  if (Object.values(FICHA_CAMPOS).some(m => k in DB[m])) DB.fichaNomes[k] = nome; else delete DB.fichaNomes[k];
+  saveDB();
+}
+function salvarFichaItem(it, campo, valor) {
+  salvarFichaProduto(it.nome, campo, valor);
+  const v = DB[FICHA_CAMPOS[campo]][norm(it.nome)];
+  if (v === undefined) delete it[campo]; else it[campo] = v;
+}
 const temNumero = v => v !== undefined && v !== null && v !== '' && isFinite(+v) && +v >= 0;
 function addItem(it) {
   if (calda.itens.some(x => norm(x.nome) === norm(it.nome))) { toast('Produto já está na calda'); return; }
@@ -248,6 +274,7 @@ function addItem(it) {
   if (!it.intervalo && DB.intervalos[norm(it.nome)]) it.intervalo = DB.intervalos[norm(it.nome)]; // informado uma vez, volta sozinho
   if (!(it.maxAplic > 0) && DB.maxAplic[norm(it.nome)]) it.maxAplic = DB.maxAplic[norm(it.nome)];
   if (!temNumero(it.carencia)) { const c = DB.carencias[norm(it.nome)] ?? (cat && cat.carencia); if (temNumero(c)) it.carencia = +c; else delete it.carencia; } // a do Gefaz360 vale se você ainda não informou
+  if (!temNumero(it.reentrada)) { if (temNumero(DB.reentradas[norm(it.nome)])) it.reentrada = DB.reentradas[norm(it.nome)]; else delete it.reentrada; }
   calda.itens.push(it); renderItens(); toast(`${it.nome} adicionado`);
 }
 function renderItens() {
@@ -269,10 +296,16 @@ function renderItens() {
         <label title="Intervalo mínimo entre aplicações, conforme a bula/receituário">Intervalo mín. (dias)<input type="number" step="1" min="0" data-f="intervalo" value="${it.intervalo || ''}" placeholder="bula"></label>
         <label title="Número máximo de aplicações do produto por ciclo, conforme a bula/receituário">Máx. aplic./ciclo<input type="number" step="1" min="1" data-f="maxAplic" value="${it.maxAplic || ''}" placeholder="bula"></label>
         <label title="Carência: dias entre a última aplicação e a colheita, conforme a bula/receituário (0 = sem carência)">Carência (dias)<input type="number" step="1" min="0" data-f="carencia" value="${temNumero(it.carencia) ? it.carencia : ''}" placeholder="bula"></label>
+        <label title="Reentrada: horas depois do término da aplicação até poder entrar na área tratada, conforme a bula/receituário (0 = sem restrição)">Reentrada (horas)<input type="number" step="1" min="0" data-f="reentrada" value="${temNumero(it.reentrada) ? it.reentrada : ''}" placeholder="bula"></label>
       </div></div>`;
   }).join('');
   el.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { calda.itens.splice(+b.dataset.del, 1); renderItens(); });
-  el.querySelectorAll('[data-f]').forEach(inp => inp.onchange = () => { const it = calda.itens[+inp.closest('.item').dataset.i]; const f = inp.dataset.f; it[f] = f === 'dose' || f === 'preco' || f === 'intervalo' || f === 'carencia' || f === 'maxAplic' ? num(inp.value) : inp.value.trim(); if (f === 'maxAplic') { if (it.maxAplic > 0) DB.maxAplic[norm(it.nome)] = Math.round(it.maxAplic); else { delete it.maxAplic; delete DB.maxAplic[norm(it.nome)]; } saveDB(); } if (f === 'carencia') { if (inp.value.trim() === '') { delete it.carencia; delete DB.carencias[norm(it.nome)]; } else DB.carencias[norm(it.nome)] = it.carencia; saveDB(); } if (f === 'intervalo') { if (it.intervalo > 0) DB.intervalos[norm(it.nome)] = it.intervalo; else delete DB.intervalos[norm(it.nome)]; saveDB(); } if (f === 'unidade') renderItens(); });
+  el.querySelectorAll('[data-f]').forEach(inp => inp.onchange = () => {
+    const it = calda.itens[+inp.closest('.item').dataset.i], f = inp.dataset.f;
+    if (FICHA_CAMPOS[f]) { salvarFichaItem(it, f, inp.value); return; }
+    it[f] = f === 'dose' || f === 'preco' ? num(inp.value) : inp.value.trim();
+    if (f === 'unidade') renderItens();
+  });
 }
 function formManual(pre) {
   pre = pre || {};
@@ -422,6 +455,7 @@ function talhoesAplicados(ctx) {
 }
 function calcularProxima(ctx, res) { return E.proximaAplicacao({ itens: res.itens || [], ...baseDaAplicacao(ctx), talhoes: talhoesAplicados(ctx) }); }
 function calcularCiclo(ctx, res) { return E.aplicacoesNoCiclo({ itens: res.itens || [], ...baseDaAplicacao(ctx), talhoes: talhoesAplicados(ctx) }); }
+function calcularReentrada(ctx, res) { const b = baseDaAplicacao(ctx); return E.reentradaLiberada({ itens: res.itens || [], base: b.base, origemBase: b.origemBase }); }
 function calcularColheita(ctx, res) { return E.colheitaLiberada({ itens: res.itens || [], ...baseDaAplicacao(ctx), talhoes: talhoesAplicados(ctx) }); }
 /* Perfil do produto para comparar com aplicações passadas: ingredientes ativos, códigos de modo de ação
    (FRAC/IRAC/HRAC, do KB) e grupos químicos (KB ou AGROFIT, para quando o KB não tem o código). */
@@ -545,6 +579,7 @@ function analisar(silencioso, registrarHistorico = true) {
   resultado.proximaAplicacao = calcularProxima(ctx, resultado);
   resultado.colheitaLiberada = calcularColheita(ctx, resultado);
   resultado.aplicacoesCiclo = calcularCiclo(ctx, resultado);
+  resultado.reentrada = calcularReentrada(ctx, resultado);
   guardarPadroesRastreio();
   if (registrarHistorico) {
     DB.historico.unshift({ id: uid(), data: resultado.data, status: resultado.status, resumo: resultado.resumo.frase, codigo: resultado.rastreio ? resultado.rastreio.codigo : null, talhao: ctx.rastreio.talhao, itens: calda.itens.map(i => i.nome), calda: JSON.parse(JSON.stringify({ itens: calda.itens, ...ctx })) });
@@ -557,7 +592,7 @@ function analisar(silencioso, registrarHistorico = true) {
   if (!silencioso) navTo('resultado');
   return resultado;
 }
-function resumoExport() { if (!resultado) return null; const r = resultado; return { status: r.status, resumo: r.resumo, score: r.score, regulagem: r.regulagem, rastreio: r.rastreio, confianca: r.confianca, alertas: r.alertas, ph: r.ph, ordem: r.ordem.filter(p => p.itens.length || p.passo <= 2 || p.passo >= 11), custo: r.custo, tanque: r.tanque, checklist: r.checklist, registro: r.registro, jarTest: r.jarTest, data: r.data, contexto: r.contexto, historicoTalhoes: r.historicoTalhoes || [], proximaAplicacao: r.proximaAplicacao || null, colheitaLiberada: r.colheitaLiberada || null, aplicacoesCiclo: r.aplicacoesCiclo || null, versao: E.versao }; }
+function resumoExport() { if (!resultado) return null; const r = resultado; return { status: r.status, resumo: r.resumo, score: r.score, regulagem: r.regulagem, rastreio: r.rastreio, confianca: r.confianca, alertas: r.alertas, ph: r.ph, ordem: r.ordem.filter(p => p.itens.length || p.passo <= 2 || p.passo >= 11), custo: r.custo, tanque: r.tanque, checklist: r.checklist, registro: r.registro, jarTest: r.jarTest, data: r.data, contexto: r.contexto, historicoTalhoes: r.historicoTalhoes || [], proximaAplicacao: r.proximaAplicacao || null, colheitaLiberada: r.colheitaLiberada || null, aplicacoesCiclo: r.aplicacoesCiclo || null, reentrada: r.reentrada || null, versao: E.versao }; }
 
 const TIPO_LABEL = { legal: 'Registro / legal', quimica: 'Química', fisica: 'Física', agronomica: 'Agronômica', biologica: 'Biológica', ph: 'pH', agua: 'Água', resistencia: 'Resistência (MoA)', operacional: 'Operacional' };
 const STATUS_LABEL = { compativel: 'Compatível', restricoes: 'Compatível com restrições', incompativel: 'Incompatível', testar: 'Não testado — jar test', 'nao-testado': 'Não testado', atencao: 'Atenção' };
@@ -577,29 +612,49 @@ function renderResultado() {
   <div class="card"><div class="kpis">
     <div class="kpi"><b>${r.resumo.contagem.alta}</b><small>críticos</small></div><div class="kpi"><b>${r.resumo.contagem.media}</b><small>restrições</small></div><div class="kpi"><b>${Math.round(r.confianca * 100)} %</b><small>confiança</small></div>
     <div class="kpi"><b>${BRL(r.custo.totalHa)}</b><small>custo total/ha</small></div><div class="kpi"><b>${r.jarTest.obrigatorio ? 'Sim' : 'Recomendado'}</b><small>jar test</small></div></div>
-    <div class="row-btns"><button class="btn primary" id="btnPrint">🖨️ Laudo (PDF/impressão)</button><button class="btn" id="btnJar">🫙 Jar test</button><button class="btn ghost" id="btnExpLaudo">⬇️ JSON do laudo</button><button class="btn ghost" id="btnExpReceita">⬇️ Receita (PVGest/Gefaz360)</button><button class="btn ghost" id="btnEnvPV">📤 PVGest (este navegador)</button><button class="btn ghost" id="btnEnvG360">📤 Gefaz360 (este navegador)</button><button class="btn ghost" id="btnEnvCodex">📤 Codex (atividade)</button></div></div>
+    <div class="row-btns"><button class="btn primary" id="btnPrint">🖨️ Laudo completo</button><button class="btn" id="btnPrintRes" title="Uma página: veredito, alertas, ordem de mistura, datas e assinaturas">🖨️ Laudo resumido</button><button class="btn" id="btnJar">🫙 Jar test</button><button class="btn ghost" id="btnExpLaudo">⬇️ JSON do laudo</button><button class="btn ghost" id="btnExpReceita">⬇️ Receita (PVGest/Gefaz360)</button><button class="btn ghost" id="btnEnvPV">📤 PVGest (este navegador)</button><button class="btn ghost" id="btnEnvG360">📤 Gefaz360 (este navegador)</button><button class="btn ghost" id="btnEnvCodex">📤 Codex (atividade)</button></div></div>
   ${ordemTipos.filter(t => porTipo[t]).map(t => `<div class="card"><div class="card-hd"><h2>${esc(TIPO_LABEL[t])}</h2><span class="hint">${porTipo[t].length} alerta(s)</span></div>${porTipo[t].map(a => `<div class="al ${a.severidade}"><div class="t"><span>${esc(a.titulo)}</span><span><span class="sev ${a.severidade}">${a.severidade}</span> <span class="conf">C ${a.confianca.toFixed(2)}</span></span></div><div class="d">${esc(a.detalhe)}${a.paresTexto ? ` <i>(${esc(a.paresTexto)})</i>` : a.nomes ? ` <i>(${esc(a.nomes.join(' × '))})</i>` : ''}</div><div class="c">→ ${esc(a.conduta)}</div><div class="f">Fonte: ${esc(a.fonte)}${a.regra ? ' · ' + a.regra : ''}</div></div>`).join('')}</div>`).join('')}
   ${!alertasVis.length ? '<div class="card"><div class="al info"><div class="t">Nenhum alerta gerado</div><div class="d">Todos os produtos foram reconhecidos e não há regra de incompatibilidade registrada entre eles. Isso não substitui o jar test.</div></div></div>' : ''}
-  <div class="card"><div class="card-hd"><h2>pH da calda</h2></div>${phBar}<div class="small muted" style="margin-top:6px">${r.ph.itensSensiveis.map(i => `${esc(i.nome)}: ${i.ph[0]}–${i.ph[1]}`).join(' · ')}</div></div>
-  <div class="card"><div class="card-hd"><h2>Matriz de pares</h2><span class="hint">como no Koppert / Yara: cada par tem um veredito</span></div><div class="matrix">${matrizHTML(r)}</div><div class="legend"><span><i style="background:#c8e6c9"></i>compatível</span><span><i style="background:#bbdefb"></i>atenção</span><span><i style="background:#ffe082"></i>restrições</span><span><i style="background:#ef9a9a"></i>incompatível</span><span><i style="background:#eee"></i>não testado</span></div></div>
+  <div class="card so-completo"><div class="card-hd"><h2>pH da calda</h2></div>${phBar}<div class="small muted" style="margin-top:6px">${r.ph.itensSensiveis.map(i => `${esc(i.nome)}: ${i.ph[0]}–${i.ph[1]}`).join(' · ')}</div></div>
+  <div class="card so-completo"><div class="card-hd"><h2>Matriz de pares</h2><span class="hint">como no Koppert / Yara: cada par tem um veredito</span></div><div class="matrix">${matrizHTML(r)}</div><div class="legend"><span><i style="background:#c8e6c9"></i>compatível</span><span><i style="background:#bbdefb"></i>atenção</span><span><i style="background:#ffe082"></i>restrições</span><span><i style="background:#ef9a9a"></i>incompatível</span><span><i style="background:#eee"></i>não testado</span></div></div>
   <div class="card"><div class="card-hd"><h2>Ordem de adição</h2><span class="hint">Embrapa Doc. 437 (formulação)${DB.config.acidificanteUltimo ? ' · regra da fazenda ativa' : ''}</span></div><ol class="steps">${r.ordem.map(p => `<li><div class="n ${p.itens.length ? 'has' : ''}">${p.passo}</div><div><div class="ti">${esc(p.titulo)}</div>${p.nota ? `<div class="no">${esc(p.nota)}</div>` : ''}${p.itens.length ? `<div class="pr">${p.itens.map(i => `<span>${esc(i.nome)}${i.formulacao ? ' <b>' + esc(i.formulacao) + '</b>' : ''}${i.notas.length ? '<small>' + i.notas.map(esc).join(' ') + '</small>' : ''}</span>`).join('')}</div>` : ''}</div></li>`).join('')}</ol></div>
-  <div class="card"><div class="card-hd"><h2>Custo por hectare</h2><span class="hint">produto + operação (${esc((KB.equipamentos[ctx.equipamento] || {}).nome || '')})</span></div><table class="tb"><thead><tr><th>Produto</th><th class="num">Dose/ha</th><th class="num">Preço</th><th class="num">R$/ha</th></tr></thead><tbody>${r.custo.porItem.map(i => `<tr><td>${esc(i.nome)}</td><td class="num">${fmt(i.dosePorHa, 3)} ${i.base}</td><td class="num">${i.semPreco ? '<span class="tag noreg">sem preço</span>' : BRL(i.preco) + '/' + i.base}</td><td class="num">${BRL(i.custoHa)}</td></tr>`).join('')}</tbody><tfoot><tr><td colspan="3">Produtos</td><td class="num">${BRL(r.custo.produtosHa)}</td></tr><tr><td colspan="3">Operação (${esc(ctx.equipamento)})</td><td class="num">${BRL(r.custo.operacionalHa)}</td></tr><tr><td colspan="3">Total/ha</td><td class="num">${BRL(r.custo.totalHa)}</td></tr><tr><td colspan="3">Total para ${fmt(ctx.area, 1)} ha</td><td class="num">${BRL(r.custo.totalArea)}</td></tr></tfoot></table>${r.custo.semPreco.length ? `<div class="small muted">Sem preço: ${esc(r.custo.semPreco.join(', '))} — importe o estoque do PVGest/Gefaz360 ou informe no item.</div>` : ''}</div>
+  <div class="card so-completo"><div class="card-hd"><h2>Custo por hectare</h2><span class="hint">produto + operação (${esc((KB.equipamentos[ctx.equipamento] || {}).nome || '')})</span></div><table class="tb"><thead><tr><th>Produto</th><th class="num">Dose/ha</th><th class="num">Preço</th><th class="num">R$/ha</th></tr></thead><tbody>${r.custo.porItem.map(i => `<tr><td>${esc(i.nome)}</td><td class="num">${fmt(i.dosePorHa, 3)} ${i.base}</td><td class="num">${i.semPreco ? '<span class="tag noreg">sem preço</span>' : BRL(i.preco) + '/' + i.base}</td><td class="num">${BRL(i.custoHa)}</td></tr>`).join('')}</tbody><tfoot><tr><td colspan="3">Produtos</td><td class="num">${BRL(r.custo.produtosHa)}</td></tr><tr><td colspan="3">Operação (${esc(ctx.equipamento)})</td><td class="num">${BRL(r.custo.operacionalHa)}</td></tr><tr><td colspan="3">Total/ha</td><td class="num">${BRL(r.custo.totalHa)}</td></tr><tr><td colspan="3">Total para ${fmt(ctx.area, 1)} ha</td><td class="num">${BRL(r.custo.totalArea)}</td></tr></tfoot></table>${r.custo.semPreco.length ? `<div class="small muted">Sem preço: ${esc(r.custo.semPreco.join(', '))} — importe o estoque do PVGest/Gefaz360 ou informe no item.</div>` : ''}</div>
   ${r.tanque ? `<div class="card"><div class="card-hd"><h2>Ficha de tanque</h2><span class="hint">${r.tanque.tanque} L · ${fmt(r.tanque.haPorCarga, 2)} ha por carga</span></div><div class="kpis"><div class="kpi"><b>${fmt(r.tanque.volumeTotal)}</b><small>L de calda</small></div><div class="kpi"><b>${r.tanque.cargasCheias}</b><small>cargas cheias</small></div><div class="kpi"><b>${fmt(r.tanque.ultimaCarga)}</b><small>L na última carga</small></div></div><table class="tb"><thead><tr><th>Produto (ordem)</th><th class="num">Por carga cheia</th><th class="num">Última carga</th><th class="num">Total</th></tr></thead><tbody>${r.tanque.porCargaCheia.map((i, k) => `<tr><td>${k + 1}. ${esc(i.nome)}</td><td class="num">${fmt(i.qtd, 3)} ${i.unidade}</td><td class="num">${r.tanque.ultimaCargaItens[k] ? fmt(r.tanque.ultimaCargaItens[k].qtd, 3) + ' ' + i.unidade : '—'}</td><td class="num">${fmt(r.tanque.totalPorProduto[k].qtd, 2)} ${i.unidade}</td></tr>`).join('')}</tbody></table></div>` : ''}
-  <div class="card"><div class="card-hd"><h2>Registro MAPA (Agrofit)</h2></div><table class="tb"><thead><tr><th>Produto</th><th>${esc(ctx.cultura)}</th><th>Alvo</th></tr></thead><tbody>${r.registro.map(g => `<tr><td>${esc(g.nome)}</td><td>${g.registrado === null ? '<span class="tag">não verificado</span>' : g.registrado ? '<span class="tag reg">registrado</span>' : '<span class="tag noreg">sem registro</span>'}</td><td>${g.alvoOk === null ? (g.alvos.length ? `<small>${esc(g.alvos.slice(0, 4).join('; '))}${g.alvos.length > 4 ? '…' : ''}</small>` : '—') : g.alvoOk ? '<span class="tag reg">alvo na bula</span>' : '<span class="tag noreg">alvo não consta</span>'}</td></tr>`).join('')}</tbody></table></div>
+  <div class="card"><div class="card-hd"><h2>Registro MAPA (Agrofit)</h2></div><table class="tb"><thead><tr><th>Produto</th><th>${esc(ctx.cultura)}</th><th>Alvo</th><th>Classe toxicológica</th></tr></thead><tbody>${r.registro.map(g => `<tr><td>${esc(g.nome)}</td><td>${g.registrado === null ? '<span class="tag">não verificado</span>' : g.registrado ? '<span class="tag reg">registrado</span>' : '<span class="tag noreg">sem registro</span>'}</td><td>${g.alvoOk === null ? (g.alvos.length ? `<small>${esc(g.alvos.slice(0, 4).join('; '))}${g.alvos.length > 4 ? '…' : ''}</small>` : '—') : g.alvoOk ? '<span class="tag reg">alvo na bula</span>' : '<span class="tag noreg">alvo não consta</span>'}</td><td>${tagTox(r.itens.find(i => i.id === g.id))}</td></tr>`).join('')}</tbody></table>${blocoEPI(r)}</div>
   ${blocoRegulagem(r)}
   ${blocoTalhao(r)}
   ${blocoProxima(r)}
+  ${blocoReentrada(r)}
   ${blocoColheita(r)}
   ${blocoCiclo(r)}
   ${blocoRastreio(r)}
   <div class="card"><div class="card-hd"><h2>Checklist pré-saída</h2></div><ul class="check-list">${r.checklist.map(c => `<li><input type="checkbox"><span>${esc(c)}</span></li>`).join('')}</ul></div>
   ${ctx.obs ? `<div class="card"><div class="card-hd"><h2>Observações</h2></div><p>${esc(ctx.obs)}</p></div>` : ''}
   <div class="card small muted">Apoio à decisão técnica. Não substitui bula, receituário agronômico (IN 40/2018) nem o jar test. Confiança abaixo de 0,70 é indicativa.</div>`;
-  $('#btnPrint').onclick = () => { $$('#resultado details').forEach(d => { d.open = true; }); window.print(); };
+  $('#btnPrint').onclick = () => { document.body.classList.remove('print-resumido'); $$('#resultado details').forEach(d => { d.open = true; }); window.print(); };
+  $('#btnPrintRes').onclick = () => { document.body.classList.add('print-resumido'); window.print(); };
   $('#btnJar').onclick = () => navTo('jar');
   $('#btnExpLaudo').onclick = () => download(`laudo-calda-${hoje()}.json`, JSON.stringify({ app: 'gefaz-calda', versao: E.versao, calda: { itens: calda.itens, ...ctx }, resultado: resumoExport() }, null, 1));
   $('#btnExpReceita').onclick = () => download(`receita-gefaz-calda-${hoje()}.json`, JSON.stringify(exportPVGestFormat([caldaComoReceita()]), null, 1));
   $('#btnEnvPV').onclick = enviarParaPVGest; $('#btnEnvG360').onclick = enviarParaGefaz360; $('#btnEnvCodex').onclick = enviarParaCodex;
+}
+/* Classe toxicológica do registro no MAPA (AGROFIT traz a categoria 1–5/NC ou o nome da classe antiga) */
+const TOX = { 1: ['Cat. 1', 'extremamente tóxico', 'noreg'], 2: ['Cat. 2', 'altamente tóxico', 'noreg'], 3: ['Cat. 3', 'moderadamente tóxico', 'amar'], 4: ['Cat. 4', 'pouco tóxico', 'azul'], 5: ['Cat. 5', 'improvável de causar dano agudo', 'reg'], NC: ['NC', 'não classificado', 'reg'] };
+function infoTox(v) {
+  const s = String(v == null ? '' : v).trim(); if (!s) return null;
+  const k = norm(s), chave = TOX[s] ? s : k.startsWith('extremamente') ? 1 : k.startsWith('altamente') ? 2 : k.startsWith('mediana') || k.startsWith('moderada') ? 3 : k.startsWith('pouco') ? 4 : k === 'nc' ? 'NC' : null;
+  return chave ? { chave, sigla: TOX[chave][0], nome: TOX[chave][1], cls: TOX[chave][2] } : { chave: null, sigla: '', nome: s.slice(0, 30).toLowerCase(), cls: '' };
+}
+function tagTox(item) {
+  const t = infoTox(item && item.agrofit && item.agrofit.tox); if (!t) return '<span class="muted">—</span>';
+  return `<span class="tag ${t.cls}">${t.sigla ? t.sigla + ' · ' : ''}${esc(t.nome)}</span>`;
+}
+function blocoEPI(r) {
+  const tox = r.itens.map(i => ({ nome: i.nome, t: infoTox(i.agrofit && i.agrofit.tox) })).filter(x => x.t);
+  const fortes = tox.filter(x => x.t.chave !== null && [1, 2].includes(Number(x.t.chave)));
+  if (!tox.length) return '';
+  return `${fortes.length ? `<div class="al alta"><div class="t"><span>Produto de categoria toxicológica 1 ou 2 na calda</span></div><div class="d">${esc(fortes.map(x => x.nome).join(', '))}: atenção redobrada no preparo e na aplicação.</div><div class="c">→ Confira na bula e no receituário os EPIs e os cuidados exigidos; só aplicador treinado.</div></div>` : ''}
+    <div class="small muted">Classe toxicológica conforme o registro no MAPA/Anvisa (AGROFIT). Os EPIs e os cuidados de cada produto são os da bula e do receituário agronômico.</div>`;
 }
 function blocoRegulagem(r) {
   const g = r.regulagem;
@@ -633,7 +688,7 @@ function blocoRegulagem(r) {
 function blocoTalhao(r) {
   const tl = r.historicoTalhoes || []; if (!tl.length) return '';
   const rotulo = { compativel: 'compatível', restricoes: 'com restrições', incompativel: 'incompatível', testar: 'testar' };
-  return `<div class="card">
+  return `<div class="card so-completo">
     <div class="card-hd"><h2>Histórico do talhão</h2><span class="hint">até a emissão deste laudo · aplicadas = marcadas como feitas</span></div>
     ${tl.map(t => {
       const u = t.ultimaAplicacao, dias = u ? diasDesde(u.iso) : null;
@@ -677,6 +732,19 @@ function blocoColheita(r) {
       <table class="tb"><thead><tr><th>Talhão</th><th class="num">Colheita liberada em</th><th>Limitante</th></tr></thead><tbody>${tal.map(t => `<tr><td>${esc(t.talhao)}</td><td class="num"><b>${dataBR(t.liberadoEm)}</b></td><td>${esc(t.limitante.nome)} <small>${t.limitante.origem === 'esta' ? 'esta aplicação' : 'aplicação de ' + dataBR(t.limitante.aplicadoEm)}</small></td></tr>`).join('')}</tbody></table>` : ''}
     ${c.semCarencia.length ? `<div class="al media"><div class="t"><span>Sem carência informada</span></div><div class="d">${esc(c.semCarencia.join(', '))} — a data acima não os considera.</div><div class="c">→ Confira na bula antes de liberar a colheita.</div></div>` : ''}
     <div class="small muted">A carência (intervalo de segurança) é a da bula/receituário para a cultura; muda entre culturas e produtos. Zero significa sem carência. Não substitui o receituário agronômico.</div>
+  </div>`;
+}
+const dataHoraBR = iso => { const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/); return m ? `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}` : dataBR(iso); };
+function blocoReentrada(r) {
+  const c = r.reentrada; if (!c || (!c.linhas.length && !c.semReentrada.length)) return '';
+  const origem = { termino: 'término da aplicação', inicio: 'início da aplicação — informe o término para contar certo', emissao: 'hora da emissão do laudo (início/término em branco)' }[c.origemBase];
+  return `<div class="card">
+    <div class="card-hd"><h2>Reentrada na área tratada</h2><span class="hint">horas informadas por produto · da bula/receituário</span></div>
+    ${c.liberadoEm ? `<div class="codigo-laudo"><b>${dataHoraBR(c.liberadoEm)}</b><small>reentrada liberada a partir deste horário · contada do ${origem} (${dataHoraBR(c.base)}) · limitante: ${esc(c.limitante)}</small></div>
+      <table class="tb"><thead><tr><th>Produto</th><th class="num">Reentrada</th><th class="num">Liberada em</th></tr></thead><tbody>${c.linhas.map(l => `<tr><td>${esc(l.nome)}</td><td class="num">${l.horas ? l.horas + ' h' : 'sem restrição'}</td><td class="num">${dataHoraBR(l.liberadoEm)}</td></tr>`).join('')}</tbody></table>`
+      : `<div class="al baixa"><div class="t"><span>Sem horário: nenhuma reentrada informada</span></div><div class="d">Preencha “Reentrada (horas)” em cada produto, conforme a bula ou o receituário, e analise de novo. O app não estima esse número.</div></div>`}
+    ${c.semReentrada.length ? `<div class="al media"><div class="t"><span>Sem reentrada informada</span></div><div class="d">${esc(c.semReentrada.join(', '))} — o horário acima não os considera.</div><div class="c">→ Sinalize a área e só libere a entrada depois de conferir a bula.</div></div>` : ''}
+    <div class="small muted">Reentrada é o tempo mínimo, contado do término da aplicação, para pessoas voltarem à área tratada, conforme a bula e o receituário (NR-31). Não substitui o receituário agronômico.</div>
   </div>`;
 }
 function blocoCiclo(r) {
@@ -752,7 +820,7 @@ function renderJar() {
 }
 
 /* ───────── histórico e caldas ───────── */
-function caldaComoReceita() { const ctx = lerContexto(); return { id: uid(), nome: `Calda ${ctx.cultura}${ctx.alvo ? ' — ' + textoAlvos(ctx.alvos, true).slice(0, 3).join(', ') + (textoAlvos(ctx.alvos).length > 3 ? '…' : '') : ''} ${hoje()}`, cultura: ctx.cultura, alvo: ctx.alvo, alvos: ctx.alvos, doenca: ctx.doenca, praga: ctx.praga, severidade: ctx.severidade, estadio: ctx.estadio, parte: ctx.parte, volumeHa: ctx.volumeHa, itens: calda.itens.map(i => ({ nome: i.nome, dose: i.dose, unidade: i.unidade, classe: i.classe, formulacao: i.formulacao, preco: i.preco, intervalo: i.intervalo, carencia: i.carencia, maxAplic: i.maxAplic, ativos: i.ativos, ingredientes: i.ingredientes, registro: i.registro, tags: i.tags, fonte: i.fonte })), agua: ctx.agua, equipamento: ctx.equipamento, area: ctx.area, tanque: ctx.tanque, obs: ctx.obs, fonte: 'gefaz-calda', status: resultado ? resultado.status : null }; }
+function caldaComoReceita() { const ctx = lerContexto(); return { id: uid(), nome: `Calda ${ctx.cultura}${ctx.alvo ? ' — ' + textoAlvos(ctx.alvos, true).slice(0, 3).join(', ') + (textoAlvos(ctx.alvos).length > 3 ? '…' : '') : ''} ${hoje()}`, cultura: ctx.cultura, alvo: ctx.alvo, alvos: ctx.alvos, doenca: ctx.doenca, praga: ctx.praga, severidade: ctx.severidade, estadio: ctx.estadio, parte: ctx.parte, volumeHa: ctx.volumeHa, itens: calda.itens.map(i => ({ nome: i.nome, dose: i.dose, unidade: i.unidade, classe: i.classe, formulacao: i.formulacao, preco: i.preco, intervalo: i.intervalo, carencia: i.carencia, maxAplic: i.maxAplic, reentrada: i.reentrada, ativos: i.ativos, ingredientes: i.ingredientes, registro: i.registro, tags: i.tags, fonte: i.fonte })), agua: ctx.agua, equipamento: ctx.equipamento, area: ctx.area, tanque: ctx.tanque, obs: ctx.obs, fonte: 'gefaz-calda', status: resultado ? resultado.status : null }; }
 function salvarCalda() { if (!calda.itens.length) return toast('Nada para salvar', 'err'); const nome = prompt('Nome da calda', caldaComoReceita().nome); if (!nome) return; const c = caldaComoReceita(); c.nome = nome; DB.caldas.unshift(c); saveDB(); toast('Calda salva'); renderHistorico(); }
 function carregarReceita(rec) { calda.itens = rec.itens.map(i => ({ id: uid(), ...i, dose: +i.dose || 0, unidade: i.unidade || 'L/ha' })); aplicarContexto({ cultura: rec.cultura, alvo: rec.alvo, alvos: rec.alvos, doenca: rec.doenca, praga: rec.praga, severidade: rec.severidade, estadio: rec.estadio, parte: rec.parte, volumeHa: rec.volumeHa, area: rec.area, tanque: rec.tanque, equipamento: rec.equipamento, agua: rec.agua, obs: rec.obs }); renderItens(); navTo('calda'); toast(`Receita “${rec.nome}” carregada`); }
 function renderHistorico() {
@@ -1444,7 +1512,8 @@ function init() {
   const mix = q.get('mix') ? decodeMix(q.get('mix')) : null;
   if (mix && aplicarMix(mix, true)) { navTo('resultado'); history.replaceState(null, '', location.pathname); }
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => { });
+  if (typeof initFazenda === 'function') initFazenda();
 }
-function loadDBFrom(d) { DB = d; const base = defaultDB(); DB.version = DB.version || 1; DB.config = { ...base.config, ...(DB.config || {}) }; DB.config.custo = { ...base.config.custo, ...(DB.config.custo || {}) }; DB.config.rastreio = { ...base.config.rastreio, ...(DB.config.rastreio || {}) }; ['catalogo', 'receitas', 'talhoes', 'caldas', 'historico', 'jarTests', 'regulagens', 'pontasLivres'].forEach(k => { if (!Array.isArray(DB[k])) DB[k] = []; }); if (!DB.intervalos || typeof DB.intervalos !== 'object' || Array.isArray(DB.intervalos)) DB.intervalos = {}; if (!DB.carencias || typeof DB.carencias !== 'object' || Array.isArray(DB.carencias)) DB.carencias = {}; if (!DB.maxAplic || typeof DB.maxAplic !== 'object' || Array.isArray(DB.maxAplic)) DB.maxAplic = {}; }
+function loadDBFrom(d) { DB = d; DB.version = DB.version || 1; normalizarDB(); }
 window.GefazCaldaApp = { analisar, addItem, aplicarMix, get calda() { return calda; }, get resultado() { return resultado; }, get DB() { return DB; } };
 document.addEventListener('DOMContentLoaded', init);

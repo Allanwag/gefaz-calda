@@ -19,6 +19,7 @@
   <div class="brand"><img src="icon-192.png" alt="" width="34" height="34"><div><h1>Gefaz Calda</h1><small>Compatibilidade de mistura de calda</small></div></div>
   <div class="topbar-right"><span id="agroStatus" class="pill muted" title="Índice AGROFIT/MAPA">Agrofit…</span><span id="netStatus" class="pill muted">online</span></div>
 </header>
+<div id="avisos" class="avisos" role="status"></div>
 
 <main id="app">
   <!-- ══════════ CALDA ══════════ -->
@@ -281,6 +282,24 @@
       <label class="check"><input type="checkbox" id="cfgAcidUltimo"> Regra da fazenda: acidificante entra por último (diverge da Embrapa, que o coloca no passo 3)</label>
       <div class="row-btns"><button class="btn" id="btnCfg">Salvar configuração</button><button class="btn ghost" id="btnBackup">⬇️ Backup do Gefaz Calda</button><label class="btn ghost">⬆️ Restaurar<input type="file" id="impBackup" accept=".json" hidden></label></div>
     </div>
+    <div class="card" id="cardFicha">
+      <div class="card-hd"><h2>Ficha de produtos da fazenda</h2><span class="hint" id="fichaResumo"></span></div>
+      <p class="small muted">Intervalo entre aplicações, carência, máximo de aplicações por ciclo e reentrada são os da <b>bula/receituário</b> — o Agrofit aberto não traz esses números. Preencha uma vez por produto (aqui ou direto na calda) e o app lembra. Também dá para baixar uma planilha com os seus produtos, preencher no Excel (salvar como CSV) e importar.</p>
+      <div class="row-btns"><button class="btn" id="btnFichaModelo">⬇️ Planilha com meus produtos (.csv)</button><label class="btn ghost">⬆️ Importar planilha<input type="file" id="impFicha" accept=".csv,.txt,text/csv" hidden></label></div>
+      <p class="small" id="fichaMsg"></p>
+      <input id="fichaFiltro" placeholder="Filtrar produtos da ficha…" aria-label="Filtrar produtos da ficha">
+      <div class="tabela-rolavel"><table class="tb" id="fichaTabela"></table></div>
+      <div class="row-btns"><input id="fichaNovo" placeholder="Novo produto (nome)" aria-label="Novo produto na ficha" style="flex:1"><button class="btn ghost" id="btnFichaNovo">＋ Adicionar</button></div>
+    </div>
+    <div class="card" id="cardBackup">
+      <div class="card-hd"><h2>Backup e segurança dos dados</h2><span class="hint" id="backupStatus"></span></div>
+      <p class="small muted">Talhões, histórico de aplicações, estoque, fichas de produto e pontas cadastradas ficam <b>só neste navegador</b>. Limpar os dados do navegador ou trocar de aparelho apaga tudo — o backup em arquivo é a proteção.</p>
+      <div class="grid2">
+        <label>Lembrar de fazer backup a cada (dias · 0 = não lembrar)<input id="cfgBackupDias" type="number" min="0" step="1"></label>
+        <label>Armazenamento neste aparelho<input id="cfgPersist" readonly></label>
+      </div>
+      <div class="row-btns"><button class="btn" id="btnBackup2">⬇️ Fazer backup agora</button></div>
+    </div>
     <div class="card">
       <div class="card-hd"><h2>SDK para os outros apps</h2></div>
       <p class="small muted">Inclua <code>sdk.js</code> no Gefaz360, no Codex ou no PVGest e chame:</p>
@@ -321,5 +340,7 @@
 <script src="engine.js"></script>
 <script src="pontas.js"></script>
 <script src="app.js"></script>
+<script src="estoque.js"></script>
+<script src="fazenda.js"></script>
 </body>
 </html>

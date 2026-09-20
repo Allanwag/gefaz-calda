@@ -282,14 +282,28 @@
       return v[melhor] > 0 ? melhor : 'inseto';
     });
   }
+  /* Nome científico como chave de alvo: "var./pv./f. sp." é só marcação (o MAPA escreve com e sem), e os sinônimos
+     abaixo são o mesmo organismo com nome antigo e novo. Variedades diferentes NÃO se juntam (var. sojae ≠ var. meridionalis). */
+  const SINONIMOS_LATIM = {
+    'colletotrichum truncatum': 'colletotrichum dematium truncata',
+    'pseudomonas savastanoi glycinea': 'pseudomonas syringae glycinea',
+    'microsphaera diffusa': 'erysiphe diffusa',
+    'phomopsis sojae': 'diaporthe phaseolorum sojae'
+  };
+  const chaveLatim = lat => { const k = lat.replace(/\b(?:var|pv|f\.? ?sp|subsp)\.?\s+/g, '').replace(/\s+/g, ' ').trim(); return SINONIMOS_LATIM[k] || k; };
   /* lista sem repetição (mesmo binômio latino ou mesmo nome) por categoria, para uma cultura:
      as curadas do kb.js primeiro, depois tudo o que o AGROFIT registra para a cultura */
   function alvosDaCultura(agro, catAlvo, cultura, curadas) {
-    const out = { doenca: [], inseto: [], praga: [], daninha: [] }, visto = new Set();
+    const out = { doenca: [], inseto: [], praga: [], daninha: [] }, visto = new Map();
     const add = (cat, nome) => {
-      const limpo = limparAlvo(nome), lat = latimDe(limpo), chave = lat && !ehSpp(lat) ? lat : baseDe(limpo);
-      if (!chave || visto.has(cat + '|' + chave)) return;
-      visto.add(cat + '|' + chave); out[cat].push(limpo);
+      const limpo = limparAlvo(nome), lat = latimDe(limpo), chave = lat && !ehSpp(lat) ? chaveLatim(lat) : baseDe(limpo);
+      if (!chave) return;
+      const k = cat + '|' + chave;
+      if (visto.has(k)) { // mesmo alvo com a grafia diferente: fica a que começa com maiúscula (a do AGROFIT vem às vezes em minúscula)
+        const i = visto.get(k); if (!/^[A-ZÀ-Ú]/.test(out[cat][i]) && /^[A-ZÀ-Ú]/.test(limpo)) out[cat][i] = limpo;
+        return;
+      }
+      visto.set(k, out[cat].length); out[cat].push(limpo);
     };
     const c = curadas || {};
     (c.doencas || []).forEach(n => add(categoriaPorNome(n) === 'praga' ? 'praga' : 'doenca', n));
@@ -693,5 +707,20 @@
     return { base: isoDia(b), linhas, semLimite, semTalhao, excedidos: linhas.filter(l => l.situacao === 'excedido'), ultimas: linhas.filter(l => l.situacao === 'ultima') };
   }
 
-  return { analisar, proximaAplicacao, aplicacoesNoCiclo, colheitaLiberada, resolverItem, resolverAtivos, dosePorHa, chaveDoConjunto, PASSO_FORMULACAO, PASSOS, norm, alvosLista, alvoCombina, categoriaPorNome, classificarAlvos, alvosDaCultura, CATEGORIAS_ALVO, ROTULO_CATEGORIA, versao: VERSAO, CAMPOS_RASTREIO, codigoDe };
+  // ── Reentrada na área tratada (horas depois do término da aplicação, da bula/receituário) ──
+  const pad = n => String(n).padStart(2, '0');
+  const isoMin = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  function reentradaLiberada({ itens, base, origemBase }) {
+    let b = typeof base === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(base) ? diaDe(base) : (base instanceof Date ? base : new Date(base));
+    if (!b || isNaN(b)) return null;
+    const linhas = [], semReentrada = [];
+    (itens || []).forEach(i => {
+      if (temCarencia(i.reentrada)) linhas.push({ nome: i.nome, horas: +i.reentrada, liberadoEm: isoMin(new Date(b.getTime() + (+i.reentrada) * 36e5)) });
+      else if (!SEM_INTERVALO.includes(i.classe) && !(i.tags || []).includes('condicionador')) semReentrada.push(i.nome);
+    });
+    linhas.sort((x, y) => (x.liberadoEm < y.liberadoEm ? 1 : x.liberadoEm > y.liberadoEm ? -1 : 0));
+    return { base: isoMin(b), origemBase: origemBase || 'emissao', linhas, liberadoEm: linhas.length ? linhas[0].liberadoEm : null, limitante: linhas.length ? linhas[0].nome : null, semReentrada };
+  }
+
+  return { analisar, proximaAplicacao, reentradaLiberada, aplicacoesNoCiclo, colheitaLiberada, resolverItem, resolverAtivos, dosePorHa, chaveDoConjunto, PASSO_FORMULACAO, PASSOS, norm, alvosLista, alvoCombina, categoriaPorNome, classificarAlvos, alvosDaCultura, CATEGORIAS_ALVO, ROTULO_CATEGORIA, versao: VERSAO, CAMPOS_RASTREIO, codigoDe };
 });

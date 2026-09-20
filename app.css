@@ -315,3 +315,19 @@ main{padding-bottom:calc(88px + env(safe-area-inset-bottom))}
 *{scrollbar-width:thin;scrollbar-color:#344239 transparent}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 }
+
+/* ───────── avisos no topo (backup, nova versão) ───────── */
+.avisos{position:sticky;top:0;z-index:19;display:flex;flex-direction:column;gap:6px;padding:0 12px}
+.aviso{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--amb100);border:1px solid var(--amb);border-radius:12px;padding:9px 12px;margin-top:8px;font-size:.85rem;box-shadow:var(--sh)}
+.aviso .acts{display:flex;gap:6px}
+@media print{.avisos{display:none!important}}
+/* ───────── laudo resumido (uma página) e classes toxicológicas ───────── */
+.tag.amar{background:#ffe082;color:#5d4037}.tag.azul{background:#bbdefb;color:#0d47a1}
+@media print{
+  body.print-resumido .so-completo,body.print-resumido #resultado details{display:none!important}
+  body.print-resumido .card{padding:8px}
+}
+
+.tabela-rolavel{overflow-x:auto;margin-top:8px}
+.tabela-rolavel table{min-width:560px}
+.tabela-rolavel td input{padding:5px 6px;min-width:64px}

@@ -387,3 +387,26 @@ test('máximo de aplicações por ciclo: ignora aplicação futura e funciona se
   assert.equal(s.linhas[0].comEsta, 1);
   assert.equal(E.aplicacoesNoCiclo({ base: 'x', itens }), null);
 });
+
+test('lista de alvos: grafias do mesmo organismo se juntam, variedades diferentes não', () => {
+  const cat = { };
+  const l = E.alvosDaCultura(null, cat, 'Soja', { doencas: [
+    'antracnose (Colletotrichum dematium truncata)', 'Antracnose (Colletotrichum dematium var. truncata)', 'Antracnose (Colletotrichum truncatum)',
+    'Cancro-da-haste (Diaporthe phaseolorum var. meridionalis)', 'Phomopsis-da-semente (Diaporthe phaseolorum var. sojae)', 'Phomopsis-da-semente (Phomopsis sojae)',
+    'Oídio (Erysiphe diffusa)', 'Oídio (Microsphaera diffusa)'], pragas: [] });
+  assert.equal(l.doenca.length, 4, l.doenca.join(' | '));
+  assert.ok(l.doenca.some(n => /^Antracnose/.test(n)) && !l.doenca.some(n => /^antracnose/.test(n)), 'fica a grafia com maiúscula');
+  assert.ok(l.doenca.some(n => /meridionalis/.test(n)) && l.doenca.some(n => /var\. sojae/.test(n)), 'var. sojae e var. meridionalis são doenças diferentes');
+});
+
+test('reentrada liberada: maior número de horas depois do término, com data e hora', () => {
+  const r = E.reentradaLiberada({ base: '2026-09-20T17:30', origemBase: 'termino', itens: [
+    { nome: 'A', classe: 'Fungicida', reentrada: 24 }, { nome: 'B', classe: 'Inseticida', reentrada: 12 }, { nome: 'C', classe: 'Inseticida', reentrada: 0 },
+    { nome: 'D', classe: 'Herbicida' }, { nome: 'Wetcit', classe: 'Adjuvante' }] });
+  assert.equal(r.liberadoEm, '2026-09-21T17:30');
+  assert.equal(r.limitante, 'A');
+  assert.equal(r.linhas.find(l => l.nome === 'C').liberadoEm, '2026-09-20T17:30', 'zero hora = liberada ao terminar');
+  assert.deepEqual(r.semReentrada, ['D']);
+  assert.equal(E.reentradaLiberada({ base: 'lixo', itens: [] }), null);
+  assert.equal(E.reentradaLiberada({ base: '2026-12-31T22:00', itens: [{ nome: 'A', classe: 'Fungicida', reentrada: 48 }] }).liberadoEm, '2027-01-02T22:00', 'virada de ano');
+});
