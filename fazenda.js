@@ -141,9 +141,70 @@ function initFicha() {
   renderFicha();
 }
 
+/* ───────── caderno de campo por talhão (auditoria, certificação, receituário) ───────── */
+let cadernoNomes = null; // null = todos os talhões
+function itemDePerfil(p) { return { nome: p.nome, classe: p.defensivo === false ? 'Adjuvante' : 'Outro', intervalo: p.intervalo, carencia: p.carencia, reentrada: p.reentrada }; }
+/* datas que cada registro libera, calculadas dos perfis guardados no momento da aplicação */
+function liberacoesDoRegistro(a) {
+  const itens = (a.perfis || []).map(itemDePerfil), base = a.quando; if (!itens.length || !base) return {};
+  const p = E.proximaAplicacao({ itens, base }), c = E.colheitaLiberada({ itens, base }), r = E.reentradaLiberada({ itens, base });
+  return { proxima: p && p.liberadoEm, colheita: c && c.liberadoEm, reentrada: r && r.liberadoEm };
+}
+function linhasDoCaderno(nomes, soFeitas) {
+  const alvo = (nomes && nomes.length) ? DB.talhoes.filter(t => nomes.some(n => norm(n) === norm(t.nome))) : DB.talhoes;
+  const linhas = [];
+  alvo.forEach(t => (t.aplicacoes || []).forEach(a => {
+    if (soFeitas && !a.aplicada) return;
+    linhas.push({ t, a, lib: liberacoesDoRegistro(a) });
+  }));
+  return linhas.sort((x, y) => String(x.a.quando).localeCompare(String(y.a.quando)) || x.t.nome.localeCompare(y.t.nome, 'pt-BR', { numeric: true }));
+}
+const doseTexto = i => `${fmt(i.dose, 3)} ${i.unidade || ''}${i.lote ? ' (lote ' + i.lote + ')' : ''}`.trim();
+const quandoTexto = q => { const s = String(q || ''); return s.length >= 16 && s[10] === 'T' && !s.endsWith('Z') ? dataHoraBR(s) : dataBR(s.slice(0, 10)); };
+function nomeEquip(k) { return (KB.equipamentos[k] || {}).nome || k || ''; }
+function cadernoParaCSV(linhas) {
+  const cab = ['Data', 'Talhão', 'Cultura', 'Situação', 'Área (ha)', 'Produtos (dose/ha, lote)', 'Alvos', 'Volume de calda (L/ha)', 'Litros pulverizados', 'Equipamento', 'Máquina', 'Operador', 'Receituário', 'Responsável técnico', 'CREA/CFTA', 'Reentrada liberada', 'Próxima aplicação permitida', 'Colheita liberada', 'Custo (R$)', 'Código do laudo'];
+  const rows = linhas.map(({ t, a, lib }) => {
+    const r = a.rast || {}, itens = a.itens || (a.produtos || []).map(n => ({ nome: n, dose: 0, unidade: '' }));
+    return [quandoTexto(a.quando), t.nome, a.cultura || t.cultura || '', a.aplicada ? 'aplicada' : 'só análise', GCEstoque.numCSV(a.area), itens.map(i => i.nome + (i.dose ? ' ' + doseTexto(i) : '')).join(' + '), a.alvos || '', GCEstoque.numCSV(a.volumeHa), GCEstoque.numCSV(a.litros),
+      nomeEquip(a.equip), r.maquina || '', r.operador || '', r.receituario || '', r.responsavel || '', r.crea || '', lib.reentrada ? dataHoraBR(lib.reentrada) : '', lib.proxima ? dataBR(lib.proxima) : '', lib.colheita ? dataBR(lib.colheita) : '', GCEstoque.numCSV(a.custo), a.codigo || ''];
+  });
+  return GCEstoque.toCSV([cab, ...rows]);
+}
+function renderCaderno() {
+  const soFeitas = $('#cadSoFeitas').checked, linhas = linhasDoCaderno(cadernoNomes, soFeitas);
+  const nomes = cadernoNomes && cadernoNomes.length ? cadernoNomes.join(', ') : 'todos os talhões';
+  $('#cadTitulo').textContent = `Caderno de campo — ${nomes}`;
+  $('#cadFazenda').textContent = `${DB.config.fazenda || 'Fazenda'} · emitido em ${agora()} · Gefaz Calda ${E.versao}`;
+  const custo = linhas.filter(l => l.a.aplicada).reduce((s, l) => s + (l.a.custo || 0), 0);
+  $('#cadResumo').textContent = `${linhas.length} registro(s)${custo ? ' · custo de defensivos das aplicações feitas: ' + BRL(custo) : ''}`;
+  $('#cadTabela').innerHTML = linhas.length ? `<thead><tr><th>Data</th><th>Talhão</th><th>Produtos (dose/ha · lote)</th><th>Alvos</th><th class="num">ha</th><th>Quem · com quê</th><th>Situação</th><th>Liberações</th><th class="num">Custo</th></tr></thead><tbody>${linhas.map(({ t, a, lib }) => {
+    const r = a.rast || {}, itens = a.itens || (a.produtos || []).map(n => ({ nome: n, dose: 0, unidade: '' }));
+    return `<tr><td>${esc(quandoTexto(a.quando))}</td><td>${esc(t.nome)}<br><small>${esc(a.cultura || t.cultura || '')}</small></td>
+      <td>${itens.map(i => `${esc(i.nome)}${i.dose ? ' <small>' + esc(doseTexto(i)) + '</small>' : ''}`).join('<br>')}</td><td>${esc(a.alvos || '—')}</td><td class="num">${a.area ? fmt(a.area, 2) : '—'}</td>
+      <td>${esc([r.operador, r.maquina, nomeEquip(a.equip)].filter(Boolean).join(' · ') || '—')}${r.receituario ? '<br><small>receituário ' + esc(r.receituario) + '</small>' : ''}${r.responsavel ? '<br><small>RT ' + esc(r.responsavel) + (r.crea ? ' — ' + esc(r.crea) : '') + '</small>' : ''}</td>
+      <td>${a.aplicada ? '<span class="tag reg">aplicada</span>' : '<span class="tag">só análise</span>'}${a.litros ? '<br><small>' + fmt(a.litros, 0) + ' L de calda</small>' : ''}</td>
+      <td><small>${lib.reentrada ? 'reentrada ' + esc(dataHoraBR(lib.reentrada)) + '<br>' : ''}${lib.proxima ? 'próx. aplicação ' + esc(dataBR(lib.proxima)) + '<br>' : ''}${lib.colheita ? 'colheita ' + esc(dataBR(lib.colheita)) : ''}${!lib.reentrada && !lib.proxima && !lib.colheita ? '—' : ''}</small></td>
+      <td class="num">${a.custo != null ? BRL(a.custo) : '—'}</td></tr>`;
+  }).join('')}</tbody>` : '<tbody><tr><td class="muted">Nenhum registro. As aplicações entram aqui quando você marca o talhão e analisa a calda (marque “aplicada” em Histórico → Talhões, ou informe o término).</td></tr></tbody>';
+}
+function abrirCaderno(nomes) { cadernoNomes = nomes; renderCaderno(); navTo('caderno'); }
+function imprimirCaderno() {
+  const st = document.createElement('style'); st.id = 'paginaPaisagem'; st.media = 'print'; st.textContent = '@page{size:A4 landscape;margin:10mm}';
+  document.head.appendChild(st); document.body.classList.add('print-caderno'); window.print();
+}
+function initCaderno() {
+  $('#cadSoFeitas').onchange = renderCaderno;
+  $('#btnCadImprimir').onclick = imprimirCaderno;
+  $('#btnCadCSV').onclick = () => download(`caderno-de-campo-${hoje()}.csv`, '﻿' + cadernoParaCSV(linhasDoCaderno(cadernoNomes, $('#cadSoFeitas').checked)), 'text/csv;charset=utf-8');
+  $('#btnCadVoltar').onclick = () => navTo('historico');
+  $('#btnCadernoTodos').onclick = () => abrirCaderno(null);
+  window.addEventListener('afterprint', () => { document.body.classList.remove('print-caderno'); const st = $('#paginaPaisagem'); if (st) st.remove(); });
+}
+
 /* ───────── start ───────── */
 function initFazenda() {
-  initFicha();
+  initFicha(); initCaderno();
   vigiarNovaVersao();
   window.addEventListener('afterprint', () => document.body.classList.remove('print-resumido'));
   $('#btnBackup').onclick = exportarBackup;

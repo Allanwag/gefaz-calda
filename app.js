@@ -376,6 +376,22 @@ function puxarDadosTalhoes() {
     const c = KB.culturas.find(x => norm(x) === culturas[0]);
     if (c && $('#fCultura').value !== c) { $('#fCultura').value = c; $('#fCultura').onchange(); }
   }
+  if (ts.length === 1) aplicarPadroesDoTalhao(ts[0]);
+}
+/* equipamento, regulagem salva ou entrelinhas/faixa do talhão passam para a calda e para a aba Pontas */
+function aplicarPadroesDoTalhao(t) {
+  const feitos = [];
+  if (t.equip && KB.equipamentos[t.equip] && $('#fEquip').value !== t.equip) { $('#fEquip').value = t.equip; $('#fEquip').onchange(); feitos.push('equipamento'); }
+  const reg = t.regulagemId && DB.regulagens.find(r => r.id === t.regulagemId);
+  if (reg) {
+    aplicarRegulagem(reg.entrada); preencherSelectRegulagem(); $('#fRegulagem').value = 's' + DB.regulagens.indexOf(reg); notaRegulagem(); feitos.push('regulagem “' + reg.nome + '”');
+  } else if (t.faixa > 0 || t.entreLinhas > 0) {
+    if (t.faixa > 0) { $('#pModo').value = 'faixa'; $('#pLf').value = t.faixa; }
+    if (t.entreLinhas > 0) $('#pEl').value = t.entreLinhas;
+    camposPorModo(); atualizarVazaoAlvo(); if (regulagem) calcularRegulagem(true);
+    feitos.push('faixa e entrelinhas na aba Pontas');
+  }
+  if (feitos.length) toast('Talhão ' + t.nome + ': ' + feitos.join(', '));
 }
 function renderTalhoes() {
   const box = $('#talhaoChips'); if (!box) return;
@@ -405,18 +421,24 @@ function abrirFormTalhao(t) {
   $('#tfCultura').innerHTML = '<option value="">—</option>' + KB.culturas.map(c => `<option>${esc(c)}</option>`).join('');
   $('#tfTitulo').textContent = t ? 'Editar talhão' : 'Novo talhão';
   $('#tfNome').value = t ? t.nome : ''; $('#tfArea').value = t && t.area ? t.area : ''; $('#tfCiclo').value = (t && t.cicloInicio) || '';
+  $('#tfEntreLinhas').value = (t && t.entreLinhas) || ''; $('#tfFaixa').value = (t && t.faixa) || '';
+  $('#tfEquip').innerHTML = '<option value="">—</option>' + Object.entries(KB.equipamentos).map(([k, e]) => `<option value="${k}">${esc(e.nome)}</option>`).join('');
+  $('#tfEquip').value = (t && t.equip) || '';
+  $('#tfRegulagem').innerHTML = '<option value="">—</option>' + DB.regulagens.map(r => `<option value="${esc(r.id)}">${esc(r.nome)}</option>`).join('');
+  $('#tfRegulagem').value = (t && t.regulagemId) || '';
   $('#tfCultura').value = t ? (t.cultura || '') : $('#fCultura').value;
   $('#talhaoForm').classList.remove('hidden'); $('#tfNome').focus();
 }
 function fecharFormTalhao() { talhaoEditando = null; $('#talhaoForm').classList.add('hidden'); }
 function salvarFormTalhao() {
   const nome = $('#tfNome').value.trim(), area = num($('#tfArea').value), cultura = $('#tfCultura').value, cicloInicio = $('#tfCiclo').value || '';
+  const padroes = { entreLinhas: num($('#tfEntreLinhas').value) || 0, faixa: num($('#tfFaixa').value) || 0, equip: $('#tfEquip').value, regulagemId: $('#tfRegulagem').value };
   if (!nome) return toast('Dê um nome ao talhão', 'err');
   const outro = achaTalhao(nome);
   if (outro && outro !== talhaoEditando) return toast('Já existe um talhão com esse nome', 'err');
   let sel = talhoesSel;
-  if (talhaoEditando) { const antigo = talhaoEditando.nome; Object.assign(talhaoEditando, { nome, area, cultura, cicloInicio }); sel = sel.map(n => norm(n) === norm(antigo) ? nome : n); }
-  else { DB.talhoes.push({ nome, area, cultura, cicloInicio, fonte: 'manual', aplicacoes: [] }); sel = [...sel, nome]; }
+  if (talhaoEditando) { const antigo = talhaoEditando.nome; Object.assign(talhaoEditando, { nome, area, cultura, cicloInicio, ...padroes }); sel = sel.map(n => norm(n) === norm(antigo) ? nome : n); }
+  else { DB.talhoes.push({ nome, area, cultura, cicloInicio, ...padroes, fonte: 'manual', aplicacoes: [] }); sel = [...sel, nome]; }
   saveDB(); fecharFormTalhao(); definirTalhoes(sel, true); renderHistorico(); renderIntegracao();
   toast(`Talhão ${nome} salvo`);
 }
@@ -426,19 +448,35 @@ function excluirTalhao(t) {
   definirTalhoes(talhoesSel.filter(n => norm(n) !== norm(t.nome)), true); renderHistorico(); renderIntegracao();
 }
 function chaveDaCalda(ctx) { return JSON.stringify([ctx.cultura, ctx.volumeHa, calda.itens.map(i => [norm(i.nome), i.dose, i.unidade]).sort()]); }
+const arred2 = v => Math.round((+v || 0) * 100) / 100;
+/* Registro de uma aplicação (ou análise) no histórico de um talhão. Guarda o que o caderno de campo e o custo por
+   talhão precisam: doses e lotes, quem aplicou, com o quê, quanto custou. `area` = hectares deste talhão. */
+function montarRegistroAplicacao(ctx, res, area) {
+  const r = ctx.rastreio, custo = res.custo || {};
+  return {
+    data: res.data, iso: new Date().toISOString(), quando: r.termino || r.inicio || new Date().toISOString(),
+    codigo: res.rastreio ? res.rastreio.codigo : null, status: res.status, aplicada: !!r.termino, chave: chaveDaCalda(ctx),
+    cultura: ctx.cultura, area, volumeHa: ctx.volumeHa, equip: ctx.equipamento,
+    produtos: calda.itens.map(i => i.nome),
+    itens: calda.itens.map(i => ({ nome: i.nome, dose: i.dose, unidade: i.unidade, lote: i.lote || '' })),
+    perfis: (res.itens || []).map(perfilProduto),
+    alvos: textoAlvos(ctx.alvos, true).join(', '), resumo: res.resumo.frase,
+    rast: { operador: r.operador || '', maquina: r.maquina || '', receituario: r.receituario || '', responsavel: r.responsavel || '', crea: r.crea || '', inicio: r.inicio || '', termino: r.termino || '' },
+    custoHa: custo.totalHa != null ? arred2(custo.totalHa) : null, custo: custo.totalHa != null ? arred2(custo.totalHa * area) : null, semPreco: (custo.semPreco || []).length
+  };
+}
 /* Cada análise entra no histórico dos talhões marcados. O código do laudo muda a cada emissão (leva a hora),
    então a mesma calda (produtos, doses, volume, cultura) reanalisada só atualiza o registro que ainda é "só análise". */
 function registrarAplicacaoTalhoes(ctx, res) {
-  const nomes = splitTalhoes(ctx.rastreio.talhao), codigo = res.rastreio ? res.rastreio.codigo : null;
-  const chave = chaveDaCalda(ctx);
+  const nomes = splitTalhoes(ctx.rastreio.talhao);
   nomes.forEach(nome => {
     let t = achaTalhao(nome);
     if (!t) { t = { nome, area: nomes.length === 1 ? ctx.area : 0, cultura: ctx.cultura, fonte: 'manual', aplicacoes: [] }; DB.talhoes.push(t); }
     t.aplicacoes = t.aplicacoes || [];
-    const reg = { data: res.data, iso: new Date().toISOString(), quando: ctx.rastreio.termino || ctx.rastreio.inicio || new Date().toISOString(), codigo, status: res.status, aplicada: !!ctx.rastreio.termino, chave, cultura: ctx.cultura, area: t.area || (nomes.length === 1 ? ctx.area : 0), volumeHa: ctx.volumeHa, produtos: calda.itens.map(i => i.nome), perfis: (res.itens || []).map(perfilProduto), alvos: textoAlvos(ctx.alvos, true).join(', '), resumo: res.resumo.frase };
+    const reg = montarRegistroAplicacao(ctx, res, t.area || (nomes.length === 1 ? ctx.area : 0));
     // com horário informado a aplicação é a mesma calda no mesmo horário; sem horário, a mesma calda ainda "só análise"
     const temHora = !!(ctx.rastreio.termino || ctx.rastreio.inicio);
-    const ja = temHora ? t.aplicacoes.find(a => a.chave === chave && a.quando === reg.quando) : t.aplicacoes.find(a => a.chave === chave && !a.aplicada);
+    const ja = temHora ? t.aplicacoes.find(a => a.chave === reg.chave && a.quando === reg.quando) : t.aplicacoes.find(a => a.chave === reg.chave && !a.aplicada);
     if (ja) { const feita = ja.aplicada; Object.assign(ja, reg); ja.aplicada = feita || reg.aplicada; }
     else t.aplicacoes.unshift({ id: uid(), ...reg });
     t.aplicacoes = t.aplicacoes.slice(0, 100);
@@ -468,7 +506,7 @@ function perfilProduto(i) {
     if (grupo) grupos.push(grupo);
   });
   const unicos = arr => { const v = new Set(); return arr.filter(x => { const k = norm(x); return k && !v.has(k) && v.add(k); }); };
-  return { nome: i.nome, intervalo: +i.intervalo > 0 ? +i.intervalo : null, carencia: temNumero(i.carencia) ? +i.carencia : null, defensivo: !SEM_DEFESA.includes(i.classe) && !(i.tags || []).includes('condicionador'), ativos: unicos(ativos), moa: unicos(i.moa || []), grupos: unicos(grupos) };
+  return { nome: i.nome, intervalo: +i.intervalo > 0 ? +i.intervalo : null, carencia: temNumero(i.carencia) ? +i.carencia : null, reentrada: temNumero(i.reentrada) ? +i.reentrada : null, defensivo: !SEM_DEFESA.includes(i.classe) && !(i.tags || []).includes('condicionador'), ativos: unicos(ativos), moa: unicos(i.moa || []), grupos: unicos(grupos) };
 }
 /* O que a calda de hoje repete das últimas 3 aplicações do talhão: produto, ingrediente ativo, modo de ação
    e (só onde falta o código de MoA) grupo químico. Adjuvantes e foliares ficam de fora. */
@@ -823,16 +861,28 @@ function renderJar() {
 function caldaComoReceita() { const ctx = lerContexto(); return { id: uid(), nome: `Calda ${ctx.cultura}${ctx.alvo ? ' — ' + textoAlvos(ctx.alvos, true).slice(0, 3).join(', ') + (textoAlvos(ctx.alvos).length > 3 ? '…' : '') : ''} ${hoje()}`, cultura: ctx.cultura, alvo: ctx.alvo, alvos: ctx.alvos, doenca: ctx.doenca, praga: ctx.praga, severidade: ctx.severidade, estadio: ctx.estadio, parte: ctx.parte, volumeHa: ctx.volumeHa, itens: calda.itens.map(i => ({ nome: i.nome, dose: i.dose, unidade: i.unidade, classe: i.classe, formulacao: i.formulacao, preco: i.preco, intervalo: i.intervalo, carencia: i.carencia, maxAplic: i.maxAplic, reentrada: i.reentrada, ativos: i.ativos, ingredientes: i.ingredientes, registro: i.registro, tags: i.tags, fonte: i.fonte })), agua: ctx.agua, equipamento: ctx.equipamento, area: ctx.area, tanque: ctx.tanque, obs: ctx.obs, fonte: 'gefaz-calda', status: resultado ? resultado.status : null }; }
 function salvarCalda() { if (!calda.itens.length) return toast('Nada para salvar', 'err'); const nome = prompt('Nome da calda', caldaComoReceita().nome); if (!nome) return; const c = caldaComoReceita(); c.nome = nome; DB.caldas.unshift(c); saveDB(); toast('Calda salva'); renderHistorico(); }
 function carregarReceita(rec) { calda.itens = rec.itens.map(i => ({ id: uid(), ...i, dose: +i.dose || 0, unidade: i.unidade || 'L/ha' })); aplicarContexto({ cultura: rec.cultura, alvo: rec.alvo, alvos: rec.alvos, doenca: rec.doenca, praga: rec.praga, severidade: rec.severidade, estadio: rec.estadio, parte: rec.parte, volumeHa: rec.volumeHa, area: rec.area, tanque: rec.tanque, equipamento: rec.equipamento, agua: rec.agua, obs: rec.obs }); renderItens(); navTo('calda'); toast(`Receita “${rec.nome}” carregada`); }
+/* custo de defensivos das aplicações já feitas no ciclo do talhão (desde o início do ciclo, se definido) */
+function custoDoCiclo(t) {
+  const ini = t.cicloInicio ? Date.parse(t.cicloInicio) : null;
+  const feitas = (t.aplicacoes || []).filter(a => a.aplicada && (!ini || Date.parse(a.quando) >= ini));
+  const total = feitas.reduce((s, a) => s + (a.custo || 0), 0);
+  return { n: feitas.length, total, porHa: t.area > 0 ? total / t.area : null, incompleto: feitas.some(a => a.custo == null || a.semPreco) };
+}
+function resumoCustoTalhao(t) {
+  const c = custoDoCiclo(t); if (!c.n) return '';
+  return ' · custo no ciclo ' + BRL(c.total) + (c.porHa != null ? ' (' + BRL(c.porHa) + '/ha)' : '') + (c.incompleto ? ' ⚠ incompleto' : '');
+}
 function renderHistorico() {
   const badge = s => `<span class="pill ${{ compativel: 'ok', restricoes: 'warn', incompativel: 'bad', testar: 'info' }[s] || 'muted'}">${esc(STATUS_LABEL[s] || s || '—')}</span>`;
   const ordem = DB.talhoes.map((t, i) => ({ t, i })).sort((a, b) => a.t.nome.localeCompare(b.t.nome, 'pt-BR', { numeric: true }));
   $('#listaTalhoes').innerHTML = ordem.length ? ordem.map(({ t, i }) => {
     const ap = t.aplicacoes || [], nAp = ap.filter(a => a.aplicada).length;
-    return `<details class="talhao-det"><summary><b>${esc(t.nome)}</b> <small>${t.area ? fmt(t.area, 2) + ' ha' : 'sem área'}${t.cultura ? ' · ' + esc(t.cultura) : ''} · ${nAp} aplicada(s) · ${ap.length - nAp} só análise</small></summary>
+    return `<details class="talhao-det"><summary><b>${esc(t.nome)}</b> <small>${t.area ? fmt(t.area, 2) + ' ha' : 'sem área'}${t.cultura ? ' · ' + esc(t.cultura) : ''} · ${nAp} aplicada(s) · ${ap.length - nAp} só análise${resumoCustoTalhao(t)}</small></summary>
       <div class="lista">${ap.length ? ap.map((a, j) => `<div class="row"><div><b>${esc(a.produtos.join(' + '))}</b><small>${esc(a.data)}${a.area ? ' · ' + fmt(a.area, 2) + ' ha' : ''}${a.volumeHa ? ' · ' + a.volumeHa + ' L/ha' : ''} · ${esc(a.alvos || 'sem alvo')}${a.codigo ? ' · ' + esc(a.codigo) : ''}</small></div><div class="acts">${badge(a.status)}<button class="btn sm${a.aplicada ? '' : ' ghost'}" data-apl="${i}:${j}" title="Marque quando a aplicação foi feita de fato">${a.aplicada ? '✔ aplicada' : 'marcar aplicada'}</button></div></div>`).join('') : '<div class="small muted">Sem registros ainda — o talhão marcado na aba Calda entra aqui a cada análise.</div>'}</div>
-      <div class="row-btns"><button class="btn sm" data-tuse="${i}">Usar na calda</button><button class="btn sm ghost" data-tedit="${i}">✎ Editar</button><button class="btn sm ghost danger" data-tdel="${i}">Excluir</button></div></details>`;
+      <div class="row-btns"><button class="btn sm" data-tuse="${i}">Usar na calda</button><button class="btn sm ghost" data-tcad="${i}" title="Todas as aplicações deste talhão, para imprimir ou abrir no Excel">📒 Caderno de campo</button><button class="btn sm ghost" data-tedit="${i}">✎ Editar</button><button class="btn sm ghost danger" data-tdel="${i}">Excluir</button></div></details>`;
   }).join('') : '<div class="small muted">Nenhum talhão. Cadastre na aba Calda (＋ Novo talhão) ou importe do PVGest/Gefaz360.</div>';
   $$('#listaTalhoes [data-apl]').forEach(b => b.onclick = () => { const [i, j] = b.dataset.apl.split(':'); const a = DB.talhoes[+i].aplicacoes[+j]; a.aplicada = !a.aplicada; saveDB(); renderHistorico(); renderTalhoes(); });
+  $$('#listaTalhoes [data-tcad]').forEach(b => b.onclick = () => abrirCaderno([DB.talhoes[+b.dataset.tcad].nome]));
   $$('#listaTalhoes [data-tuse]').forEach(b => b.onclick = () => { definirTalhoes([DB.talhoes[+b.dataset.tuse].nome], true); navTo('calda'); });
   $$('#listaTalhoes [data-tedit]').forEach(b => b.onclick = () => { navTo('calda'); abrirFormTalhao(DB.talhoes[+b.dataset.tedit]); $('#talhaoForm').scrollIntoView({ block: 'center' }); });
   $$('#listaTalhoes [data-tdel]').forEach(b => b.onclick = () => excluirTalhao(DB.talhoes[+b.dataset.tdel]));

@@ -331,3 +331,12 @@ main{padding-bottom:calc(88px + env(safe-area-inset-bottom))}
 .tabela-rolavel{overflow-x:auto;margin-top:8px}
 .tabela-rolavel table{min-width:560px}
 .tabela-rolavel td input{padding:5px 6px;min-width:64px}
+
+/* ───────── caderno de campo ───────── */
+.caderno-tabela{min-width:900px}
+.caderno-tabela td{vertical-align:top}
+@media print{
+  body.print-caderno .caderno-tabela{min-width:0;width:100%;font-size:9.5px}
+  body.print-caderno .tabela-rolavel{overflow:visible}
+  body.print-caderno .card{border:0}
+}
