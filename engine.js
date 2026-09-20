@@ -611,5 +611,40 @@
     return { rotulo: rot[res.status], contagem: n, frase: `${rot[res.status]} · ${n.alta} crítico(s), ${n.media} restrição(ões), ${n.baixa} atenção · confiança ${Math.round(res.confianca * 100)} %` };
   }
 
-  return { analisar, resolverItem, resolverAtivos, dosePorHa, chaveDoConjunto, PASSO_FORMULACAO, PASSOS, norm, alvosLista, alvoCombina, categoriaPorNome, classificarAlvos, alvosDaCultura, CATEGORIAS_ALVO, ROTULO_CATEGORIA, versao: VERSAO, CAMPOS_RASTREIO, codigoDe };
+  // ── Próxima aplicação permitida ──
+  // A data vem do intervalo mínimo entre aplicações que o usuário informa por produto (da bula/receituário):
+  // nenhum banco público usado aqui traz esse número, então sem intervalo informado não há data — e não se inventa.
+  const SEM_INTERVALO = ['Adjuvante', 'Fertilizante Foliar'];
+  const pad2 = n => String(n).padStart(2, '0');
+  const isoDia = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  // AAAA-MM-DD puro é dia local (new Date('2026-12-25') seria UTC e recuaria um dia no Brasil)
+  const diaDe = v => {
+    const m = typeof v === 'string' && v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    const d = m ? new Date(+m[1], +m[2] - 1, +m[3]) : (v instanceof Date ? v : new Date(v));
+    return isNaN(d) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  };
+  const somaDias = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + Math.round(n));
+  function proximaAplicacao({ itens, base, origemBase, talhoes }) {
+    const b = diaDe(base); if (!b) return null;
+    const linhas = [], semIntervalo = [];
+    (itens || []).forEach(i => {
+      const dias = +i.intervalo;
+      if (dias > 0) linhas.push({ nome: i.nome, intervalo: dias, liberadoEm: isoDia(somaDias(b, dias)) });
+      else if (!SEM_INTERVALO.includes(i.classe) && !(i.tags || []).includes('condicionador')) semIntervalo.push(i.nome);
+    });
+    linhas.sort((x, y) => (x.liberadoEm < y.liberadoEm ? 1 : x.liberadoEm > y.liberadoEm ? -1 : 0));
+    // dentro do intervalo de aplicações anteriores do mesmo produto no talhão (só as marcadas como feitas)
+    const conflitos = [];
+    (talhoes || []).forEach(t => (itens || []).forEach(i => {
+      const dias = +i.intervalo; if (!(dias > 0)) return;
+      const ult = (t.aplicacoes || []).filter(a => (a.produtos || []).some(p => norm(p) === norm(i.nome)) && diaDe(a.quando))
+        .sort((x, y) => diaDe(y.quando) - diaDe(x.quando))[0];
+      if (!ult) return;
+      const libera = somaDias(diaDe(ult.quando), dias);
+      if (libera > b) conflitos.push({ talhao: t.nome, nome: i.nome, intervalo: dias, ultima: isoDia(diaDe(ult.quando)), liberadoEm: isoDia(libera), diasFaltam: Math.round((libera - b) / 864e5) });
+    }));
+    return { base: isoDia(b), origemBase: origemBase || 'emissao', linhas, liberadoEm: linhas.length ? linhas[0].liberadoEm : null, limitante: linhas.length ? linhas[0].nome : null, semIntervalo, conflitos };
+  }
+
+  return { analisar, proximaAplicacao, resolverItem, resolverAtivos, dosePorHa, chaveDoConjunto, PASSO_FORMULACAO, PASSOS, norm, alvosLista, alvoCombina, categoriaPorNome, classificarAlvos, alvosDaCultura, CATEGORIAS_ALVO, ROTULO_CATEGORIA, versao: VERSAO, CAMPOS_RASTREIO, codigoDe };
 });

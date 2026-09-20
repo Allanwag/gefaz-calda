@@ -311,3 +311,29 @@ test('listas curadas do kb.js separam cada cultura em doença, inseto e outras p
     assert.equal(total, cur.doencas.length + cur.pragas.length, cultura + ': todo alvo curado aparece em algum grupo');
   });
 });
+
+test('próxima aplicação: vale o maior intervalo informado e não inventa data sem ele', () => {
+  const p = E.proximaAplicacao({ base: '2026-09-20T08:00', origemBase: 'termino', itens: [
+    { nome: 'Folicur', classe: 'Fungicida', intervalo: 14 }, { nome: 'Mancozebe X', classe: 'Fungicida', intervalo: 7 },
+    { nome: 'Sem dado', classe: 'Inseticida' }, { nome: 'Wetcit', classe: 'Adjuvante' }] });
+  assert.equal(p.base, '2026-09-20');
+  assert.equal(p.liberadoEm, '2026-10-04');
+  assert.equal(p.limitante, 'Folicur');
+  assert.deepEqual(p.semIntervalo, ['Sem dado'], 'adjuvante não cobra intervalo');
+  const nada = E.proximaAplicacao({ base: '2026-09-20', itens: [{ nome: 'X', classe: 'Fungicida' }] });
+  assert.equal(nada.liberadoEm, null);
+  assert.equal(E.proximaAplicacao({ base: 'lixo', itens: [] }), null);
+});
+
+test('próxima aplicação: virada de mês e ano', () => {
+  const p = E.proximaAplicacao({ base: '2026-12-25', itens: [{ nome: 'A', classe: 'Fungicida', intervalo: 10 }] });
+  assert.equal(p.liberadoEm, '2027-01-04');
+});
+
+test('próxima aplicação: avisa quando o mesmo produto ainda está dentro do intervalo no talhão', () => {
+  const p = E.proximaAplicacao({ base: '2026-09-20', itens: [{ nome: 'Folicur', classe: 'Fungicida', intervalo: 14 }],
+    talhoes: [{ nome: 'Gleba 1', aplicacoes: [{ quando: '2026-09-10', produtos: ['folicur'] }, { quando: '2026-08-01', produtos: ['Folicur'] }] },
+      { nome: 'Gleba 2', aplicacoes: [{ quando: '2026-09-01', produtos: ['Folicur'] }] }] });
+  assert.equal(p.conflitos.length, 1, 'só a Gleba 1 está dentro dos 14 dias');
+  assert.deepEqual([p.conflitos[0].talhao, p.conflitos[0].liberadoEm, p.conflitos[0].diasFaltam], ['Gleba 1', '2026-09-24', 4]);
+});
