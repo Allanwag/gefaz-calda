@@ -646,5 +646,27 @@
     return { base: isoDia(b), origemBase: origemBase || 'emissao', linhas, liberadoEm: linhas.length ? linhas[0].liberadoEm : null, limitante: linhas.length ? linhas[0].nome : null, semIntervalo, conflitos };
   }
 
-  return { analisar, proximaAplicacao, resolverItem, resolverAtivos, dosePorHa, chaveDoConjunto, PASSO_FORMULACAO, PASSOS, norm, alvosLista, alvoCombina, categoriaPorNome, classificarAlvos, alvosDaCultura, CATEGORIAS_ALVO, ROTULO_CATEGORIA, versao: VERSAO, CAMPOS_RASTREIO, codigoDe };
+  // ── Colheita liberada (carência = dias entre a última aplicação e a colheita) ──
+  // Também vem do que o usuário informa por produto (bula/receituário); 0 é um valor válido (sem carência).
+  const temCarencia = c => c !== undefined && c !== null && c !== '' && isFinite(+c) && +c >= 0;
+  function colheitaLiberada({ itens, base, origemBase, talhoes }) {
+    const b = diaDe(base); if (!b) return null;
+    const linhas = [], semCarencia = [];
+    (itens || []).forEach(i => {
+      if (temCarencia(i.carencia)) linhas.push({ nome: i.nome, carencia: +i.carencia, liberadoEm: isoDia(somaDias(b, +i.carencia)) });
+      else if (!SEM_INTERVALO.includes(i.classe) && !(i.tags || []).includes('condicionador')) semCarencia.push(i.nome);
+    });
+    linhas.sort((x, y) => (x.liberadoEm < y.liberadoEm ? 1 : x.liberadoEm > y.liberadoEm ? -1 : 0));
+    // por talhão: vale o que vence por último — esta aplicação ou uma anterior (marcada como feita) com carência maior
+    const porTalhao = (talhoes || []).map(t => {
+      const cand = linhas.map(l => ({ nome: l.nome, aplicadoEm: isoDia(b), liberadoEm: l.liberadoEm, origem: 'esta' }));
+      (t.aplicacoes || []).forEach(a => { const d = diaDe(a.quando); if (!d) return;
+        (a.perfis || []).forEach(p => { if (temCarencia(p.carencia)) cand.push({ nome: p.nome, aplicadoEm: isoDia(d), liberadoEm: isoDia(somaDias(d, +p.carencia)), origem: 'anterior' }); }); });
+      cand.sort((x, y) => (x.liberadoEm < y.liberadoEm ? 1 : x.liberadoEm > y.liberadoEm ? -1 : 0));
+      return cand.length ? { talhao: t.nome, liberadoEm: cand[0].liberadoEm, limitante: cand[0] } : { talhao: t.nome, liberadoEm: null, limitante: null };
+    });
+    return { base: isoDia(b), origemBase: origemBase || 'emissao', linhas, liberadoEm: linhas.length ? linhas[0].liberadoEm : null, limitante: linhas.length ? linhas[0].nome : null, semCarencia, talhoes: porTalhao };
+  }
+
+  return { analisar, proximaAplicacao, colheitaLiberada, resolverItem, resolverAtivos, dosePorHa, chaveDoConjunto, PASSO_FORMULACAO, PASSOS, norm, alvosLista, alvoCombina, categoriaPorNome, classificarAlvos, alvosDaCultura, CATEGORIAS_ALVO, ROTULO_CATEGORIA, versao: VERSAO, CAMPOS_RASTREIO, codigoDe };
 });

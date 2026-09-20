@@ -337,3 +337,26 @@ test('próxima aplicação: avisa quando o mesmo produto ainda está dentro do i
   assert.equal(p.conflitos.length, 1, 'só a Gleba 1 está dentro dos 14 dias');
   assert.deepEqual([p.conflitos[0].talhao, p.conflitos[0].liberadoEm, p.conflitos[0].diasFaltam], ['Gleba 1', '2026-09-24', 4]);
 });
+
+test('colheita liberada: maior carência, zero vale e produto sem dado fica de fora', () => {
+  const c = E.colheitaLiberada({ base: '2026-09-20T08:00', origemBase: 'termino', itens: [
+    { nome: 'Folicur', classe: 'Fungicida', carencia: 30 }, { nome: 'Mancozebe X', classe: 'Fungicida', carencia: 7 },
+    { nome: 'Bio', classe: 'Fungicida', carencia: 0 }, { nome: 'Sem dado', classe: 'Inseticida' }, { nome: 'Wetcit', classe: 'Adjuvante' }] });
+  assert.equal(c.liberadoEm, '2026-10-20');
+  assert.equal(c.limitante, 'Folicur');
+  assert.equal(c.linhas.find(l => l.nome === 'Bio').liberadoEm, '2026-09-20', 'carência 0 = liberada no mesmo dia');
+  assert.deepEqual(c.semCarencia, ['Sem dado']);
+  assert.equal(E.colheitaLiberada({ base: 'x', itens: [] }), null);
+  assert.equal(E.colheitaLiberada({ base: '2026-09-20', itens: [{ nome: 'A', classe: 'Fungicida' }] }).liberadoEm, null);
+});
+
+test('colheita liberada: por talhão, uma aplicação anterior com carência maior pode limitar', () => {
+  const c = E.colheitaLiberada({ base: '2026-09-20', itens: [{ nome: 'Novo', classe: 'Fungicida', carencia: 7 }], talhoes: [
+    { nome: 'Gleba 1', aplicacoes: [{ quando: '2026-09-10', perfis: [{ nome: 'Antigo', carencia: 30 }] }] },
+    { nome: 'Gleba 2', aplicacoes: [{ quando: '2026-09-10', perfis: [{ nome: 'Antigo', carencia: 7 }] }] },
+    { nome: 'Gleba 3', aplicacoes: [] }] });
+  const g = n => c.talhoes.find(t => t.talhao === n);
+  assert.deepEqual([g('Gleba 1').liberadoEm, g('Gleba 1').limitante.origem, g('Gleba 1').limitante.nome], ['2026-10-10', 'anterior', 'Antigo']);
+  assert.deepEqual([g('Gleba 2').liberadoEm, g('Gleba 2').limitante.origem], ['2026-09-27', 'esta']);
+  assert.equal(g('Gleba 3').liberadoEm, '2026-09-27');
+});
