@@ -29,6 +29,21 @@ function saveDB() { try { localStorage.setItem(LS, JSON.stringify(DB)); } catch 
 /* ───────── estado da calda ───────── */
 let calda = { itens: [], obs: '' };
 let resultado = null;
+let assinaturaResultado = null;
+function assinaturaDaAnalise() {
+  return JSON.stringify([calda.itens, lerContexto(), regulagemDoLaudo(), DB.config.custo,
+    DB.config.acidificanteUltimo, DB.jarTests, DB.talhoes]);
+}
+function invalidarResultado() {
+  resultado = null; assinaturaResultado = null;
+  clearInterval(jarTimer); jarTimer = null; jarStart = null;
+  const aviso = '<div class="card">A calda ou o contexto mudou. Clique em “Analisar compatibilidade” na aba Calda para atualizar o laudo e o jar test.</div>';
+  $('#resultado').innerHTML = aviso; $('#jar').innerHTML = aviso;
+}
+function conferirResultadoAtual() {
+  if (resultado && assinaturaResultado !== assinaturaDaAnalise()) invalidarResultado();
+  return !!resultado;
+}
 let AGRO = null; // índice Agrofit
 let agroBusca = [];
 
@@ -37,7 +52,7 @@ let toastT = null;
 function toast(msg, cls = '') { const el = $('#toast'); el.textContent = msg; el.className = 'toast ' + cls; clearTimeout(toastT); toastT = setTimeout(() => el.classList.add('hidden'), 3200); }
 function modal(html) { $('#modalBody').innerHTML = html; $('#modal').classList.remove('hidden'); }
 function closeModal() { $('#modal').classList.add('hidden'); }
-function navTo(tab) { $$('.tab').forEach(t => t.classList.toggle('active', t.id === 'tab-' + tab)); $$('#nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab)); window.scrollTo(0, 0); }
+function navTo(tab) { conferirResultadoAtual(); $$('.tab').forEach(t => t.classList.toggle('active', t.id === 'tab-' + tab)); $$('#nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab)); window.scrollTo(0, 0); }
 function download(nome, conteudo, tipo = 'application/json') { const b = new Blob([conteudo], { type: tipo }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = nome; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); }
 
 /* ───────── Agrofit ───────── */
@@ -483,11 +498,11 @@ function aplicarContexto(c) {
   if (!c) return;
   if (c.cultura) $('#fCultura').value = KB.culturas.includes(c.cultura) ? c.cultura : (KB.culturas.find(x => norm(x) === norm(c.cultura)) || 'Outra');
   if (c.alvos || c.alvo != null || c.doenca != null || c.praga != null) { atualizarListasCultura(); definirAlvos(alvosLegados(c)); }
-  if (c.severidade) $('#fSeveridade').value = c.severidade;
+  if (c.severidade != null) $('#fSeveridade').value = c.severidade;
   if (c.estadio != null) $('#fEstadio').value = c.estadio;
-  if (c.parte) $('#fParte').value = c.parte;
+  if (c.parte != null) $('#fParte').value = c.parte;
   if (c.equipamento) $('#fEquip').value = c.equipamento;
-  if (c.volumeHa) $('#fVolume').value = c.volumeHa;
+  if (c.volumeHa != null) { $('#fVolume').value = c.volumeHa; $('#fVolume').dataset.touched = 1; }
   if (c.area != null) $('#fArea').value = c.area;
   if (c.tanque != null) $('#fTanque').value = c.tanque;
   if (c.agua) { $('#fPh').value = c.agua.ph ?? ''; $('#fDureza').value = c.agua.dureza ?? ''; $('#fTurbidez').value = c.agua.turbidez || 'limpa'; $('#fFonte').value = c.agua.fonte || ''; }
@@ -495,7 +510,8 @@ function aplicarContexto(c) {
   aplicarRastreio(c.rastreio);
   if (c.rastreio && c.rastreio.talhao != null) definirTalhoes(splitTalhoes(c.rastreio.talhao));
   $('#droneAviso').classList.toggle('hidden', $('#fEquip').value !== 'drone');
-  atualizarAlvos(); atualizarListasCultura();
+  $('#cafeAviso').classList.toggle('hidden', $('#fEquip').value !== 'herbicida-cafe');
+  atualizarAlvos(); atualizarListasCultura(); areaPorTanqueCalda(); notaRegulagem();
 }
 
 /* ───────── regulagem anexada ao laudo ───────── */
@@ -535,7 +551,10 @@ function notaRegulagem() {
 /* ───────── análise ───────── */
 function analisar(silencioso, registrarHistorico = true) {
   const ctx = lerContexto();
-  if (!calda.itens.length) { toast('Adicione ao menos um produto', 'err'); return null; }
+  if (!calda.itens.length) { invalidarResultado(); toast('Adicione ao menos um produto', 'err'); return null; }
+  if (!(ctx.volumeHa > 0) || ctx.area < 0 || ctx.tanque < 0 || calda.itens.some(i => !Number.isFinite(+i.dose) || +i.dose < 0)) {
+    invalidarResultado(); toast('Informe volume maior que zero e área, tanque e doses sem valores negativos.', 'err'); return null;
+  }
   const semDose = calda.itens.filter(i => !i.dose);
   if (semDose.length && !silencioso) toast(`Sem dose: ${semDose.map(i => i.nome).join(', ')} — custo e jar test ficam incompletos`);
   const opts = { ...ctx, regraFazenda: { acidificanteUltimo: !!DB.config.acidificanteUltimo }, custoOperacional: DB.config.custo, historicoJar: DB.jarTests, regulagem: regulagemDoLaudo(), kbVersao: KB.versao, data: agora() };
@@ -552,6 +571,7 @@ function analisar(silencioso, registrarHistorico = true) {
     registrarAplicacaoTalhoes(ctx, resultado);
   }
   saveDB();
+  assinaturaResultado = assinaturaDaAnalise();
   renderResultado(); renderJar(); renderHistorico(); renderTalhoes();
   if (window.parent !== window) { try { window.parent.postMessage({ type: 'gefaz-calda:resultado', resultado: resumoExport(), mix: { itens: calda.itens, ...ctx } }, '*'); } catch (e) { } }
   if (!silencioso) navTo('resultado');
@@ -597,9 +617,11 @@ function renderResultado() {
   <div class="card small muted">Apoio à decisão técnica. Não substitui bula, receituário agronômico (IN 40/2018) nem o jar test. Confiança abaixo de 0,70 é indicativa.</div>`;
   $('#btnPrint').onclick = () => { $$('#resultado details').forEach(d => { d.open = true; }); window.print(); };
   $('#btnJar').onclick = () => navTo('jar');
-  $('#btnExpLaudo').onclick = () => download(`laudo-calda-${hoje()}.json`, JSON.stringify({ app: 'gefaz-calda', versao: E.versao, calda: { itens: calda.itens, ...ctx }, resultado: resumoExport() }, null, 1));
+  const itensDoLaudo = JSON.parse(JSON.stringify(calda.itens));
+  $('#btnExpLaudo').onclick = () => download(`laudo-calda-${hoje()}.json`, JSON.stringify({ app: 'gefaz-calda', versao: E.versao, calda: { itens: itensDoLaudo, ...ctx }, resultado: resumoExport() }, null, 1));
   $('#btnExpReceita').onclick = () => download(`receita-gefaz-calda-${hoje()}.json`, JSON.stringify(exportPVGestFormat([caldaComoReceita()]), null, 1));
   $('#btnEnvPV').onclick = enviarParaPVGest; $('#btnEnvG360').onclick = enviarParaGefaz360; $('#btnEnvCodex').onclick = enviarParaCodex;
+  $$('#resultado button').forEach(b => { const acao = b.onclick; if (acao) b.onclick = ev => { if (conferirResultadoAtual()) acao(ev); }; });
 }
 function blocoRegulagem(r) {
   const g = r.regulagem;
@@ -729,6 +751,7 @@ function matrizHTML(r) {
 let jarTimer = null, jarStart = null;
 function renderJar() {
   const r = resultado, el = $('#jar'); if (!r) return;
+  clearInterval(jarTimer); jarTimer = null; jarStart = null;
   const j = r.jarTest;
   el.innerHTML = `<div class="card"><div class="card-hd"><h2>Jar test — ${j.obrigatorio ? '<span class="pill bad">obrigatório</span>' : '<span class="pill info">recomendado</span>'}</h2><span class="hint">proporção real para ${r.contexto.volumeHa} L/ha, em 1 L</span></div>
     ${j.historico.length ? `<div class="alert warn">Esta combinação já foi testada: ${j.historico.map(h => `${esc(h.data)} → <b>${esc(h.resultado)}</b>${h.obs ? ' (' + esc(h.obs) + ')' : ''}`).join(' · ')}</div>` : ''}
@@ -743,6 +766,7 @@ function renderJar() {
   $('#jarStart').onclick = () => { jarStart = Date.now(); clearInterval(jarTimer); jarTimer = setInterval(() => { const s = Math.floor((Date.now() - jarStart) / 1000); const m = Math.floor(s / 60); $('#jarTimer').textContent = String(m).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); if ([15, 30, 120].includes(m) && s % 60 === 0) { toast(`Leitura de ${m} min`); if (navigator.vibrate) navigator.vibrate(300); } }, 1000); };
   $('#jarStop').onclick = () => clearInterval(jarTimer);
   $('#jarSave').onclick = () => {
+    if (!conferirResultadoAtual()) return;
     const obs = $$('.jarObs:checked').map(c => c.value);
     const resSel = $('#jarRes').value;
     if (resSel !== 'incompativel' && obs.some(o => /Grumos|Separação|Cristais|Floculação/.test(o))) { if (!confirm('Você marcou sinais de incompatibilidade mas classificou como compatível. Registrar mesmo assim?')) return; }
@@ -752,9 +776,16 @@ function renderJar() {
 }
 
 /* ───────── histórico e caldas ───────── */
-function caldaComoReceita() { const ctx = lerContexto(); return { id: uid(), nome: `Calda ${ctx.cultura}${ctx.alvo ? ' — ' + textoAlvos(ctx.alvos, true).slice(0, 3).join(', ') + (textoAlvos(ctx.alvos).length > 3 ? '…' : '') : ''} ${hoje()}`, cultura: ctx.cultura, alvo: ctx.alvo, alvos: ctx.alvos, doenca: ctx.doenca, praga: ctx.praga, severidade: ctx.severidade, estadio: ctx.estadio, parte: ctx.parte, volumeHa: ctx.volumeHa, itens: calda.itens.map(i => ({ nome: i.nome, dose: i.dose, unidade: i.unidade, classe: i.classe, formulacao: i.formulacao, preco: i.preco, intervalo: i.intervalo, carencia: i.carencia, maxAplic: i.maxAplic, ativos: i.ativos, ingredientes: i.ingredientes, registro: i.registro, tags: i.tags, fonte: i.fonte })), agua: ctx.agua, equipamento: ctx.equipamento, area: ctx.area, tanque: ctx.tanque, obs: ctx.obs, fonte: 'gefaz-calda', status: resultado ? resultado.status : null }; }
+function caldaComoReceita() { conferirResultadoAtual(); const ctx = lerContexto(); return { id: uid(), nome: `Calda ${ctx.cultura}${ctx.alvo ? ' — ' + textoAlvos(ctx.alvos, true).slice(0, 3).join(', ') + (textoAlvos(ctx.alvos).length > 3 ? '…' : '') : ''} ${hoje()}`, cultura: ctx.cultura, alvo: ctx.alvo, alvos: ctx.alvos, doenca: ctx.doenca, praga: ctx.praga, severidade: ctx.severidade, estadio: ctx.estadio, parte: ctx.parte, volumeHa: ctx.volumeHa, itens: calda.itens.map(i => ({ nome: i.nome, dose: i.dose, lote: i.lote, unidade: i.unidade, classe: i.classe, formulacao: i.formulacao, preco: i.preco, intervalo: i.intervalo, carencia: i.carencia, maxAplic: i.maxAplic, ativos: i.ativos, ingredientes: i.ingredientes, registro: i.registro, tags: i.tags, fonte: i.fonte })), agua: ctx.agua, equipamento: ctx.equipamento, area: ctx.area, tanque: ctx.tanque, rastreio: ctx.rastreio, obs: ctx.obs, fonte: 'gefaz-calda', status: resultado ? resultado.status : null }; }
 function salvarCalda() { if (!calda.itens.length) return toast('Nada para salvar', 'err'); const nome = prompt('Nome da calda', caldaComoReceita().nome); if (!nome) return; const c = caldaComoReceita(); c.nome = nome; DB.caldas.unshift(c); saveDB(); toast('Calda salva'); renderHistorico(); }
-function carregarReceita(rec) { calda.itens = rec.itens.map(i => ({ id: uid(), ...i, dose: +i.dose || 0, unidade: i.unidade || 'L/ha' })); aplicarContexto({ cultura: rec.cultura, alvo: rec.alvo, alvos: rec.alvos, doenca: rec.doenca, praga: rec.praga, severidade: rec.severidade, estadio: rec.estadio, parte: rec.parte, volumeHa: rec.volumeHa, area: rec.area, tanque: rec.tanque, equipamento: rec.equipamento, agua: rec.agua, obs: rec.obs }); renderItens(); navTo('calda'); toast(`Receita “${rec.nome}” carregada`); }
+function carregarReceita(rec) {
+  calda.itens = rec.itens.map(i => ({ ...i, id: uid(), dose: +i.dose || 0, unidade: i.unidade || 'L/ha' }));
+  // Receita não comprova uma aplicação: só usa rastreio quando ele foi salvo nela.
+  aplicarContexto({ ...rec, alvos: alvosLegados(rec), severidade: rec.severidade || '',
+    estadio: rec.estadio || '', parte: rec.parte || '', obs: rec.obs || '',
+    rastreio: { ...DB.config.rastreio, talhao: '', receituario: '', inicio: '', termino: '', ...(rec.rastreio || {}) } });
+  renderItens(); navTo('calda'); toast(`Receita “${rec.nome}” carregada`);
+}
 function renderHistorico() {
   const badge = s => `<span class="pill ${{ compativel: 'ok', restricoes: 'warn', incompativel: 'bad', testar: 'info' }[s] || 'muted'}">${esc(STATUS_LABEL[s] || s || '—')}</span>`;
   const ordem = DB.talhoes.map((t, i) => ({ t, i })).sort((a, b) => a.t.nome.localeCompare(b.t.nome, 'pt-BR', { numeric: true }));
@@ -1397,6 +1428,9 @@ window.addEventListener('message', ev => { const d = ev.data; if (!d || typeof d
 
 /* ───────── init ───────── */
 function init() {
+  document.addEventListener('input', conferirResultadoAtual);
+  document.addEventListener('change', conferirResultadoAtual);
+  window.addEventListener('beforeprint', conferirResultadoAtual);
   loadDB();
   $('#fCultura').innerHTML = KB.culturas.map(c => `<option ${c === DB.config.cultura ? 'selected' : ''}>${c}</option>`).join('');
   $('#fEquip').innerHTML = Object.entries(KB.equipamentos).map(([k, e]) => `<option value="${k}" ${k === DB.config.equipamento ? 'selected' : ''}>${e.nome}</option>`).join('');
