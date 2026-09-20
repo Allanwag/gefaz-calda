@@ -1109,20 +1109,27 @@ function renderCalibracao() {
     <p class="small muted">Critério: bico com vazão 10 % acima da nominal (ou 10 % fora da média do conjunto) está gasto e deve ser trocado. CV acima de 10 % indica bicos entupidos, filtros sujos ou pontas de modelos diferentes na mesma barra.</p>`;
 }
 function renderCatalogoPontas(q) {
-  q = norm(q || '');
-  const lista = PT.PONTAS.filter(p => !q || norm(p.marca + ' ' + p.modelo + ' ' + (TIPO_PONTA[p.tipo] || '') + ' ' + p.nota).includes(q));
+  // busca livre: vários termos em qualquer ordem — marca, modelo, tipo, tamanho, cor, ângulo ou código ("XR 11002")
+  const consulta = String(q || '').trim(), exatas = {};
+  let lista = PT.PONTAS;
+  if (consulta) {
+    const ordem = [];
+    PT.buscarPontas(consulta, { limite: 2000, nota: true }).forEach(r => { if (!exatas[r.ponta]) { exatas[r.ponta] = []; ordem.push(r.ponta); } if (r.tamanho) exatas[r.ponta].push(r); });
+    lista = ordem.map(id => PT.PONTA_MAP[id]).filter(Boolean);
+  }
+  const acha = (p, s) => (exatas[p.id] || []).some(r => r.tamanho === s);
   $('#nPontas').textContent = `${lista.length} de ${PT.PONTAS.length} famílias`;
   $('#listaPontas').innerHTML = lista.map(p => `<div class="row"><div>
       <b>${esc(p.marca)} · ${esc(p.modelo)}</b>
       <small>${esc(TIPO_PONTA[p.tipo] || p.tipo)} · ${p.angulos.join('°/')}° · ${p.pressao[0]}–${p.pressao[1]} bar · ${esc(p.material)}</small>
-      <small>Tamanhos: ${PT.tamanhosDaPonta(p).map(s => esc(s)).join(', ')}${p.escalaPropria ? ' (escala de cores do fabricante, não ISO)' : ''}${p.vazaoTabela ? ` · <span class="tag reg">tabela de vazão do fabricante, ${p.vazaoTabela.pressoes[0]}–${p.vazaoTabela.pressoes[p.vazaoTabela.pressoes.length - 1]} bar</span>` : ''}</small>
+      <small>Tamanhos: ${PT.tamanhosDaPonta(p).map(s => acha(p, s) ? `<b>${esc(s)}</b>` : esc(s)).join(', ')}${p.escalaPropria ? ' (escala de cores do fabricante, não ISO)' : ''}${p.vazaoTabela ? ` · <span class="tag reg">tabela de vazão do fabricante, ${p.vazaoTabela.pressoes[0]}–${p.vazaoTabela.pressoes[p.vazaoTabela.pressoes.length - 1]} bar</span>` : ''}</small>
       <small>${esc(p.nota)}</small>
       <small class="muted">Gota: ${p.gotasPorBar ? Object.entries(p.gotasPorBar).map(([b, g]) => `${b} bar → ${PT.GOTA_MAP[g].nome.toLowerCase()}`).join(' · ') : (p.gotasFaixa || []).map(g => PT.GOTA_MAP[g].nome.toLowerCase()).join(' a ') + ' (faixa do catálogo)'} · Fonte: ${esc(p.fonte)}</small>
-    </div><div class="acts"><button class="btn sm ghost" data-ponta="${esc(p.id)}">Usar</button></div></div>`).join('') || '<div class="small muted">Nada encontrado.</div>';
+    </div><div class="acts"><button class="btn sm ghost" data-ponta="${esc(p.id)}"${exatas[p.id] && exatas[p.id][0] ? ` data-tam="${esc(exatas[p.id][0].tamanho)}" data-ang="${exatas[p.id][0].angulo}"` : ''}>Usar${exatas[p.id] && exatas[p.id][0] ? ' ' + esc(exatas[p.id][0].tamanho) : ''}</button></div></div>`).join('') || '<div class="small muted">Nada encontrado. Dá para cadastrar em Ponta → ＋ Minha ponta.</div>';
   $$('#listaPontas [data-ponta]').forEach(b => b.onclick = () => {
     const p = PT.PONTA_MAP[b.dataset.ponta];
-    $('#pMarca').value = p.marca; preencherModelos(p.id); preencherIso(); preencherAngulos();
-    calcularRegulagem(); toast(`${p.modelo} selecionada`);
+    $('#pMarca').value = p.marca; preencherModelos(p.id); preencherIso(b.dataset.tam); preencherAngulos(b.dataset.ang);
+    calcularRegulagem(); toast(`${p.modelo}${b.dataset.tam ? ' · ' + b.dataset.tam : ''} selecionada`);
   });
 }
 function renderRegulagens() {
@@ -1249,6 +1256,35 @@ function atualizarAreaTanque() {
   };
 }
 
+/* ───────── busca livre no inventário de pontas ───────── */
+function renderBuscaPonta(q) {
+  const box = $('#pBuscaRapidaRes');
+  if (String(q).trim().length < 2) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+  const res = PT.buscarPontas(q, { limite: 30 });
+  const linha = (r, i) => {
+    const det = r.tamanho
+      ? `${esc(r.tamanho)}${r.cor && r.cor !== r.tamanho ? ' · ' + esc(r.cor) : ''} · ${r.angulo}° · ${r.vazao ? fmt(r.vazao, 2) + ' L/min a ' + fmt(r.pressaoRef, 1) + ' bar' : 'sem vazão'}`
+      : `${r.nTamanhos} tamanho(s) · ${r.angulos.join('/')}° · ${esc(PT.TIPOS[r.tipo] || r.tipo)}`;
+    return `<button type="button" class="it" data-pb="${i}"><span><b>${esc(r.marca)} · ${esc(r.modelo)}${r.livre ? ' ★' : ''}</b><small>${det}</small></span><span class="src ${r.livre ? 'kb' : 'cat'}">${r.tamanho ? 'ponta' : 'família'}</span></button>`;
+  };
+  box.innerHTML = (res.length ? res.map(linha).join('') : '<div class="it"><small>Nenhuma ponta do inventário combina com a busca.</small></div>')
+    + `<button type="button" class="it" data-pb-novo><span><b>＋ Cadastrar “${esc(String(q).trim())}” como minha ponta</b><small>não está na lista? informe a vazão que você conhece</small></span><span class="src kb">novo</span></button>`;
+  box.classList.remove('hidden');
+  box.querySelectorAll('[data-pb]').forEach(b => b.onclick = () => escolherPontaBusca(res[+b.dataset.pb]));
+  box.querySelector('[data-pb-novo]').onclick = () => {
+    const txt = String(q).trim(); box.classList.add('hidden'); $('#pBuscaRapida').value = '';
+    limparFormPontaLivre(); $('#plModelo').value = txt; $('#pontaLivreBox').open = true; $('#plMarca').scrollIntoView({ block: 'center' }); $('#plMarca').focus();
+  };
+}
+function escolherPontaBusca(r) {
+  const p = PT.PONTA_MAP[r.ponta]; if (!p) return;
+  preencherMarcas(); $('#pMarca').value = p.marca; preencherModelos(p.id); $('#pPonta').onchange();
+  if (r.tamanho && [...$('#pIso').options].some(o => o.value === r.tamanho)) $('#pIso').value = r.tamanho;
+  if ([...$('#pAng').options].some(o => +o.value === +r.angulo)) $('#pAng').value = r.angulo;
+  $('#pIso').onchange();
+  $('#pBuscaRapida').value = ''; $('#pBuscaRapidaRes').classList.add('hidden');
+  toast(`${p.marca} ${p.modelo}${r.tamanho ? ' · ' + r.tamanho : ''} selecionada`);
+}
 /* ───────── minhas pontas: cadastrar uma ponta que o catálogo não tem ───────── */
 let pontaLivreEditando = null; // id da ponta aberta no formulário
 function carregarPontasLivres(semTela) {
@@ -1318,6 +1354,9 @@ function initPontas() {
   $('#plTipo').innerHTML = Object.entries(PT.TIPOS).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join('');
   $('#plGota').innerHTML = '<option value="">não sei</option>' + PT.GOTAS.map(g => `<option value="${g.id}">${esc(g.nome)} · ${esc(g.faixa)}</option>`).join('');
   $('#btnPlSalvar').onclick = salvarPontaLivre; $('#btnPlLimpar').onclick = limparFormPontaLivre;
+  $('#pBuscaRapida').oninput = e => renderBuscaPonta(e.target.value);
+  $('#pBuscaRapida').onkeydown = e => { if (e.key === 'Escape') $('#pBuscaRapidaRes').classList.add('hidden'); else if (e.key === 'Enter') { e.preventDefault(); const b = $('#pBuscaRapidaRes [data-pb]'); if (b) b.click(); } };
+  document.addEventListener('click', e => { if (!e.target.closest('#pBuscaRapidaWrap')) $('#pBuscaRapidaRes').classList.add('hidden'); });
   ['#pDist', '#pTempo'].forEach(s => { $(s).oninput = () => { atualizarVelocidade(true); recalc(); }; });
   $('#pVel').addEventListener('input', () => atualizarVelocidade()); atualizarVelocidade();
   ['#pIso', '#pAng', '#pVel', '#pVol', '#pEsp', '#pNb', '#pLf', '#pBf', '#pEl', '#pTq', '#pArea', '#pPress'].forEach(s => { $(s).oninput = recalc; $(s).onchange = recalc; });

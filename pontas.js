@@ -867,6 +867,48 @@
   }
 
 
+  /* ───────── Busca livre no inventário de pontas ─────────
+     Aceita qualquer combinação de: marca, modelo, tipo de jato, cor, tamanho e ângulo — nessa ordem ou não —
+     e o código de catálogo que o operador diz de cabeça ("XR 11002", "AIXR 110-03", "8002", "amarelo").
+     Sem tamanho na consulta devolve a família; com tamanho (ou cor/ângulo) devolve as pontas exatas.  */
+  const compacto = s => String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  function buscarPontas(consulta, opts) {
+    opts = opts || {};
+    const tokens = String(consulta == null ? '' : consulta).split(/\s+/).map(compacto).filter(Boolean);
+    if (!tokens.length) return [];
+    const numerico = t => /^\d+$/.test(t);
+    const out = [];
+    PONTAS.forEach(p => {
+      const fam = compacto([p.marca, p.modelo, TIPOS[p.tipo], p.material, opts.nota ? p.nota : '', p.livre ? 'minha cadastrada' : ''].join(' '));
+      const modelo = compacto(p.modelo), marca = compacto(p.marca);
+      const angs = p.angulos && p.angulos.length ? p.angulos : [110], tams = tamanhosDaPonta(p), pRef = pressaoReferencia(p);
+      const pontuar = (extra) => tokens.reduce((s, t) => s + (modelo.startsWith(t) ? 3 : 0) + (marca.startsWith(t) ? 2 : 0), extra || 0) + (p.livre ? 1 : 0);
+      const base = { ponta: p.id, marca: p.marca, modelo: p.modelo, tipo: p.tipo, livre: !!p.livre, nTamanhos: tams.length, angulos: angs };
+      // só texto e tudo já está no nome da família: devolve a família (um resultado)
+      if (tokens.every(t => !numerico(t) && fam.indexOf(t) >= 0)) { out.push(Object.assign({ tamanho: null, angulo: angs[0], score: pontuar(0) }, base)); return; }
+      tams.forEach(size => {
+        const s = compacto(size), i = ISO_MAP[size], cor = i ? i.cor : String(size), digitos = s.replace(/[a-z]/g, '');
+        let angulo = angs[0], exato = 0, ok = true;
+        tokens.forEach(t => {
+          if (!ok) return;
+          if (numerico(t)) {
+            const a = angs.find(x => String(x) === t);
+            const cod = angs.find(x => t.length >= 3 && (String(x) + s).indexOf(t) === 0);
+            if (s === t || digitos === t) { exato += 2; return; }
+            if (a != null) { angulo = a; exato += 1; return; }
+            if (cod != null) { angulo = cod; exato += (String(cod) + s) === t ? 5 : 1; return; }
+            ok = false;
+          } else if (fam.indexOf(t) < 0 && s.indexOf(t) < 0 && compacto(cor).indexOf(t) < 0) ok = false;
+        });
+        if (!ok) return;
+        const pr = vazaoDaPonta(p, size, pRef);
+        out.push(Object.assign({ tamanho: size, angulo, cor, hex: i ? i.hex : null, vazao: pr, pressaoRef: pRef, score: pontuar(exato) }, base));
+      });
+    });
+    out.sort((a, b) => b.score - a.score || (a.marca + a.modelo).localeCompare(b.marca + b.modelo, 'pt-BR') || String(a.tamanho).localeCompare(String(b.tamanho), 'pt-BR', { numeric: true }));
+    return out.slice(0, opts.limite || 30);
+  }
+
   /* ───────── Presets de barra de herbicida para café ─────────
      Fontes: Jacto PH-400 (faixa de 1,40 a 3,60 m, 4 bicos flood 130°, ~500 µm,
      1 kgf/cm², 250 L/ha a 4,5 km/h); Fundação Procafé / Planta Daninha
@@ -1418,7 +1460,7 @@
     versao: '1.0.0',
     ISO, ISO_MAP, GOTAS, GOTA_MAP, ALVOS, ALVO_MAP, TIPOS, PONTAS, PONTA_MAP, PRESETS,
     vazaoNominal, vazaoPonta, pressaoPara, novaVazao, novaPressao,
-    registrarPonta, removerPonta, lerTamanhos, tabelaDaPonta, tamanhosDaPonta, vazaoDaPonta, pressaoDaPonta, pressaoReferencia,
+    registrarPonta, removerPonta, lerTamanhos, buscarPontas, tabelaDaPonta, tamanhosDaPonta, vazaoDaPonta, pressaoDaPonta, pressaoReferencia,
     vazaoNecessaria, volumeAplicado, velocidadeAlvo, velocidadeCampo, velocidadeMedida, tempoNoPercurso,
     alturaBarra, alturaParaFaixa, larguraJato, fatorAltura, classeGota,
     calcular, selecionar, calibracao, cruzar, tabelaCruzada,

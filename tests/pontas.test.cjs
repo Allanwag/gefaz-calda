@@ -532,3 +532,24 @@ test('ponta cadastrada aparece nas sugestões quando a pressão cai na faixa del
   assert.ok(s.opcoes.some(o => o.ponta === 'livre:minha-sug' && o.iso === 'Q1'));
   P.removerPonta('livre:minha-sug');
 });
+
+test('busca livre no inventário: código de catálogo, marca, cor e ponta cadastrada', () => {
+  const r = P.buscarPontas('xr 11002');
+  assert.deepEqual([r[0].marca, r[0].tamanho, r[0].angulo], ['TeeJet', '02', 110]);
+  assert.ok(/^XR TeeJet/.test(r[0].modelo));
+  const a = P.buscarPontas('aixr 110-03');
+  assert.deepEqual([a[0].modelo, a[0].tamanho, a[0].angulo], ['AIXR TeeJet', '03', 110], 'hífen e espaço não importam');
+  const albuz = P.buscarPontas('albuz', { limite: 100 });
+  assert.ok(albuz.length >= 10 && albuz.every(x => x.marca === 'Albuz' && x.tamanho === null), 'só marca devolve as famílias');
+  const oito = P.buscarPontas('8002').filter(x => x.score >= 5);
+  assert.ok(oito.length && oito.every(x => x.tamanho === '02' && x.angulo === 80), '8002 = 80° tamanho 02');
+  assert.ok(P.buscarPontas('amarelo', { limite: 200 }).every(x => /amarelo/i.test(x.cor)), 'cor acha o tamanho');
+  assert.deepEqual(P.buscarPontas('   '), []);
+  assert.deepEqual(P.buscarPontas('zzzzqq'), []);
+  P.registrarPonta({ marca: 'Lechler', modelo: 'IDK 120-03', pressaoMin: 2, pressaoMax: 8, tamanhos: '03: 1,18@3' });
+  const l = P.buscarPontas('lechler idk 03');
+  assert.equal(l[0].ponta, 'livre:lechler-idk-120-03');
+  assert.equal(l[0].livre, true);
+  assert.equal(l[0].vazao, 1.18);
+  P.removerPonta('livre:lechler-idk-120-03');
+});

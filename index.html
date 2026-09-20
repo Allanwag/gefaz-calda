@@ -167,6 +167,10 @@
 
     <div class="card">
       <div class="card-hd"><h2>3 · Ponta</h2><span class="hint" id="pVazaoAlvo"></span></div>
+      <div class="search-wrap" id="pBuscaRapidaWrap">
+        <input id="pBuscaRapida" aria-label="Buscar ponta no inventário" placeholder="Buscar ponta: marca, modelo, tamanho, cor ou código — ex.: XR 11002 · Albuz cone · AIXR 110-03 · amarelo" autocomplete="off">
+        <div id="pBuscaRapidaRes" class="search-res hidden"></div>
+      </div>
       <div class="grid2">
         <label>Marca<select id="pMarca"></select></label>
         <label>Modelo<select id="pPonta"></select></label>
@@ -224,7 +228,7 @@
 
     <div class="card">
       <div class="card-hd"><h2>Catálogo de pontas</h2><span class="hint" id="nPontas"></span></div>
-      <div class="search-wrap"><input id="pBusca" aria-label="Buscar ponta de pulverização" placeholder="Buscar por marca, modelo ou tipo (AIXR, indução de ar, faixa uniforme…)" autocomplete="off"></div>
+      <div class="search-wrap"><input id="pBusca" aria-label="Buscar ponta de pulverização" placeholder="Busca livre: marca, modelo, tipo, tamanho, cor ou código — ex.: XR 11002, Albuz cone, amarelo 80, indução de ar" autocomplete="off"></div>
       <div id="listaPontas" class="lista compact"></div>
     </div>
 
