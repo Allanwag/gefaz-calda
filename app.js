@@ -10,7 +10,10 @@ const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').re
 const num = v => { const n = parseFloat(String(v).replace(',', '.')); return Number.isFinite(n) ? n : 0; };
 const fmt = (v, d = 2) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: d });
 const BRL = v => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-const hoje = () => { const d = new Date(); return d.toISOString().slice(0, 10); };
+const hoje = () => {
+  const d = new Date();
+  return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-');
+};
 const agora = () => new Date().toLocaleString('pt-BR');
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36));
 const norm = E.norm;
@@ -180,9 +183,9 @@ function renderBusca(q) {
   if (norm(q).length < 2) { box.classList.add('hidden'); return; }
   const cat = buscarCatalogo(q), kb = buscarKB(q), agro = buscarAgrofit(q);
   const html = [];
-  cat.forEach((r, i) => html.push(`<div class="it" data-src="cat" data-i="${i}"><div><b>${esc(r.nome)}</b><small>${esc(r.sub)}</small></div><span class="src cat">catálogo</span></div>`));
-  kb.forEach((r, i) => html.push(`<div class="it" data-src="kb" data-i="${i}"><div><b>${esc(r.nome)}</b><small>${esc(r.sub)}</small></div><span class="src kb">base</span></div>`));
-  agro.forEach((r, i) => html.push(`<div class="it" data-src="agro" data-i="${i}"><div><b>${esc(r.p.m.split(';')[0])}</b><small>${esc(r.p.ia.map(x => x[0].split(' (')[0] + (x[2] ? ' ' + x[2] : '')).join(' + '))} · ${esc(r.p.f || '?')} · ${esc(r.p.cl)}</small></div><span class="src agro">${r.reg ? '✔ ' + esc($('#fCultura').value) : 'Agrofit'}</span></div>`));
+  cat.forEach((r, i) => html.push(`<button type="button" class="it" data-src="cat" data-i="${i}"><span><b>${esc(r.nome)}</b><small>${esc(r.sub)}</small></span><span class="src cat">catálogo</span></button>`));
+  kb.forEach((r, i) => html.push(`<button type="button" class="it" data-src="kb" data-i="${i}"><span><b>${esc(r.nome)}</b><small>${esc(r.sub)}</small></span><span class="src kb">base</span></button>`));
+  agro.forEach((r, i) => html.push(`<button type="button" class="it" data-src="agro" data-i="${i}"><span><b>${esc(r.p.m.split(';')[0])}</b><small>${esc(r.p.ia.map(x => x[0].split(' (')[0] + (x[2] ? ' ' + x[2] : '')).join(' + '))} · ${esc(r.p.f || '?')} · ${esc(r.p.cl)}</small></span><span class="src agro">${r.reg ? '✔ ' + esc($('#fCultura').value) : 'Agrofit'}</span></button>`));
   if (!html.length) html.push('<div class="it"><small>Nada encontrado. Use “+ Produto manual”.</small></div>');
   box.innerHTML = html.join(''); box.classList.remove('hidden');
   box.querySelectorAll('.it[data-src]').forEach(el => el.onclick = () => {
@@ -332,7 +335,7 @@ function notaRegulagem() {
 }
 
 /* ───────── análise ───────── */
-function analisar(silencioso) {
+function analisar(silencioso, registrarHistorico = true) {
   const ctx = lerContexto();
   if (!calda.itens.length) { toast('Adicione ao menos um produto', 'err'); return null; }
   const semDose = calda.itens.filter(i => !i.dose);
@@ -341,8 +344,11 @@ function analisar(silencioso) {
   resultado = E.analisar(calda.itens, opts);
   resultado.contexto = ctx; resultado.data = resultado.data || agora();
   guardarPadroesRastreio();
-  DB.historico.unshift({ id: uid(), data: resultado.data, status: resultado.status, resumo: resultado.resumo.frase, codigo: resultado.rastreio ? resultado.rastreio.codigo : null, talhao: ctx.rastreio.talhao, itens: calda.itens.map(i => i.nome), calda: JSON.parse(JSON.stringify({ itens: calda.itens, ...ctx })) });
-  DB.historico = DB.historico.slice(0, 60); saveDB();
+  if (registrarHistorico) {
+    DB.historico.unshift({ id: uid(), data: resultado.data, status: resultado.status, resumo: resultado.resumo.frase, codigo: resultado.rastreio ? resultado.rastreio.codigo : null, talhao: ctx.rastreio.talhao, itens: calda.itens.map(i => i.nome), calda: JSON.parse(JSON.stringify({ itens: calda.itens, ...ctx })) });
+    DB.historico = DB.historico.slice(0, 60);
+  }
+  saveDB();
   renderResultado(); renderJar(); renderHistorico();
   if (window.parent !== window) { try { window.parent.postMessage({ type: 'gefaz-calda:resultado', resultado: resumoExport(), mix: { itens: calda.itens, ...ctx } }, '*'); } catch (e) { } }
   if (!silencioso) navTo('resultado');
@@ -483,7 +489,7 @@ function renderHistorico() {
   $$('#listaCaldas [data-load]').forEach(b => b.onclick = () => carregarReceita(DB.caldas[+b.dataset.load]));
   $$('#listaCaldas [data-delc]').forEach(b => b.onclick = () => { if (confirm('Excluir esta calda?')) { DB.caldas.splice(+b.dataset.delc, 1); saveDB(); renderHistorico(); } });
   $('#listaHistorico').innerHTML = DB.historico.length ? DB.historico.slice(0, 30).map((h, i) => `<div class="row"><div><b>${esc(h.itens.join(' + '))}</b><small>${esc(h.data)} · ${esc(h.resumo)}</small></div><div class="acts">${badge(h.status)}<button class="btn sm" data-re="${i}">Reabrir</button></div></div>`).join('') : '<div class="small muted">Nenhuma análise ainda.</div>';
-  $$('#listaHistorico [data-re]').forEach(b => b.onclick = () => { const h = DB.historico[+b.dataset.re]; calda.itens = h.calda.itens.map(i => ({ ...i, id: uid() })); aplicarContexto(h.calda); renderItens(); analisar(); });
+  $$('#listaHistorico [data-re]').forEach(b => b.onclick = () => { const h = DB.historico[+b.dataset.re]; calda.itens = h.calda.itens.map(i => ({ ...i, id: uid() })); aplicarContexto(h.calda); renderItens(); analisar(false, false); });
   $('#listaJar').innerHTML = DB.jarTests.length ? DB.jarTests.map((j, i) => `<div class="row"><div><b>${esc(j.itens.join(' + '))}</b><small>${esc(j.data)} · ${esc(j.cultura)} · ${j.volumeHa} L/ha${j.ph ? ' · pH ' + esc(j.ph) : ''}${j.observacoes.length ? ' · ' + esc(j.observacoes.join(', ')) : ''}${j.obs ? ' · ' + esc(j.obs) : ''}</small></div><div class="acts">${badge(j.resultado)}<button class="btn sm ghost danger" data-delj="${i}">✕</button></div></div>`).join('') : '<div class="small muted">Nenhum jar test registrado.</div>';
   $$('#listaJar [data-delj]').forEach(b => b.onclick = () => { if (confirm('Excluir este registro?')) { DB.jarTests.splice(+b.dataset.delj, 1); saveDB(); renderHistorico(); } });
 }
@@ -962,7 +968,7 @@ function atualizarAreaTanque() {
 
 function initPontas() {
   $('#pAlvo').innerHTML = PT.ALVOS.map(a => `<option value="${a.id}">${esc(a.nome)}</option>`).join('');
-  $('#chipsPreset').innerHTML = PT.PRESETS.map(p => `<span class="chip" data-preset="${esc(p.id)}" title="${esc(p.nota)}">${esc(p.nome)}</span>`).join('');
+  $('#chipsPreset').innerHTML = PT.PRESETS.map(p => `<button type="button" class="chip" data-preset="${esc(p.id)}" title="${esc(p.nota)}">${esc(p.nome)}</button>`).join('');
   preencherMarcas(); preencherModelos(); preencherIso(); preencherAngulos();
   const recalc = () => { atualizarVazaoAlvo(); if (regulagem) calcularRegulagem(true); else renderTabelaCruzada(); };
   $('#pModo').onchange = () => { camposPorModo(); recalc(); };
@@ -1016,7 +1022,7 @@ function init() {
   $('#fParte').innerHTML = '<option value=""></option>' + KB.partesAlvo.map(s => `<option>${s}</option>`).join('');
   montarAlvos(); atualizarListasCultura();
   $('#fVolume').value = DB.config.volumeHa; if (DB.config.ph != null) $('#fPh').value = DB.config.ph; if (DB.config.dureza != null) $('#fDureza').value = DB.config.dureza;
-  $('#chipsRapidos').innerHTML = KB.comerciais.filter(c => c.tags && c.tags.includes('estoque-fazenda')).map(c => `<span class="chip" data-chip="${esc(c.nome)}">+ ${esc(c.nome)}</span>`).join('');
+  $('#chipsRapidos').innerHTML = KB.comerciais.filter(c => c.tags && c.tags.includes('estoque-fazenda')).map(c => `<button type="button" class="chip" data-chip="${esc(c.nome)}">+ ${esc(c.nome)}</button>`).join('');
   $$('[data-chip]').forEach(ch => ch.onclick = () => { const c = KB.comerciais.find(x => x.nome === ch.dataset.chip); addItem({ id: uid(), nome: c.nome, classe: c.classe, formulacao: c.formulacao, unidade: 'mL/100L', dose: 0, fonte: 'fazenda' }); });
   $('#busca').oninput = e => renderBusca(e.target.value);
   document.addEventListener('click', e => { if (!e.target.closest('.search-wrap')) $('#buscaRes').classList.add('hidden'); });
@@ -1057,6 +1063,6 @@ function init() {
   if (mix && aplicarMix(mix, true)) { navTo('resultado'); history.replaceState(null, '', location.pathname); }
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => { });
 }
-function loadDBFrom(d) { DB = d; const base = defaultDB(); DB.version = DB.version || 1; DB.config = { ...base.config, ...(DB.config || {}) }; ['catalogo', 'receitas', 'talhoes', 'caldas', 'historico', 'jarTests', 'regulagens'].forEach(k => { if (!Array.isArray(DB[k])) DB[k] = []; }); }
+function loadDBFrom(d) { DB = d; const base = defaultDB(); DB.version = DB.version || 1; DB.config = { ...base.config, ...(DB.config || {}) }; DB.config.custo = { ...base.config.custo, ...(DB.config.custo || {}) }; DB.config.rastreio = { ...base.config.rastreio, ...(DB.config.rastreio || {}) }; ['catalogo', 'receitas', 'talhoes', 'caldas', 'historico', 'jarTests', 'regulagens'].forEach(k => { if (!Array.isArray(DB[k])) DB[k] = []; }); }
 window.GefazCaldaApp = { analisar, addItem, aplicarMix, get calda() { return calda; }, get resultado() { return resultado; }, get DB() { return DB; } };
 document.addEventListener('DOMContentLoaded', init);

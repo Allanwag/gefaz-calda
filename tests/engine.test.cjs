@@ -113,6 +113,28 @@ test('produto desconhecido fica como não testado', () => {
   assert.ok(r.pares[0].status === 'nao-testado' || r.status === 'restricoes');
 });
 
+test('o jar test mais recente decide o bloqueio quando há vários registros', () => {
+  const itens = [it('Tebuconazol', 0.5, 'L/ha', { formulacao: 'EC' })];
+  const chave = E.chaveDoConjunto(itens);
+  const compativelMaisRecente = E.analisar(itens, {
+    volumeHa: 200,
+    historicoJar: [
+      { chave, resultado: 'compativel', data: '02/01/2026' },
+      { chave, resultado: 'incompativel', data: '01/01/2026' }
+    ]
+  });
+  assert.notEqual(compativelMaisRecente.status, 'incompativel');
+
+  const incompativelMaisRecente = E.analisar(itens, {
+    volumeHa: 200,
+    historicoJar: [
+      { chave, resultado: 'incompativel', data: '03/01/2026' },
+      { chave, resultado: 'compativel', data: '02/01/2026' }
+    ]
+  });
+  assert.equal(incompativelMaisRecente.status, 'incompativel');
+});
+
 /* ═══════ regulagem no laudo e rastreabilidade ═══════ */
 const PT = require('../pontas.js');
 

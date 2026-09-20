@@ -564,7 +564,8 @@
   function statusGlobal(alertas, itens, historico) {
     const bloq = alertas.filter(a => SEV[a.severidade] === 3 && ['fisica', 'quimica', 'biologica', 'legal', 'agronomica', 'ph', 'agua'].includes(a.tipo));
     if (historico && historico.length) {
-      const ult = historico[historico.length - 1];
+      // O app armazena os jar tests em ordem decrescente (unshift): o índice 0 é o mais recente.
+      const ult = historico[0];
       if (ult.resultado === 'incompativel') return 'incompativel';
     }
     if (bloq.length) return 'incompativel';

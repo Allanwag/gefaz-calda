@@ -36,13 +36,13 @@ input[type=file]{padding:6px;font-size:.8rem}
 .sticky-actions{position:sticky;bottom:calc(66px + env(safe-area-inset-bottom));background:var(--card);padding:8px 0 2px}
 .search-wrap{position:relative}
 .search-res{position:absolute;left:0;right:0;top:100%;z-index:15;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.14);max-height:320px;overflow:auto}
-.search-res .it{padding:9px 12px;border-bottom:1px solid var(--line);cursor:pointer;display:flex;justify-content:space-between;gap:8px;align-items:center}
-.search-res .it:hover{background:var(--g100)}
+.search-res .it{width:100%;padding:9px 12px;border:0;border-bottom:1px solid var(--line);background:#fff;color:inherit;text-align:left;font:inherit;cursor:pointer;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.search-res .it:hover,.search-res .it:focus-visible{background:var(--g100)}
 .search-res .it b{display:block}.search-res .it small{color:var(--ink2);display:block;font-size:.75rem}
 .search-res .src{font-size:.68rem;font-weight:700;padding:2px 6px;border-radius:6px;background:#eceff1;color:#455a64;white-space:nowrap}
 .src.agro{background:#e3f2fd;color:#0d47a1}.src.kb{background:#e8f5e9;color:#1b5e20}.src.cat{background:#fff3e0;color:#e65100}
 .chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
-.chip{border:1px solid var(--line);background:#fafcfa;border-radius:999px;padding:4px 10px;font-size:.78rem;cursor:pointer}
+.chip{border:1px solid var(--line);background:#fafcfa;color:inherit;border-radius:999px;padding:4px 10px;font:inherit;font-size:.78rem;cursor:pointer}
 .chip:hover{background:var(--g100)}
 .itens{display:flex;flex-direction:column;gap:8px;margin-top:8px}
 .item{border:1px solid var(--line);border-radius:12px;padding:10px;display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center}
