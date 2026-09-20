@@ -24,6 +24,22 @@
   <section id="tab-calda" class="tab active">
     <div class="card">
       <div class="card-hd"><h2>1 · Contexto da aplicação</h2><span class="hint">Tudo entra no cálculo</span></div>
+      <div class="subcard" id="talhaoBox">
+        <div class="sub-hd"><b>Talhão pulverizado</b><span class="hint">marque um ou mais · a área é somada e o histórico fica guardado</span></div>
+        <div class="chips talhao-chips" id="talhaoChips"></div>
+        <div class="small talhao-info" id="talhaoInfo"></div>
+        <div class="row-btns"><button type="button" class="btn sm ghost" id="btnNovoTalhao">＋ Novo talhão</button></div>
+        <div class="talhao-form hidden" id="talhaoForm">
+          <div class="sub-hd"><b id="tfTitulo">Novo talhão</b></div>
+          <div class="grid2">
+            <label>Nome<input id="tfNome" placeholder="ex.: Gleba 3, Talhão 12" autocomplete="off"></label>
+            <label>Área (ha)<input id="tfArea" type="number" min="0" step="0.01" placeholder="ex.: 12,5"></label>
+            <label>Cultura<select id="tfCultura"></select></label>
+          </div>
+          <div class="row-btns"><button type="button" class="btn sm primary" id="btnTfSalvar">Salvar talhão</button><button type="button" class="btn sm ghost" id="btnTfCancelar">Cancelar</button></div>
+        </div>
+        <input type="hidden" id="fTalhao">
+      </div>
       <div class="grid2">
         <label>Cultura<select id="fCultura"></select></label>
         <label>Estádio fenológico<input id="fEstadio" list="dlEstadios" placeholder="lista da cultura"><datalist id="dlEstadios"></datalist></label>
@@ -66,7 +82,6 @@
     <div class="card">
       <div class="card-hd"><h2>3 · Rastreabilidade</h2><span class="hint">quem, onde, com quê e quando — vai no laudo</span></div>
       <div class="grid2">
-        <label>Talhão<input id="fTalhao" list="dlTalhoes" placeholder="importe do PVGest/Gefaz360 ou digite"><datalist id="dlTalhoes"></datalist></label>
         <label>Trator / pulverizador<input id="fMaquina" placeholder="ex.: MF 4275 + Jacto Arbus 2000"></label>
         <label>Operador (aplicador)<input id="fOperador" placeholder="nome de quem aplica"></label>
         <label>Responsável técnico<input id="fResponsavel" placeholder="engº agrônomo"></label>
@@ -202,6 +217,7 @@
 
   <!-- ══════════ HISTÓRICO ══════════ -->
   <section id="tab-historico" class="tab">
+    <div class="card"><div class="card-hd"><h2>Talhões</h2><span class="hint">histórico de análises e aplicações por talhão</span></div><div id="listaTalhoes" class="lista"></div></div>
     <div class="card"><div class="card-hd"><h2>Caldas salvas</h2></div><div id="listaCaldas" class="lista"></div></div>
     <div class="card"><div class="card-hd"><h2>Análises</h2></div><div id="listaHistorico" class="lista"></div></div>
     <div class="card"><div class="card-hd"><h2>Jar tests registrados</h2><span class="hint">Base de testes da fazenda — reaproveitada nas próximas análises</span></div><div id="listaJar" class="lista"></div></div>

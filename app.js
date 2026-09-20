@@ -105,6 +105,7 @@ function montarAlvos() {
       <b><span>${c.icone} ${esc(c.nome)}</span><small id="n-${c.id}"></small></b>
       <div class="alvo-rows" id="rows-${c.id}"></div>
       <datalist id="dl-${c.id}"></datalist>
+      <div class="chips alvo-chips" id="ch-${c.id}"></div>
       <button type="button" class="btn sm ghost alvo-mais" data-mais="${c.id}">＋ Adicionar campo</button></div>`).join('');
   const grid = $('#alvosGrid');
   grid.onclick = ev => {
@@ -172,6 +173,7 @@ function renderAlvos(so, foco) {
     const cheios = alvosSel[c.id].map((n, i) => `<div class="alvo-row"><input list="dl-${c.id}" value="${esc(n)}" data-cat="${c.id}" data-i="${i}" autocomplete="off" aria-label="${esc(c.nome)} ${i + 1}"><button type="button" class="btn sm ghost" data-rm="${c.id}:${i}" title="Remover" aria-label="Remover ${esc(n)}">×</button></div>`);
     const vazios = Array.from({ length: alvosVazios[c.id] }, (_, j) => `<div class="alvo-row"><input list="dl-${c.id}" data-cat="${c.id}" placeholder="${esc(c.dica)}" autocomplete="off" aria-label="${esc(c.nome)} (novo)"><button type="button" class="btn sm" data-ok="${c.id}" title="Adicionar" aria-label="Adicionar ${esc(c.nome)}">＋</button>${alvosVazios[c.id] > 1 ? `<button type="button" class="btn sm ghost" data-rmv="${c.id}" title="Tirar este campo" aria-label="Tirar campo em branco">×</button>` : ''}</div>`);
     $('#rows-' + c.id).innerHTML = cheios.concat(vazios).join('');
+    $('#ch-' + c.id).innerHTML = alvosSel[c.id].map((n, i) => `<span class="chip sel" title="${esc(n)}">${esc(n)}<button type="button" data-rm="${c.id}:${i}" aria-label="Remover ${esc(n)}">×</button></span>`).join('');
     $('[data-mais="' + c.id + '"]').disabled = alvosVazios[c.id] >= MAX_CAMPOS_ALVO;
     if (foco) { const v = $('#rows-' + c.id + ' input:not([data-i])'); if (v) v.focus(); }
   });
@@ -306,10 +308,100 @@ function guardarPadroesRastreio() {
   DB.config.rastreio = { maquina: $('#fMaquina').value.trim(), operador: $('#fOperador').value.trim(), responsavel: $('#fResponsavel').value.trim(), crea: $('#fCrea').value.trim() };
   saveDB();
 }
-function atualizarTalhoes() {
-  const el = $('#dlTalhoes'); if (!el) return;
-  el.innerHTML = DB.talhoes.map(t => `<option value="${esc(t.nome)}">${esc([t.cultura, t.area ? fmt(t.area, 1) + ' ha' : ''].filter(Boolean).join(' · '))}</option>`).join('');
+/* ───────── talhões: marcar o pulverizado, puxar a área e guardar o histórico ───────── */
+let talhoesSel = [];
+let talhaoEditando = null; // talhão aberto no formulário, ou null para um novo
+const splitTalhoes = s => String(s || '').split(/\s*[;\n]\s*/).map(x => x.trim()).filter(Boolean);
+const achaTalhao = nome => DB.talhoes.find(t => norm(t.nome) === norm(nome));
+const diasDesde = iso => { const d = Date.parse(iso); return isNaN(d) ? null : Math.max(0, Math.floor((Date.now() - d) / 864e5)); };
+const soData = a => String(a.data || '').split(',')[0];
+function definirTalhoes(nomes, puxar) {
+  const vistos = new Set();
+  talhoesSel = (nomes || []).map(n => String(n).trim()).filter(n => n && !vistos.has(norm(n)) && vistos.add(norm(n))).map(n => (achaTalhao(n) || { nome: n }).nome);
+  $('#fTalhao').value = talhoesSel.join('; ');
+  if (puxar) puxarDadosTalhoes();
+  renderTalhoes();
 }
+function alternarTalhao(nome) {
+  const tem = talhoesSel.some(n => norm(n) === norm(nome));
+  definirTalhoes(tem ? talhoesSel.filter(n => norm(n) !== norm(nome)) : [...talhoesSel, nome], true);
+}
+/* área = soma dos talhões marcados; cultura = a deles, quando todos têm a mesma */
+function puxarDadosTalhoes() {
+  const ts = talhoesSel.map(achaTalhao).filter(Boolean);
+  const area = ts.reduce((s, t) => s + (+t.area || 0), 0);
+  if (area > 0) { $('#fArea').value = Math.round(area * 100) / 100; areaPorTanqueCalda(); }
+  const culturas = [...new Set(ts.map(t => t.cultura).filter(Boolean).map(norm))];
+  if (culturas.length === 1) {
+    const c = KB.culturas.find(x => norm(x) === culturas[0]);
+    if (c && $('#fCultura').value !== c) { $('#fCultura').value = c; $('#fCultura').onchange(); }
+  }
+}
+function renderTalhoes() {
+  const box = $('#talhaoChips'); if (!box) return;
+  const todos = DB.talhoes.map(t => t.nome).concat(talhoesSel.filter(n => !achaTalhao(n)));
+  box.innerHTML = todos.length ? todos.map((n, i) => {
+    const t = achaTalhao(n), on = talhoesSel.some(s => norm(s) === norm(n));
+    return `<button type="button" class="chip talhao-chip${on ? ' sel' : ''}" aria-pressed="${on}" data-tl="${i}">${on ? '✔ ' : ''}${esc(n)}${t && t.area ? ' · ' + fmt(t.area, 1) + ' ha' : ''}</button>`;
+  }).join('') : '<span class="small muted">Nenhum talhão cadastrado — use “＋ Novo talhão” ou importe do PVGest/Gefaz360 na aba Integração.</span>';
+  box.querySelectorAll('[data-tl]').forEach(b => b.onclick = () => alternarTalhao(todos[+b.dataset.tl]));
+  const linhas = talhoesSel.map((n, i) => {
+    const t = achaTalhao(n);
+    if (!t) return `<div><b>${esc(n)}</b> — ainda não cadastrado; entra na lista quando você analisar a calda.</div>`;
+    const ap = t.aplicacoes || [], u = ap.find(a => a.aplicada), dias = u ? diasDesde(u.iso) : null;
+    const hist = u ? `última aplicação ${esc(soData(u))}${dias != null ? ' (há ' + dias + ' d)' : ''}: ${esc(u.produtos.join(' + '))}`
+      : ap.length ? `só análises registradas (última em ${esc(soData(ap[0]))})` : 'sem histórico';
+    return `<div><b>${esc(t.nome)}</b> — ${t.area ? fmt(t.area, 2) + ' ha' : '<span class="danger-txt">sem área cadastrada</span>'}${t.cultura ? ' · ' + esc(t.cultura) : ''} · ${hist}${dias != null && dias <= 7 ? ' <span class="danger-txt">⚠ aplicado há poucos dias — confira intervalo e rotação de modo de ação</span>' : ''} <button type="button" class="btn sm ghost" data-edt="${i}" aria-label="Editar ${esc(t.nome)}">✎</button></div>`;
+  });
+  const soma = talhoesSel.map(achaTalhao).filter(Boolean).reduce((s, t) => s + (+t.area || 0), 0);
+  const culturasSel = new Set(talhoesSel.map(achaTalhao).filter(t => t && t.cultura).map(t => norm(t.cultura)));
+  if (culturasSel.size > 1) linhas.push(`<div class="danger-txt">⚠ Talhões de culturas diferentes: a análise vale para a cultura escolhida abaixo (${esc($('#fCultura').value)}).</div>`);
+  if (talhoesSel.length > 1 && soma > 0) linhas.push(`<div><b>Área somada: ${fmt(soma, 2)} ha</b> (já lançada no campo Área)</div>`);
+  $('#talhaoInfo').innerHTML = linhas.join('');
+  $$('#talhaoInfo [data-edt]').forEach(b => b.onclick = () => abrirFormTalhao(achaTalhao(talhoesSel[+b.dataset.edt])));
+}
+function abrirFormTalhao(t) {
+  talhaoEditando = t || null;
+  $('#tfCultura').innerHTML = '<option value="">—</option>' + KB.culturas.map(c => `<option>${esc(c)}</option>`).join('');
+  $('#tfTitulo').textContent = t ? 'Editar talhão' : 'Novo talhão';
+  $('#tfNome').value = t ? t.nome : ''; $('#tfArea').value = t && t.area ? t.area : '';
+  $('#tfCultura').value = t ? (t.cultura || '') : $('#fCultura').value;
+  $('#talhaoForm').classList.remove('hidden'); $('#tfNome').focus();
+}
+function fecharFormTalhao() { talhaoEditando = null; $('#talhaoForm').classList.add('hidden'); }
+function salvarFormTalhao() {
+  const nome = $('#tfNome').value.trim(), area = num($('#tfArea').value), cultura = $('#tfCultura').value;
+  if (!nome) return toast('Dê um nome ao talhão', 'err');
+  const outro = achaTalhao(nome);
+  if (outro && outro !== talhaoEditando) return toast('Já existe um talhão com esse nome', 'err');
+  let sel = talhoesSel;
+  if (talhaoEditando) { const antigo = talhaoEditando.nome; Object.assign(talhaoEditando, { nome, area, cultura }); sel = sel.map(n => norm(n) === norm(antigo) ? nome : n); }
+  else { DB.talhoes.push({ nome, area, cultura, fonte: 'manual', aplicacoes: [] }); sel = [...sel, nome]; }
+  saveDB(); fecharFormTalhao(); definirTalhoes(sel, true); renderHistorico(); renderIntegracao();
+  toast(`Talhão ${nome} salvo`);
+}
+function excluirTalhao(t) {
+  if (!confirm(`Excluir o talhão ${t.nome} e todo o histórico dele (${(t.aplicacoes || []).length} registros)?`)) return;
+  DB.talhoes.splice(DB.talhoes.indexOf(t), 1); saveDB();
+  definirTalhoes(talhoesSel.filter(n => norm(n) !== norm(t.nome)), true); renderHistorico(); renderIntegracao();
+}
+/* Cada análise entra no histórico dos talhões marcados. O código do laudo muda a cada emissão (leva a hora),
+   então a mesma calda (produtos, doses, volume, cultura) reanalisada só atualiza o registro que ainda é "só análise". */
+function registrarAplicacaoTalhoes(ctx, res) {
+  const nomes = splitTalhoes(ctx.rastreio.talhao), codigo = res.rastreio ? res.rastreio.codigo : null;
+  const chave = JSON.stringify([ctx.cultura, ctx.volumeHa, calda.itens.map(i => [norm(i.nome), i.dose, i.unidade]).sort()]);
+  nomes.forEach(nome => {
+    let t = achaTalhao(nome);
+    if (!t) { t = { nome, area: nomes.length === 1 ? ctx.area : 0, cultura: ctx.cultura, fonte: 'manual', aplicacoes: [] }; DB.talhoes.push(t); }
+    t.aplicacoes = t.aplicacoes || [];
+    const reg = { data: res.data, iso: new Date().toISOString(), codigo, status: res.status, aplicada: !!ctx.rastreio.termino, chave, cultura: ctx.cultura, area: t.area || (nomes.length === 1 ? ctx.area : 0), volumeHa: ctx.volumeHa, produtos: calda.itens.map(i => i.nome), alvos: textoAlvos(ctx.alvos, true).join(', '), resumo: res.resumo.frase };
+    const ja = t.aplicacoes.find(a => a.chave === chave && !a.aplicada);
+    if (ja) Object.assign(ja, reg);
+    else if (!t.aplicacoes.some(a => a.chave === chave && a.aplicada && a.codigo === codigo)) t.aplicacoes.unshift({ id: uid(), ...reg });
+    t.aplicacoes = t.aplicacoes.slice(0, 100);
+  });
+}
+function atualizarTalhoes() { renderTalhoes(); }
 function lerContexto() {
   return {
     rastreio: lerRastreio(),
@@ -336,6 +428,7 @@ function aplicarContexto(c) {
   if (c.agua) { $('#fPh').value = c.agua.ph ?? ''; $('#fDureza').value = c.agua.dureza ?? ''; $('#fTurbidez').value = c.agua.turbidez || 'limpa'; $('#fFonte').value = c.agua.fonte || ''; }
   if (c.obs != null) $('#fObs').value = c.obs;
   aplicarRastreio(c.rastreio);
+  if (c.rastreio && c.rastreio.talhao != null) definirTalhoes(splitTalhoes(c.rastreio.talhao));
   $('#droneAviso').classList.toggle('hidden', $('#fEquip').value !== 'drone');
   atualizarAlvos(); atualizarListasCultura();
 }
@@ -387,9 +480,10 @@ function analisar(silencioso, registrarHistorico = true) {
   if (registrarHistorico) {
     DB.historico.unshift({ id: uid(), data: resultado.data, status: resultado.status, resumo: resultado.resumo.frase, codigo: resultado.rastreio ? resultado.rastreio.codigo : null, talhao: ctx.rastreio.talhao, itens: calda.itens.map(i => i.nome), calda: JSON.parse(JSON.stringify({ itens: calda.itens, ...ctx })) });
     DB.historico = DB.historico.slice(0, 60);
+    registrarAplicacaoTalhoes(ctx, resultado);
   }
   saveDB();
-  renderResultado(); renderJar(); renderHistorico();
+  renderResultado(); renderJar(); renderHistorico(); renderTalhoes();
   if (window.parent !== window) { try { window.parent.postMessage({ type: 'gefaz-calda:resultado', resultado: resumoExport(), mix: { itens: calda.itens, ...ctx } }, '*'); } catch (e) { } }
   if (!silencioso) navTo('resultado');
   return resultado;
@@ -525,6 +619,17 @@ function salvarCalda() { if (!calda.itens.length) return toast('Nada para salvar
 function carregarReceita(rec) { calda.itens = rec.itens.map(i => ({ id: uid(), ...i, dose: +i.dose || 0, unidade: i.unidade || 'L/ha' })); aplicarContexto({ cultura: rec.cultura, alvo: rec.alvo, alvos: rec.alvos, doenca: rec.doenca, praga: rec.praga, severidade: rec.severidade, estadio: rec.estadio, parte: rec.parte, volumeHa: rec.volumeHa, area: rec.area, tanque: rec.tanque, equipamento: rec.equipamento, agua: rec.agua, obs: rec.obs }); renderItens(); navTo('calda'); toast(`Receita “${rec.nome}” carregada`); }
 function renderHistorico() {
   const badge = s => `<span class="pill ${{ compativel: 'ok', restricoes: 'warn', incompativel: 'bad', testar: 'info' }[s] || 'muted'}">${esc(STATUS_LABEL[s] || s || '—')}</span>`;
+  const ordem = DB.talhoes.map((t, i) => ({ t, i })).sort((a, b) => a.t.nome.localeCompare(b.t.nome, 'pt-BR', { numeric: true }));
+  $('#listaTalhoes').innerHTML = ordem.length ? ordem.map(({ t, i }) => {
+    const ap = t.aplicacoes || [], nAp = ap.filter(a => a.aplicada).length;
+    return `<details class="talhao-det"><summary><b>${esc(t.nome)}</b> <small>${t.area ? fmt(t.area, 2) + ' ha' : 'sem área'}${t.cultura ? ' · ' + esc(t.cultura) : ''} · ${nAp} aplicada(s) · ${ap.length - nAp} só análise</small></summary>
+      <div class="lista">${ap.length ? ap.map((a, j) => `<div class="row"><div><b>${esc(a.produtos.join(' + '))}</b><small>${esc(a.data)}${a.area ? ' · ' + fmt(a.area, 2) + ' ha' : ''}${a.volumeHa ? ' · ' + a.volumeHa + ' L/ha' : ''} · ${esc(a.alvos || 'sem alvo')}${a.codigo ? ' · ' + esc(a.codigo) : ''}</small></div><div class="acts">${badge(a.status)}<button class="btn sm${a.aplicada ? '' : ' ghost'}" data-apl="${i}:${j}" title="Marque quando a aplicação foi feita de fato">${a.aplicada ? '✔ aplicada' : 'marcar aplicada'}</button></div></div>`).join('') : '<div class="small muted">Sem registros ainda — o talhão marcado na aba Calda entra aqui a cada análise.</div>'}</div>
+      <div class="row-btns"><button class="btn sm" data-tuse="${i}">Usar na calda</button><button class="btn sm ghost" data-tedit="${i}">✎ Editar</button><button class="btn sm ghost danger" data-tdel="${i}">Excluir</button></div></details>`;
+  }).join('') : '<div class="small muted">Nenhum talhão. Cadastre na aba Calda (＋ Novo talhão) ou importe do PVGest/Gefaz360.</div>';
+  $$('#listaTalhoes [data-apl]').forEach(b => b.onclick = () => { const [i, j] = b.dataset.apl.split(':'); const a = DB.talhoes[+i].aplicacoes[+j]; a.aplicada = !a.aplicada; saveDB(); renderHistorico(); renderTalhoes(); });
+  $$('#listaTalhoes [data-tuse]').forEach(b => b.onclick = () => { definirTalhoes([DB.talhoes[+b.dataset.tuse].nome], true); navTo('calda'); });
+  $$('#listaTalhoes [data-tedit]').forEach(b => b.onclick = () => { navTo('calda'); abrirFormTalhao(DB.talhoes[+b.dataset.tedit]); $('#talhaoForm').scrollIntoView({ block: 'center' }); });
+  $$('#listaTalhoes [data-tdel]').forEach(b => b.onclick = () => excluirTalhao(DB.talhoes[+b.dataset.tdel]));
   $('#listaCaldas').innerHTML = DB.caldas.length ? DB.caldas.map((c, i) => `<div class="row"><div><b>${esc(c.nome)}</b><small>${esc(c.cultura)} · ${c.itens.length} produtos · ${c.volumeHa} L/ha ${c.status ? badge(c.status) : ''}</small></div><div class="acts"><button class="btn sm" data-load="${i}">Carregar</button><button class="btn sm ghost danger" data-delc="${i}">✕</button></div></div>`).join('') : '<div class="small muted">Nenhuma calda salva.</div>';
   $$('#listaCaldas [data-load]').forEach(b => b.onclick = () => carregarReceita(DB.caldas[+b.dataset.load]));
   $$('#listaCaldas [data-delc]').forEach(b => b.onclick = () => { if (confirm('Excluir esta calda?')) { DB.caldas.splice(+b.dataset.delc, 1); saveDB(); renderHistorico(); } });
@@ -1074,7 +1179,7 @@ function init() {
   $('#btnReceita').onclick = () => { if (!DB.receitas.length && !DB.caldas.length) return toast('Nenhuma receita importada ou calda salva — veja Integração', 'err'); modal(`<h2>Carregar</h2><div class="lista">${DB.caldas.map((r, i) => `<div class="row"><div><b>${esc(r.nome)}</b><small>calda salva · ${r.itens.length} itens</small></div><button class="btn sm" data-c="${i}">Carregar</button></div>`).join('')}${DB.receitas.map((r, i) => `<div class="row"><div><b>${esc(r.nome)}</b><small>${esc(r.fonte)} · ${esc(r.cultura || '')} · ${r.itens.length} itens</small></div><button class="btn sm" data-r="${i}">Carregar</button></div>`).join('')}</div><div class="row-btns"><button class="btn ghost" id="mCancel">Fechar</button></div>`); $('#mCancel').onclick = closeModal; $$('#modal [data-c]').forEach(b => b.onclick = () => { carregarReceita(DB.caldas[+b.dataset.c]); closeModal(); }); $$('#modal [data-r]').forEach(b => b.onclick = () => { carregarReceita(DB.receitas[+b.dataset.r]); closeModal(); }); };
   $('#btnAnalisar').onclick = () => analisar();
   $('#btnSalvarCalda').onclick = salvarCalda;
-  $('#btnLimpar').onclick = () => { if (!calda.itens.length || confirm('Limpar a calda atual?')) { calda = { itens: [], obs: '' }; $('#fObs').value = ''; definirAlvos(null); renderItens(); } };
+  $('#btnLimpar').onclick = () => { if (!calda.itens.length || confirm('Limpar a calda atual?')) { calda = { itens: [], obs: '' }; $('#fObs').value = ''; definirAlvos(null); definirTalhoes([]); renderItens(); } };
   $$('#nav button').forEach(b => b.onclick = () => navTo(b.dataset.tab));
   $('#modal').onclick = e => { if (e.target.id === 'modal') closeModal(); };
   // integração
@@ -1082,7 +1187,7 @@ function init() {
   $('#impG360').onchange = async e => { const f = e.target.files[0]; if (!f) return; try { importGefaz360(JSON.parse(await f.text())); } catch (err) { toast('Falha: ' + err.message, 'err'); $('#impMsg').textContent = 'Falha: ' + err.message; } e.target.value = ''; };
   $('#btnImpCola').onclick = () => { try { importarTexto($('#impCola').value); $('#impCola').value = ''; } catch (err) { toast('Falha: ' + err.message, 'err'); $('#impMsg').textContent = 'Falha: ' + err.message; } };
   $('#btnExpCatalogo').onclick = () => download(`gefaz-calda-export-${hoje()}.json`, JSON.stringify(exportPVGestFormat(DB.caldas.concat(DB.receitas)), null, 1));
-  $('#btnLimparCatalogo').onclick = () => { if (confirm('Limpar catálogo, receitas e talhões importados?')) { DB.catalogo = []; DB.receitas = []; DB.talhoes = []; saveDB(); renderIntegracao(); } };
+  $('#btnLimparCatalogo').onclick = () => { if (confirm('Limpar catálogo, receitas e talhões importados? (talhões cadastrados por você ou com histórico ficam)')) { DB.catalogo = []; DB.receitas = []; DB.talhoes = DB.talhoes.filter(t => t.fonte === 'manual' || (t.aplicacoes || []).length); saveDB(); renderIntegracao(); renderHistorico(); } };
   $('#btnCfg').onclick = () => { DB.config.ph = $('#cfgPh').value === '' ? null : num($('#cfgPh').value); DB.config.dureza = $('#cfgDureza').value === '' ? null : num($('#cfgDureza').value); DB.config.custo = { ...DB.config.custo, barra: num($('#cfgBarra').value), turbo: num($('#cfgTurbo').value), drone: num($('#cfgDrone').value), costal: num($('#cfgCostal').value), 'herbicida-cafe': num($('#cfgHerbCafe').value) }; DB.config.acidificanteUltimo = $('#cfgAcidUltimo').checked; saveDB(); toast('Configuração salva'); };
   $('#btnBackup').onclick = () => download(`gefaz-calda-backup-${hoje()}.json`, JSON.stringify({ app: 'gefaz-calda-backup', ...DB }, null, 1));
   $('#impBackup').onchange = async e => { const f = e.target.files[0]; if (!f) return; try { const d = JSON.parse(await f.text()); if (d.app !== 'gefaz-calda-backup') throw new Error('não é um backup do Gefaz Calda'); if (confirm('Substituir todos os dados do Gefaz Calda por este backup?')) { delete d.app; DB = d; loadDBFrom(d); saveDB(); renderIntegracao(); renderHistorico(); toast('Backup restaurado'); } } catch (err) { toast('Falha: ' + err.message, 'err'); } e.target.value = ''; };
@@ -1091,10 +1196,10 @@ function init() {
   aplicarRastreio(DB.config.rastreio); atualizarTalhoes(); preencherSelectRegulagem();
   $('#fRegulagem').onchange = notaRegulagem;
   $('#fVolume').addEventListener('input', notaRegulagem);
-  $('#fTalhao').onchange = () => {
-    const t = DB.talhoes.find(x => norm(x.nome) === norm($('#fTalhao').value));
-    if (t && t.area > 0) { $('#fArea').value = t.area; areaPorTanqueCalda(); toast(`Talhão ${t.nome}: ${fmt(t.area, 1)} ha`); }
-  };
+  $('#btnNovoTalhao').onclick = () => abrirFormTalhao(null);
+  $('#btnTfSalvar').onclick = salvarFormTalhao;
+  $('#btnTfCancelar').onclick = fecharFormTalhao;
+  $('#tfNome').onkeydown = $('#tfArea').onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); salvarFormTalhao(); } };
   ['#fMaquina', '#fOperador', '#fResponsavel', '#fCrea'].forEach(s => { $(s).onchange = guardarPadroesRastreio; });
   renderItens(); renderHistorico(); renderIntegracao(); renderReferencias(); initPontas(); areaPorTanqueCalda(); notaRegulagem();
   carregarAgrofit().then(() => { renderItens(); });

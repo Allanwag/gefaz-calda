@@ -123,7 +123,7 @@ compatibilidade — regulagem e calda passam a falar do mesmo número.
 
 ## Alvo da aplicação e área por carga
 
-A calda separa os **alvos em quatro grupos** — **doenças**, **insetos**, **ácaros e outras pragas** (nematoides, lesmas) e **plantas daninhas** —, cada um com a lista da cultura e vários alvos por grupo: um campo por alvo, com o botão **＋ Adicionar campo** para abrir quantos forem precisos (até 30 em branco por grupo). A lista junta as curadas do `kb.js` (café, milho, soja, sorgo, trigo, feijão, algodão, pastagens, cana e citros) com tudo o que o AGROFIT registra para a cultura; o índice é classificado pelo nome e pela classe dos produtos (herbicida → daninha, fungicida → doença, inseticida → inseto, acaricida/nematicida → outras pragas). O registro na bula confere cada produto só com o grupo que a classe dele ataca (herbicida × daninha, fungicida × doença…) e reconhece o alvo pelo nome científico. Somam-se **nível de infestação**, **estádio fenológico** e **parte da planta alvo**, que ficam no laudo e no código de conferência. O checklist pré-saída
+A calda separa os **alvos em quatro grupos** — **doenças**, **insetos**, **ácaros e outras pragas** (nematoides, lesmas) e **plantas daninhas** —, cada um com a lista da cultura e vários alvos por grupo: um campo por alvo (mais as etiquetas com ×), com o botão **＋ Adicionar campo** para abrir quantos forem precisos (até 30 em branco por grupo). A lista junta as curadas do `kb.js` (café, milho, soja, sorgo, trigo, feijão, algodão, pastagens, cana e citros) com tudo o que o AGROFIT registra para a cultura; o índice é classificado pelo nome e pela classe dos produtos (herbicida → daninha, fungicida → doença, inseticida → inseto, acaricida/nematicida → outras pragas). O registro na bula confere cada produto só com o grupo que a classe dele ataca (herbicida × daninha, fungicida × doença…) e reconhece o alvo pelo nome científico. Somam-se **nível de infestação**, **estádio fenológico** e **parte da planta alvo**, que ficam no laudo e no código de conferência. O checklist pré-saída
 passa a cobrar o que esses campos afirmam: alvo confirmado no talhão, ponta escolhida para a parte
 da planta onde ele está, e carência e fitotoxidez conferidas para o estádio.
 
@@ -153,8 +153,11 @@ L/ha aplicada por uma barra que entrega 250 põe 20 % a mais de produto em cada 
 em faixa a comparação usa o L/ha de lavoura, não o da faixa. Sem regulagem anexada o laudo diz
 isso na cara: registra a receita, mas não prova com que ponta, pressão e velocidade ela foi aplicada.
 
-**O registro de campo** tem talhão (da lista importada do PVGest/Gefaz360, que ao ser escolhido já
-traz a área), trator/pulverizador, operador, responsável técnico e CREA, número do receituário e
+**O registro de campo** tem o **talhão pulverizado**, marcado em etiquetas no topo da aba Calda (um ou
+mais; cadastre com ＋ Novo talhão ou importe do PVGest/Gefaz360). Marcar já lança a **área** (somada, se
+forem vários) e a cultura, e cada análise entra no **histórico do talhão** (aba Histórico → Talhões), onde
+você marca quais foram aplicadas de fato; a aba Calda avisa se o talhão foi pulverizado há até 7 dias.
+Tem ainda trator/pulverizador, operador, responsável técnico e CREA, número do receituário e
 horário de início e término. Máquina, operador e RT voltam sozinhos na próxima aplicação; talhão,
 receituário e horário ficam em branco de propósito, porque são de cada aplicação. Cada produto ganhou
 campo de **lote** — é o lote que liga a embalagem ao que foi aplicado, e por ele que se faz recall,
