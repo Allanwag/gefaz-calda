@@ -21,9 +21,9 @@ const norm = E.norm;
 /* ───────── armazenamento ───────── */
 let DB;
 function defaultDB() {
-  return { version: 1, config: { ph: 7.5, dureza: null, cultura: 'Café', equipamento: 'turbo', volumeHa: 400, custo: { barra: 60, turbo: 90, drone: 120, costal: 40, aviao: 110, 'herbicida-cafe': 55 }, acidificanteUltimo: false, fazenda: 'Fazenda', rastreio: { maquina: '', operador: '', responsavel: '', crea: '' } }, catalogo: [], receitas: [], talhoes: [], caldas: [], historico: [], jarTests: [], regulagens: [], intervalos: {}, carencias: {} };
+  return { version: 1, config: { ph: 7.5, dureza: null, cultura: 'Café', equipamento: 'turbo', volumeHa: 400, custo: { barra: 60, turbo: 90, drone: 120, costal: 40, aviao: 110, 'herbicida-cafe': 55 }, acidificanteUltimo: false, fazenda: 'Fazenda', rastreio: { maquina: '', operador: '', responsavel: '', crea: '' } }, catalogo: [], receitas: [], talhoes: [], caldas: [], historico: [], jarTests: [], regulagens: [], intervalos: {}, carencias: {}, maxAplic: {}, pontasLivres: [] };
 }
-function loadDB() { try { DB = JSON.parse(localStorage.getItem(LS)) || null; } catch { DB = null; } const d = defaultDB(); if (!DB || !DB.version) DB = d; DB.config = { ...d.config, ...(DB.config || {}) }; DB.config.custo = { ...d.config.custo, ...(DB.config.custo || {}) }; DB.config.rastreio = { ...d.config.rastreio, ...(DB.config.rastreio || {}) }; ['catalogo', 'receitas', 'talhoes', 'caldas', 'historico', 'jarTests', 'regulagens'].forEach(k => { if (!Array.isArray(DB[k])) DB[k] = []; }); if (!DB.intervalos || typeof DB.intervalos !== 'object' || Array.isArray(DB.intervalos)) DB.intervalos = {}; if (!DB.carencias || typeof DB.carencias !== 'object' || Array.isArray(DB.carencias)) DB.carencias = {}; }
+function loadDB() { try { DB = JSON.parse(localStorage.getItem(LS)) || null; } catch { DB = null; } const d = defaultDB(); if (!DB || !DB.version) DB = d; DB.config = { ...d.config, ...(DB.config || {}) }; DB.config.custo = { ...d.config.custo, ...(DB.config.custo || {}) }; DB.config.rastreio = { ...d.config.rastreio, ...(DB.config.rastreio || {}) }; ['catalogo', 'receitas', 'talhoes', 'caldas', 'historico', 'jarTests', 'regulagens', 'pontasLivres'].forEach(k => { if (!Array.isArray(DB[k])) DB[k] = []; }); if (!DB.intervalos || typeof DB.intervalos !== 'object' || Array.isArray(DB.intervalos)) DB.intervalos = {}; if (!DB.carencias || typeof DB.carencias !== 'object' || Array.isArray(DB.carencias)) DB.carencias = {}; if (!DB.maxAplic || typeof DB.maxAplic !== 'object' || Array.isArray(DB.maxAplic)) DB.maxAplic = {}; }
 function saveDB() { try { localStorage.setItem(LS, JSON.stringify(DB)); } catch (e) { toast('Não foi possível salvar (armazenamento cheio?)', 'err'); } }
 
 /* ───────── estado da calda ───────── */
@@ -246,6 +246,7 @@ function addItem(it) {
   const cat = DB.catalogo.find(p => norm(p.nome) === norm(it.nome));
   if (cat && !it.preco) it.preco = cat.preco || 0;
   if (!it.intervalo && DB.intervalos[norm(it.nome)]) it.intervalo = DB.intervalos[norm(it.nome)]; // informado uma vez, volta sozinho
+  if (!(it.maxAplic > 0) && DB.maxAplic[norm(it.nome)]) it.maxAplic = DB.maxAplic[norm(it.nome)];
   if (!temNumero(it.carencia)) { const c = DB.carencias[norm(it.nome)] ?? (cat && cat.carencia); if (temNumero(c)) it.carencia = +c; else delete it.carencia; } // a do Gefaz360 vale se você ainda não informou
   calda.itens.push(it); renderItens(); toast(`${it.nome} adicionado`);
 }
@@ -266,11 +267,12 @@ function renderItens() {
         <label>Preço R$/${it.unidade && it.unidade.includes('kg') || it.unidade === 'g/ha' || it.unidade === 'g/100L' ? 'kg' : 'L'}<input type="number" step="any" min="0" data-f="preco" value="${it.preco || ''}"></label>
         <label>Lote<input data-f="lote" value="${esc(it.lote || '')}" placeholder="da embalagem"></label>
         <label title="Intervalo mínimo entre aplicações, conforme a bula/receituário">Intervalo mín. (dias)<input type="number" step="1" min="0" data-f="intervalo" value="${it.intervalo || ''}" placeholder="bula"></label>
+        <label title="Número máximo de aplicações do produto por ciclo, conforme a bula/receituário">Máx. aplic./ciclo<input type="number" step="1" min="1" data-f="maxAplic" value="${it.maxAplic || ''}" placeholder="bula"></label>
         <label title="Carência: dias entre a última aplicação e a colheita, conforme a bula/receituário (0 = sem carência)">Carência (dias)<input type="number" step="1" min="0" data-f="carencia" value="${temNumero(it.carencia) ? it.carencia : ''}" placeholder="bula"></label>
       </div></div>`;
   }).join('');
   el.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { calda.itens.splice(+b.dataset.del, 1); renderItens(); });
-  el.querySelectorAll('[data-f]').forEach(inp => inp.onchange = () => { const it = calda.itens[+inp.closest('.item').dataset.i]; const f = inp.dataset.f; it[f] = f === 'dose' || f === 'preco' || f === 'intervalo' || f === 'carencia' ? num(inp.value) : inp.value.trim(); if (f === 'carencia') { if (inp.value.trim() === '') { delete it.carencia; delete DB.carencias[norm(it.nome)]; } else DB.carencias[norm(it.nome)] = it.carencia; saveDB(); } if (f === 'intervalo') { if (it.intervalo > 0) DB.intervalos[norm(it.nome)] = it.intervalo; else delete DB.intervalos[norm(it.nome)]; saveDB(); } if (f === 'unidade') renderItens(); });
+  el.querySelectorAll('[data-f]').forEach(inp => inp.onchange = () => { const it = calda.itens[+inp.closest('.item').dataset.i]; const f = inp.dataset.f; it[f] = f === 'dose' || f === 'preco' || f === 'intervalo' || f === 'carencia' || f === 'maxAplic' ? num(inp.value) : inp.value.trim(); if (f === 'maxAplic') { if (it.maxAplic > 0) DB.maxAplic[norm(it.nome)] = Math.round(it.maxAplic); else { delete it.maxAplic; delete DB.maxAplic[norm(it.nome)]; } saveDB(); } if (f === 'carencia') { if (inp.value.trim() === '') { delete it.carencia; delete DB.carencias[norm(it.nome)]; } else DB.carencias[norm(it.nome)] = it.carencia; saveDB(); } if (f === 'intervalo') { if (it.intervalo > 0) DB.intervalos[norm(it.nome)] = it.intervalo; else delete DB.intervalos[norm(it.nome)]; saveDB(); } if (f === 'unidade') renderItens(); });
 }
 function formManual(pre) {
   pre = pre || {};
@@ -356,7 +358,7 @@ function renderTalhoes() {
     const ap = t.aplicacoes || [], u = ap.find(a => a.aplicada), dias = u ? diasDesde(u.iso) : null;
     const hist = u ? `última aplicação ${esc(soData(u))}${dias != null ? ' (há ' + dias + ' d)' : ''}: ${esc(u.produtos.join(' + '))}`
       : ap.length ? `só análises registradas (última em ${esc(soData(ap[0]))})` : 'sem histórico';
-    return `<div><b>${esc(t.nome)}</b> — ${t.area ? fmt(t.area, 2) + ' ha' : '<span class="danger-txt">sem área cadastrada</span>'}${t.cultura ? ' · ' + esc(t.cultura) : ''} · ${hist}${dias != null && dias <= 7 ? ' <span class="danger-txt">⚠ aplicado há poucos dias — confira intervalo e rotação de modo de ação</span>' : ''} <button type="button" class="btn sm ghost" data-edt="${i}" aria-label="Editar ${esc(t.nome)}">✎</button></div>`;
+    return `<div><b>${esc(t.nome)}</b> — ${t.area ? fmt(t.area, 2) + ' ha' : '<span class="danger-txt">sem área cadastrada</span>'}${t.cultura ? ' · ' + esc(t.cultura) : ''}${t.cicloInicio ? ' · ciclo desde ' + dataBR(t.cicloInicio) : ''} · ${hist}${dias != null && dias <= 7 ? ' <span class="danger-txt">⚠ aplicado há poucos dias — confira intervalo e rotação de modo de ação</span>' : ''} <button type="button" class="btn sm ghost" data-edt="${i}" aria-label="Editar ${esc(t.nome)}">✎</button></div>`;
   });
   const soma = talhoesSel.map(achaTalhao).filter(Boolean).reduce((s, t) => s + (+t.area || 0), 0);
   const culturasSel = new Set(talhoesSel.map(achaTalhao).filter(t => t && t.cultura).map(t => norm(t.cultura)));
@@ -369,19 +371,19 @@ function abrirFormTalhao(t) {
   talhaoEditando = t || null;
   $('#tfCultura').innerHTML = '<option value="">—</option>' + KB.culturas.map(c => `<option>${esc(c)}</option>`).join('');
   $('#tfTitulo').textContent = t ? 'Editar talhão' : 'Novo talhão';
-  $('#tfNome').value = t ? t.nome : ''; $('#tfArea').value = t && t.area ? t.area : '';
+  $('#tfNome').value = t ? t.nome : ''; $('#tfArea').value = t && t.area ? t.area : ''; $('#tfCiclo').value = (t && t.cicloInicio) || '';
   $('#tfCultura').value = t ? (t.cultura || '') : $('#fCultura').value;
   $('#talhaoForm').classList.remove('hidden'); $('#tfNome').focus();
 }
 function fecharFormTalhao() { talhaoEditando = null; $('#talhaoForm').classList.add('hidden'); }
 function salvarFormTalhao() {
-  const nome = $('#tfNome').value.trim(), area = num($('#tfArea').value), cultura = $('#tfCultura').value;
+  const nome = $('#tfNome').value.trim(), area = num($('#tfArea').value), cultura = $('#tfCultura').value, cicloInicio = $('#tfCiclo').value || '';
   if (!nome) return toast('Dê um nome ao talhão', 'err');
   const outro = achaTalhao(nome);
   if (outro && outro !== talhaoEditando) return toast('Já existe um talhão com esse nome', 'err');
   let sel = talhoesSel;
-  if (talhaoEditando) { const antigo = talhaoEditando.nome; Object.assign(talhaoEditando, { nome, area, cultura }); sel = sel.map(n => norm(n) === norm(antigo) ? nome : n); }
-  else { DB.talhoes.push({ nome, area, cultura, fonte: 'manual', aplicacoes: [] }); sel = [...sel, nome]; }
+  if (talhaoEditando) { const antigo = talhaoEditando.nome; Object.assign(talhaoEditando, { nome, area, cultura, cicloInicio }); sel = sel.map(n => norm(n) === norm(antigo) ? nome : n); }
+  else { DB.talhoes.push({ nome, area, cultura, cicloInicio, fonte: 'manual', aplicacoes: [] }); sel = [...sel, nome]; }
   saveDB(); fecharFormTalhao(); definirTalhoes(sel, true); renderHistorico(); renderIntegracao();
   toast(`Talhão ${nome} salvo`);
 }
@@ -390,19 +392,22 @@ function excluirTalhao(t) {
   DB.talhoes.splice(DB.talhoes.indexOf(t), 1); saveDB();
   definirTalhoes(talhoesSel.filter(n => norm(n) !== norm(t.nome)), true); renderHistorico(); renderIntegracao();
 }
+function chaveDaCalda(ctx) { return JSON.stringify([ctx.cultura, ctx.volumeHa, calda.itens.map(i => [norm(i.nome), i.dose, i.unidade]).sort()]); }
 /* Cada análise entra no histórico dos talhões marcados. O código do laudo muda a cada emissão (leva a hora),
    então a mesma calda (produtos, doses, volume, cultura) reanalisada só atualiza o registro que ainda é "só análise". */
 function registrarAplicacaoTalhoes(ctx, res) {
   const nomes = splitTalhoes(ctx.rastreio.talhao), codigo = res.rastreio ? res.rastreio.codigo : null;
-  const chave = JSON.stringify([ctx.cultura, ctx.volumeHa, calda.itens.map(i => [norm(i.nome), i.dose, i.unidade]).sort()]);
+  const chave = chaveDaCalda(ctx);
   nomes.forEach(nome => {
     let t = achaTalhao(nome);
     if (!t) { t = { nome, area: nomes.length === 1 ? ctx.area : 0, cultura: ctx.cultura, fonte: 'manual', aplicacoes: [] }; DB.talhoes.push(t); }
     t.aplicacoes = t.aplicacoes || [];
     const reg = { data: res.data, iso: new Date().toISOString(), quando: ctx.rastreio.termino || ctx.rastreio.inicio || new Date().toISOString(), codigo, status: res.status, aplicada: !!ctx.rastreio.termino, chave, cultura: ctx.cultura, area: t.area || (nomes.length === 1 ? ctx.area : 0), volumeHa: ctx.volumeHa, produtos: calda.itens.map(i => i.nome), perfis: (res.itens || []).map(perfilProduto), alvos: textoAlvos(ctx.alvos, true).join(', '), resumo: res.resumo.frase };
-    const ja = t.aplicacoes.find(a => a.chave === chave && !a.aplicada);
-    if (ja) Object.assign(ja, reg);
-    else if (!t.aplicacoes.some(a => a.chave === chave && a.aplicada && a.codigo === codigo)) t.aplicacoes.unshift({ id: uid(), ...reg });
+    // com horário informado a aplicação é a mesma calda no mesmo horário; sem horário, a mesma calda ainda "só análise"
+    const temHora = !!(ctx.rastreio.termino || ctx.rastreio.inicio);
+    const ja = temHora ? t.aplicacoes.find(a => a.chave === chave && a.quando === reg.quando) : t.aplicacoes.find(a => a.chave === chave && !a.aplicada);
+    if (ja) { const feita = ja.aplicada; Object.assign(ja, reg); ja.aplicada = feita || reg.aplicada; }
+    else t.aplicacoes.unshift({ id: uid(), ...reg });
     t.aplicacoes = t.aplicacoes.slice(0, 100);
   });
 }
@@ -410,10 +415,13 @@ function atualizarTalhoes() { renderTalhoes(); }
 /* Próxima aplicação permitida: dia da aplicação (término, senão início, senão hoje) + o maior intervalo informado. */
 function baseDaAplicacao(ctx) { const r = ctx.rastreio; return { base: r.termino || r.inicio || new Date(), origemBase: r.termino ? 'termino' : r.inicio ? 'inicio' : 'emissao' }; }
 /* aplicações já feitas (marcadas) dos talhões do laudo, com o dia e o que levaram */
+/* o registro desta mesma aplicação (mesma calda, mesmo horário informado) não conta como anterior ao reanalisar */
+function ehEstaAplicacao(a, ctx) { const q = ctx.rastreio.termino || ctx.rastreio.inicio; return !!q && a.quando === q && a.chave === chaveDaCalda(ctx); }
 function talhoesAplicados(ctx) {
-  return splitTalhoes(ctx.rastreio.talhao).map(achaTalhao).filter(Boolean).map(t => ({ nome: t.nome, aplicacoes: (t.aplicacoes || []).filter(a => a.aplicada).map(a => ({ quando: a.quando || a.iso, produtos: a.produtos, perfis: a.perfis })) }));
+  return splitTalhoes(ctx.rastreio.talhao).map(achaTalhao).filter(Boolean).map(t => ({ nome: t.nome, cicloInicio: t.cicloInicio || '', aplicacoes: (t.aplicacoes || []).filter(a => a.aplicada && !ehEstaAplicacao(a, ctx)).map(a => ({ quando: a.quando || a.iso, produtos: a.produtos, perfis: a.perfis })) }));
 }
 function calcularProxima(ctx, res) { return E.proximaAplicacao({ itens: res.itens || [], ...baseDaAplicacao(ctx), talhoes: talhoesAplicados(ctx) }); }
+function calcularCiclo(ctx, res) { return E.aplicacoesNoCiclo({ itens: res.itens || [], ...baseDaAplicacao(ctx), talhoes: talhoesAplicados(ctx) }); }
 function calcularColheita(ctx, res) { return E.colheitaLiberada({ itens: res.itens || [], ...baseDaAplicacao(ctx), talhoes: talhoesAplicados(ctx) }); }
 /* Perfil do produto para comparar com aplicações passadas: ingredientes ativos, códigos de modo de ação
    (FRAC/IRAC/HRAC, do KB) e grupos químicos (KB ou AGROFIT, para quando o KB não tem o código). */
@@ -455,7 +463,7 @@ function historicoDosTalhoes(ctx, res) {
   return splitTalhoes(ctx.rastreio.talhao).map(nome => {
     const t = achaTalhao(nome), tudo = (t && t.aplicacoes) || [];
     const ap = tudo.map(a => ({ data: a.data, iso: a.iso, aplicada: !!a.aplicada, produtos: a.produtos, cultura: a.cultura, alvos: a.alvos, area: a.area, volumeHa: a.volumeHa, status: a.status, codigo: a.codigo }));
-    const aplicadas = tudo.filter(a => a.aplicada);
+    const aplicadas = tudo.filter(a => a.aplicada && !ehEstaAplicacao(a, ctx));
     return { nome: t ? t.nome : nome, cadastrado: !!t, area: t ? t.area || 0 : 0, cultura: t ? t.cultura || '' : '', total: ap.length, nAplicadas: aplicadas.length, ultimaAplicacao: ap.find(a => a.aplicada) || null, repeticoes: repeticoesNoTalhao(atuais, aplicadas), registros: ap.slice(0, 8) };
   });
 }
@@ -536,6 +544,7 @@ function analisar(silencioso, registrarHistorico = true) {
   resultado.historicoTalhoes = historicoDosTalhoes(ctx, resultado);
   resultado.proximaAplicacao = calcularProxima(ctx, resultado);
   resultado.colheitaLiberada = calcularColheita(ctx, resultado);
+  resultado.aplicacoesCiclo = calcularCiclo(ctx, resultado);
   guardarPadroesRastreio();
   if (registrarHistorico) {
     DB.historico.unshift({ id: uid(), data: resultado.data, status: resultado.status, resumo: resultado.resumo.frase, codigo: resultado.rastreio ? resultado.rastreio.codigo : null, talhao: ctx.rastreio.talhao, itens: calda.itens.map(i => i.nome), calda: JSON.parse(JSON.stringify({ itens: calda.itens, ...ctx })) });
@@ -548,7 +557,7 @@ function analisar(silencioso, registrarHistorico = true) {
   if (!silencioso) navTo('resultado');
   return resultado;
 }
-function resumoExport() { if (!resultado) return null; const r = resultado; return { status: r.status, resumo: r.resumo, score: r.score, regulagem: r.regulagem, rastreio: r.rastreio, confianca: r.confianca, alertas: r.alertas, ph: r.ph, ordem: r.ordem.filter(p => p.itens.length || p.passo <= 2 || p.passo >= 11), custo: r.custo, tanque: r.tanque, checklist: r.checklist, registro: r.registro, jarTest: r.jarTest, data: r.data, contexto: r.contexto, historicoTalhoes: r.historicoTalhoes || [], proximaAplicacao: r.proximaAplicacao || null, colheitaLiberada: r.colheitaLiberada || null, versao: E.versao }; }
+function resumoExport() { if (!resultado) return null; const r = resultado; return { status: r.status, resumo: r.resumo, score: r.score, regulagem: r.regulagem, rastreio: r.rastreio, confianca: r.confianca, alertas: r.alertas, ph: r.ph, ordem: r.ordem.filter(p => p.itens.length || p.passo <= 2 || p.passo >= 11), custo: r.custo, tanque: r.tanque, checklist: r.checklist, registro: r.registro, jarTest: r.jarTest, data: r.data, contexto: r.contexto, historicoTalhoes: r.historicoTalhoes || [], proximaAplicacao: r.proximaAplicacao || null, colheitaLiberada: r.colheitaLiberada || null, aplicacoesCiclo: r.aplicacoesCiclo || null, versao: E.versao }; }
 
 const TIPO_LABEL = { legal: 'Registro / legal', quimica: 'Química', fisica: 'Física', agronomica: 'Agronômica', biologica: 'Biológica', ph: 'pH', agua: 'Água', resistencia: 'Resistência (MoA)', operacional: 'Operacional' };
 const STATUS_LABEL = { compativel: 'Compatível', restricoes: 'Compatível com restrições', incompativel: 'Incompatível', testar: 'Não testado — jar test', 'nao-testado': 'Não testado', atencao: 'Atenção' };
@@ -581,6 +590,7 @@ function renderResultado() {
   ${blocoTalhao(r)}
   ${blocoProxima(r)}
   ${blocoColheita(r)}
+  ${blocoCiclo(r)}
   ${blocoRastreio(r)}
   <div class="card"><div class="card-hd"><h2>Checklist pré-saída</h2></div><ul class="check-list">${r.checklist.map(c => `<li><input type="checkbox"><span>${esc(c)}</span></li>`).join('')}</ul></div>
   ${ctx.obs ? `<div class="card"><div class="card-hd"><h2>Observações</h2></div><p>${esc(ctx.obs)}</p></div>` : ''}
@@ -647,6 +657,7 @@ function blocoProxima(r) {
     ${p.liberadoEm ? `<div class="codigo-laudo"><b>${dataBR(p.liberadoEm)}</b><small>a partir desta data, ${dias} dia(s) após ${dataBR(p.base)} (${origem}) · limitante: ${esc(p.limitante)}</small></div>
       <table class="tb"><thead><tr><th>Produto</th><th class="num">Intervalo</th><th class="num">Liberado em</th></tr></thead><tbody>${p.linhas.map(l => `<tr><td>${esc(l.nome)}</td><td class="num">${l.intervalo} d</td><td class="num">${dataBR(l.liberadoEm)}</td></tr>`).join('')}</tbody></table>`
       : `<div class="al baixa"><div class="t"><span>Sem data: nenhum intervalo informado</span></div><div class="d">Este app não traz o intervalo entre aplicações de nenhum produto, e a data não é estimada.</div><div class="c">→ Preencha “Intervalo mín. (dias)” em cada produto, conforme a bula ou o receituário, e analise de novo.</div></div>`}
+    ${((r.aplicacoesCiclo || {}).ultimas || []).concat((r.aplicacoesCiclo || {}).excedidos || []).map(l => `<div class="al alta"><div class="t"><span>${l.situacao === 'excedido' ? 'Acima do máximo de aplicações' : 'Sem próxima aplicação neste ciclo'}${l.talhao ? ' — ' + esc(l.talhao) : ''}</span></div><div class="d">${esc(l.nome)} ${l.situacao === 'excedido' ? 'passaria de' : 'chega a'} ${l.max} aplicação(ões) por ciclo${l.situacao === 'excedido' ? '' : ' com esta: a data acima só vale para produtos que ainda têm aplicações no ciclo'}.</div></div>`).join('')}
     ${p.semIntervalo.length ? `<div class="al media"><div class="t"><span>Sem intervalo informado</span></div><div class="d">${esc(p.semIntervalo.join(', '))} — a data acima não os considera.</div><div class="c">→ Confira na bula antes de programar a próxima entrada.</div></div>` : ''}
     ${p.conflitos.map(c => `<div class="al alta"><div class="t"><span>Dentro do intervalo no talhão ${esc(c.talhao)}</span></div><div class="d">${esc(c.nome)} foi aplicado em ${dataBR(c.ultima)} e o intervalo é de ${c.intervalo} dias: liberado só em <b>${dataBR(c.liberadoEm)}</b> (faltam ${c.diasFaltam} dia(s) em relação à data desta aplicação).</div><div class="c">→ Adiar a aplicação ou trocar o produto, salvo orientação do responsável técnico.</div></div>`).join('')}
     <div class="small muted">O intervalo entre aplicações e o número máximo de aplicações por ciclo são os da bula/receituário — o Agrofit aberto não traz esses valores. Não confundir com a carência (dias até a colheita).</div>
@@ -666,6 +677,22 @@ function blocoColheita(r) {
       <table class="tb"><thead><tr><th>Talhão</th><th class="num">Colheita liberada em</th><th>Limitante</th></tr></thead><tbody>${tal.map(t => `<tr><td>${esc(t.talhao)}</td><td class="num"><b>${dataBR(t.liberadoEm)}</b></td><td>${esc(t.limitante.nome)} <small>${t.limitante.origem === 'esta' ? 'esta aplicação' : 'aplicação de ' + dataBR(t.limitante.aplicadoEm)}</small></td></tr>`).join('')}</tbody></table>` : ''}
     ${c.semCarencia.length ? `<div class="al media"><div class="t"><span>Sem carência informada</span></div><div class="d">${esc(c.semCarencia.join(', '))} — a data acima não os considera.</div><div class="c">→ Confira na bula antes de liberar a colheita.</div></div>` : ''}
     <div class="small muted">A carência (intervalo de segurança) é a da bula/receituário para a cultura; muda entre culturas e produtos. Zero significa sem carência. Não substitui o receituário agronômico.</div>
+  </div>`;
+}
+function blocoCiclo(r) {
+  const c = r.aplicacoesCiclo; if (!c || (!c.linhas.length && !c.semLimite.length)) return '';
+  const sit = { ok: '<span class="tag reg">dentro do limite</span>', ultima: '<span class="tag noreg">última permitida</span>', excedido: '<span class="tag noreg">acima do máximo</span>' };
+  const semIni = c.linhas.some(l => l.talhao && !l.cicloInicio);
+  return `<div class="card">
+    <div class="card-hd"><h2>Aplicações por ciclo</h2><span class="hint">máximo da bula por produto · conta as feitas no talhão + esta</span></div>
+    ${c.linhas.length ? `<table class="tb"><thead><tr><th>Produto</th><th>Talhão</th><th class="num">Já feitas</th><th class="num">Esta é a</th><th class="num">Máximo</th><th>Situação</th></tr></thead><tbody>${c.linhas.map(l => `<tr><td>${esc(l.nome)}</td><td>${l.talhao ? esc(l.talhao) : '<span class="muted">—</span>'}${l.cicloInicio ? ` <small class="muted">ciclo desde ${dataBR(l.cicloInicio)}</small>` : ''}</td><td class="num">${l.feitas}</td><td class="num">${l.comEsta}ª</td><td class="num">${l.max}</td><td>${sit[l.situacao]}</td></tr>`).join('')}</tbody></table>`
+      : `<div class="al baixa"><div class="t"><span>Nenhum máximo informado</span></div><div class="d">Este app não traz o número máximo de aplicações por ciclo (o Agrofit aberto não o publica).</div><div class="c">→ Preencha “Máx. aplic./ciclo” em cada produto, conforme a bula ou o receituário, e analise de novo.</div></div>`}
+    ${c.excedidos.map(l => `<div class="al alta"><div class="t"><span>Acima do máximo de aplicações${l.talhao ? ' no talhão ' + esc(l.talhao) : ''}</span></div><div class="d">${esc(l.nome)}: esta seria a ${l.comEsta}ª aplicação no ciclo e a bula permite ${l.max}.</div><div class="c">→ Não aplicar; trocar de produto ou consultar o responsável técnico.</div></div>`).join('')}
+    ${c.ultimas.map(l => `<div class="al media"><div class="t"><span>Última aplicação permitida${l.talhao ? ' no talhão ' + esc(l.talhao) : ''}</span></div><div class="d">${esc(l.nome)}: esta é a ${l.comEsta}ª de ${l.max}; depois dela não há próxima aplicação deste produto neste ciclo.</div><div class="c">→ Planeje o restante do ciclo com outro produto ou modo de ação.</div></div>`).join('')}
+    ${c.semLimite.length ? `<div class="al media"><div class="t"><span>Sem máximo informado</span></div><div class="d">${esc(c.semLimite.join(', '))} — não entram na contagem.</div><div class="c">→ Confira o número máximo de aplicações na bula.</div></div>` : ''}
+    ${c.semTalhao && c.linhas.length ? '<div class="small muted">Nenhum talhão marcado: só esta aplicação foi contada. Marque o talhão na aba Calda para contar o histórico.</div>' : ''}
+    ${semIni ? '<div class="small muted">Talhão sem início de ciclo definido: contadas todas as aplicações registradas. Informe o início do ciclo (safra) no cadastro do talhão para contar só as do ciclo atual.</div>' : ''}
+    <div class="small muted">A contagem é por produto (nome), só com aplicações marcadas como feitas no talhão. O limite pode valer também por ingrediente ativo ou por cultura na bula — confira.</div>
   </div>`;
 }
 function blocoRastreio(r) {
@@ -725,7 +752,7 @@ function renderJar() {
 }
 
 /* ───────── histórico e caldas ───────── */
-function caldaComoReceita() { const ctx = lerContexto(); return { id: uid(), nome: `Calda ${ctx.cultura}${ctx.alvo ? ' — ' + textoAlvos(ctx.alvos, true).slice(0, 3).join(', ') + (textoAlvos(ctx.alvos).length > 3 ? '…' : '') : ''} ${hoje()}`, cultura: ctx.cultura, alvo: ctx.alvo, alvos: ctx.alvos, doenca: ctx.doenca, praga: ctx.praga, severidade: ctx.severidade, estadio: ctx.estadio, parte: ctx.parte, volumeHa: ctx.volumeHa, itens: calda.itens.map(i => ({ nome: i.nome, dose: i.dose, unidade: i.unidade, classe: i.classe, formulacao: i.formulacao, preco: i.preco, intervalo: i.intervalo, carencia: i.carencia, ativos: i.ativos, ingredientes: i.ingredientes, registro: i.registro, tags: i.tags, fonte: i.fonte })), agua: ctx.agua, equipamento: ctx.equipamento, area: ctx.area, tanque: ctx.tanque, obs: ctx.obs, fonte: 'gefaz-calda', status: resultado ? resultado.status : null }; }
+function caldaComoReceita() { const ctx = lerContexto(); return { id: uid(), nome: `Calda ${ctx.cultura}${ctx.alvo ? ' — ' + textoAlvos(ctx.alvos, true).slice(0, 3).join(', ') + (textoAlvos(ctx.alvos).length > 3 ? '…' : '') : ''} ${hoje()}`, cultura: ctx.cultura, alvo: ctx.alvo, alvos: ctx.alvos, doenca: ctx.doenca, praga: ctx.praga, severidade: ctx.severidade, estadio: ctx.estadio, parte: ctx.parte, volumeHa: ctx.volumeHa, itens: calda.itens.map(i => ({ nome: i.nome, dose: i.dose, unidade: i.unidade, classe: i.classe, formulacao: i.formulacao, preco: i.preco, intervalo: i.intervalo, carencia: i.carencia, maxAplic: i.maxAplic, ativos: i.ativos, ingredientes: i.ingredientes, registro: i.registro, tags: i.tags, fonte: i.fonte })), agua: ctx.agua, equipamento: ctx.equipamento, area: ctx.area, tanque: ctx.tanque, obs: ctx.obs, fonte: 'gefaz-calda', status: resultado ? resultado.status : null }; }
 function salvarCalda() { if (!calda.itens.length) return toast('Nada para salvar', 'err'); const nome = prompt('Nome da calda', caldaComoReceita().nome); if (!nome) return; const c = caldaComoReceita(); c.nome = nome; DB.caldas.unshift(c); saveDB(); toast('Calda salva'); renderHistorico(); }
 function carregarReceita(rec) { calda.itens = rec.itens.map(i => ({ id: uid(), ...i, dose: +i.dose || 0, unidade: i.unidade || 'L/ha' })); aplicarContexto({ cultura: rec.cultura, alvo: rec.alvo, alvos: rec.alvos, doenca: rec.doenca, praga: rec.praga, severidade: rec.severidade, estadio: rec.estadio, parte: rec.parte, volumeHa: rec.volumeHa, area: rec.area, tanque: rec.tanque, equipamento: rec.equipamento, agua: rec.agua, obs: rec.obs }); renderItens(); navTo('calda'); toast(`Receita “${rec.nome}” carregada`); }
 function renderHistorico() {
@@ -929,7 +956,7 @@ function preencherModelos(sel) {
   let lista = PT.PONTAS.filter(p => (!marca || p.marca === marca));
   const doAlvo = lista.filter(p => p.usos.indexOf(alvo) >= 0);
   const outras = lista.filter(p => p.usos.indexOf(alvo) < 0);
-  const opt = p => `<option value="${p.id}">${esc(p.marca)} · ${esc(p.modelo)}</option>`;
+  const opt = p => `<option value="${p.id}">${esc(p.marca)} · ${esc(p.modelo)}${p.livre ? ' ★' : ''}</option>`;
   $('#pPonta').innerHTML = (doAlvo.length ? `<optgroup label="Indicadas para o alvo">${doAlvo.map(opt).join('')}</optgroup>` : '')
     + (outras.length ? `<optgroup label="Outras">${outras.map(opt).join('')}</optgroup>` : '');
   if (sel && PT.PONTA_MAP[sel] && lista.some(p => p.id === sel)) $('#pPonta').value = sel;
@@ -1222,7 +1249,64 @@ function atualizarAreaTanque() {
   };
 }
 
+/* ───────── minhas pontas: cadastrar uma ponta que o catálogo não tem ───────── */
+let pontaLivreEditando = null; // id da ponta aberta no formulário
+function carregarPontasLivres(semTela) {
+  PT.PONTAS.filter(p => p.livre).forEach(p => PT.removerPonta(p.id));
+  DB.pontasLivres.forEach(def => { try { PT.registrarPonta(def); } catch (e) { console.warn('ponta cadastrada inválida:', def && def.modelo, e.message); } });
+  if (!semTela && $('#pMarca')) {
+    const marca = $('#pMarca').value, ponta = $('#pPonta').value;
+    preencherMarcas(); if ([...$('#pMarca').options].some(o => o.value === marca)) $('#pMarca').value = marca;
+    preencherModelos(ponta); preencherIso(); preencherAngulos();
+  }
+  renderPontasLivres();
+}
+function limparFormPontaLivre() {
+  pontaLivreEditando = null;
+  ['#plMarca', '#plModelo', '#plNota', '#plTam'].forEach(s => { $(s).value = ''; });
+  $('#plAng').value = '110'; $('#plPmin').value = 1; $('#plPmax').value = 6; $('#plTipo').value = 'leque'; $('#plGota').value = '';
+  $('#btnPlSalvar').textContent = 'Salvar e usar esta ponta';
+}
+function renderPontasLivres() {
+  const el = $('#plLista'); if (!el) return;
+  el.innerHTML = DB.pontasLivres.length ? '<div class="sub-hd">Minhas pontas</div>' + DB.pontasLivres.map((d, i) => {
+    const p = PT.PONTA_MAP[d.id];
+    return `<div class="row"><div><b>${esc(d.marca)} · ${esc(d.modelo)}</b><small>${p ? esc(p.sizes.join(', ')) + ' · ' + p.pressao[0] + '–' + p.pressao[1] + ' bar' : 'dados inválidos — edite'}</small></div><div class="acts"><button type="button" class="btn sm" data-plusar="${i}">Usar</button><button type="button" class="btn sm ghost" data-pled="${i}" aria-label="Editar">✎</button><button type="button" class="btn sm ghost danger" data-pldel="${i}" aria-label="Excluir">✕</button></div></div>`;
+  }).join('') : '';
+  $$('#plLista [data-plusar]').forEach(b => b.onclick = () => usarPonta(DB.pontasLivres[+b.dataset.plusar].id));
+  $$('#plLista [data-pled]').forEach(b => b.onclick = () => editarPontaLivre(DB.pontasLivres[+b.dataset.pled]));
+  $$('#plLista [data-pldel]').forEach(b => b.onclick = () => excluirPontaLivre(DB.pontasLivres[+b.dataset.pldel]));
+}
+function usarPonta(id) {
+  const p = PT.PONTA_MAP[id]; if (!p) return toast('Ponta não encontrada — edite e salve de novo', 'err');
+  preencherMarcas(); $('#pMarca').value = p.marca; preencherModelos(id); $('#pPonta').onchange();
+}
+function editarPontaLivre(d) {
+  pontaLivreEditando = d.id;
+  $('#plMarca').value = d.marca; $('#plModelo').value = d.modelo; $('#plTipo').value = d.tipo || 'leque'; $('#plAng').value = d.angulos || '';
+  $('#plPmin').value = d.pressaoMin; $('#plPmax').value = d.pressaoMax; $('#plGota').value = d.gota || ''; $('#plNota').value = d.nota || ''; $('#plTam').value = d.tamanhos || '';
+  $('#btnPlSalvar').textContent = 'Salvar alterações e usar';
+  $('#pontaLivreBox').open = true; $('#plMarca').scrollIntoView({ block: 'center' });
+}
+function salvarPontaLivre() {
+  const def = { marca: $('#plMarca').value.trim(), modelo: $('#plModelo').value.trim(), tipo: $('#plTipo').value, angulos: $('#plAng').value.trim(), pressaoMin: $('#plPmin').value, pressaoMax: $('#plPmax').value, gota: $('#plGota').value, nota: $('#plNota').value.trim(), tamanhos: $('#plTam').value.trim() };
+  let p; try { p = PT.registrarPonta(def); } catch (e) { return toast(e.message, 'err'); }
+  def.id = p.id;
+  if (pontaLivreEditando && pontaLivreEditando !== p.id) { PT.removerPonta(pontaLivreEditando); DB.pontasLivres = DB.pontasLivres.filter(x => x.id !== pontaLivreEditando); }
+  const i = DB.pontasLivres.findIndex(x => x.id === p.id);
+  if (i >= 0) DB.pontasLivres[i] = def; else DB.pontasLivres.push(def);
+  saveDB(); limparFormPontaLivre(); renderPontasLivres(); usarPonta(p.id);
+  toast(`Ponta ${p.marca} ${p.modelo} salva e selecionada`);
+}
+function excluirPontaLivre(d) {
+  if (!confirm(`Excluir a ponta ${d.marca} ${d.modelo}?`)) return;
+  PT.removerPonta(d.id); DB.pontasLivres = DB.pontasLivres.filter(x => x.id !== d.id); saveDB();
+  if (pontaLivreEditando === d.id) limparFormPontaLivre();
+  const marca = $('#pMarca').value; preencherMarcas(); if ([...$('#pMarca').options].some(o => o.value === marca)) $('#pMarca').value = marca;
+  preencherModelos(); $('#pPonta').onchange(); renderPontasLivres();
+}
 function initPontas() {
+  carregarPontasLivres(true);
   $('#pAlvo').innerHTML = PT.ALVOS.map(a => `<option value="${a.id}">${esc(a.nome)}</option>`).join('');
   $('#chipsPreset').innerHTML = PT.PRESETS.map(p => `<button type="button" class="chip" data-preset="${esc(p.id)}" title="${esc(p.nota)}">${esc(p.nome)}</button>`).join('');
   preencherMarcas(); preencherModelos(); preencherIso(); preencherAngulos();
@@ -1231,6 +1315,9 @@ function initPontas() {
   $('#pAlvo').onchange = () => { preencherModelos($('#pPonta').value); preencherIso(); preencherAngulos(); recalc(); };
   $('#pMarca').onchange = () => { preencherModelos(); preencherIso(); preencherAngulos(); recalc(); };
   $('#pPonta').onchange = () => { preencherIso(); preencherAngulos(); recalc(); };
+  $('#plTipo').innerHTML = Object.entries(PT.TIPOS).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join('');
+  $('#plGota').innerHTML = '<option value="">não sei</option>' + PT.GOTAS.map(g => `<option value="${g.id}">${esc(g.nome)} · ${esc(g.faixa)}</option>`).join('');
+  $('#btnPlSalvar').onclick = salvarPontaLivre; $('#btnPlLimpar').onclick = limparFormPontaLivre;
   ['#pDist', '#pTempo'].forEach(s => { $(s).oninput = () => { atualizarVelocidade(true); recalc(); }; });
   $('#pVel').addEventListener('input', () => atualizarVelocidade()); atualizarVelocidade();
   ['#pIso', '#pAng', '#pVel', '#pVol', '#pEsp', '#pNb', '#pLf', '#pBf', '#pEl', '#pTq', '#pArea', '#pPress'].forEach(s => { $(s).oninput = recalc; $(s).onchange = recalc; });
@@ -1301,7 +1388,7 @@ function init() {
   $('#btnLimparCatalogo').onclick = () => { if (confirm('Limpar catálogo, receitas e talhões importados? (talhões cadastrados por você ou com histórico ficam)')) { DB.catalogo = []; DB.receitas = []; DB.talhoes = DB.talhoes.filter(t => t.fonte === 'manual' || (t.aplicacoes || []).length); saveDB(); renderIntegracao(); renderHistorico(); } };
   $('#btnCfg').onclick = () => { DB.config.ph = $('#cfgPh').value === '' ? null : num($('#cfgPh').value); DB.config.dureza = $('#cfgDureza').value === '' ? null : num($('#cfgDureza').value); DB.config.custo = { ...DB.config.custo, barra: num($('#cfgBarra').value), turbo: num($('#cfgTurbo').value), drone: num($('#cfgDrone').value), costal: num($('#cfgCostal').value), 'herbicida-cafe': num($('#cfgHerbCafe').value) }; DB.config.acidificanteUltimo = $('#cfgAcidUltimo').checked; saveDB(); toast('Configuração salva'); };
   $('#btnBackup').onclick = () => download(`gefaz-calda-backup-${hoje()}.json`, JSON.stringify({ app: 'gefaz-calda-backup', ...DB }, null, 1));
-  $('#impBackup').onchange = async e => { const f = e.target.files[0]; if (!f) return; try { const d = JSON.parse(await f.text()); if (d.app !== 'gefaz-calda-backup') throw new Error('não é um backup do Gefaz Calda'); if (confirm('Substituir todos os dados do Gefaz Calda por este backup?')) { delete d.app; DB = d; loadDBFrom(d); saveDB(); renderIntegracao(); renderHistorico(); toast('Backup restaurado'); } } catch (err) { toast('Falha: ' + err.message, 'err'); } e.target.value = ''; };
+  $('#impBackup').onchange = async e => { const f = e.target.files[0]; if (!f) return; try { const d = JSON.parse(await f.text()); if (d.app !== 'gefaz-calda-backup') throw new Error('não é um backup do Gefaz Calda'); if (confirm('Substituir todos os dados do Gefaz Calda por este backup?')) { delete d.app; DB = d; loadDBFrom(d); saveDB(); carregarPontasLivres(); renderIntegracao(); renderHistorico(); toast('Backup restaurado'); } } catch (err) { toast('Falha: ' + err.message, 'err'); } e.target.value = ''; };
   window.addEventListener('online', () => { $('#netStatus').textContent = 'online'; }); window.addEventListener('offline', () => { $('#netStatus').textContent = 'offline'; });
   $('#netStatus').textContent = navigator.onLine ? 'online' : 'offline';
   aplicarRastreio(DB.config.rastreio); atualizarTalhoes(); preencherSelectRegulagem();
@@ -1319,6 +1406,6 @@ function init() {
   if (mix && aplicarMix(mix, true)) { navTo('resultado'); history.replaceState(null, '', location.pathname); }
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => { });
 }
-function loadDBFrom(d) { DB = d; const base = defaultDB(); DB.version = DB.version || 1; DB.config = { ...base.config, ...(DB.config || {}) }; DB.config.custo = { ...base.config.custo, ...(DB.config.custo || {}) }; DB.config.rastreio = { ...base.config.rastreio, ...(DB.config.rastreio || {}) }; ['catalogo', 'receitas', 'talhoes', 'caldas', 'historico', 'jarTests', 'regulagens'].forEach(k => { if (!Array.isArray(DB[k])) DB[k] = []; }); if (!DB.intervalos || typeof DB.intervalos !== 'object' || Array.isArray(DB.intervalos)) DB.intervalos = {}; if (!DB.carencias || typeof DB.carencias !== 'object' || Array.isArray(DB.carencias)) DB.carencias = {}; }
+function loadDBFrom(d) { DB = d; const base = defaultDB(); DB.version = DB.version || 1; DB.config = { ...base.config, ...(DB.config || {}) }; DB.config.custo = { ...base.config.custo, ...(DB.config.custo || {}) }; DB.config.rastreio = { ...base.config.rastreio, ...(DB.config.rastreio || {}) }; ['catalogo', 'receitas', 'talhoes', 'caldas', 'historico', 'jarTests', 'regulagens', 'pontasLivres'].forEach(k => { if (!Array.isArray(DB[k])) DB[k] = []; }); if (!DB.intervalos || typeof DB.intervalos !== 'object' || Array.isArray(DB.intervalos)) DB.intervalos = {}; if (!DB.carencias || typeof DB.carencias !== 'object' || Array.isArray(DB.carencias)) DB.carencias = {}; if (!DB.maxAplic || typeof DB.maxAplic !== 'object' || Array.isArray(DB.maxAplic)) DB.maxAplic = {}; }
 window.GefazCaldaApp = { analisar, addItem, aplicarMix, get calda() { return calda; }, get resultado() { return resultado; }, get DB() { return DB; } };
 document.addEventListener('DOMContentLoaded', init);

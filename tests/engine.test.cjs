@@ -360,3 +360,30 @@ test('colheita liberada: por talhão, uma aplicação anterior com carência mai
   assert.deepEqual([g('Gleba 2').liberadoEm, g('Gleba 2').limitante.origem], ['2026-09-27', 'esta']);
   assert.equal(g('Gleba 3').liberadoEm, '2026-09-27');
 });
+
+test('máximo de aplicações por ciclo: conta as feitas no talhão desde o início do ciclo e soma esta', () => {
+  const itens = [{ nome: 'Folicur', classe: 'Fungicida', maxAplic: 3 }, { nome: 'Sem limite', classe: 'Fungicida' }, { nome: 'Wetcit', classe: 'Adjuvante' }];
+  const feitas = (...dias) => dias.map(d => ({ quando: d, produtos: ['Folicur'] }));
+  const c = E.aplicacoesNoCiclo({ base: '2026-11-20', itens, talhoes: [
+    { nome: 'A', cicloInicio: '2026-09-01', aplicacoes: feitas('2026-09-15', '2026-10-15') },
+    { nome: 'B', cicloInicio: '2026-09-01', aplicacoes: feitas('2026-06-01', '2026-09-15') },
+    { nome: 'C', aplicacoes: feitas('2026-01-10', '2026-06-01', '2026-10-01') },
+    { nome: 'D', aplicacoes: [] }] });
+  const l = n => c.linhas.find(x => x.talhao === n);
+  assert.deepEqual([l('A').feitas, l('A').comEsta, l('A').situacao, l('A').restantes], [2, 3, 'ultima', 0], 'esta é a 3ª de 3');
+  assert.deepEqual([l('B').feitas, l('B').situacao], [1, 'ok'], 'aplicação de antes do ciclo não conta');
+  assert.deepEqual([l('C').feitas, l('C').situacao], [3, 'excedido'], 'sem início de ciclo conta todo o histórico');
+  assert.equal(l('D').situacao, 'ok');
+  assert.deepEqual(c.semLimite, ['Sem limite'], 'adjuvante não cobra máximo');
+  assert.equal(c.excedidos.length, 1);
+});
+
+test('máximo de aplicações por ciclo: ignora aplicação futura e funciona sem talhão marcado', () => {
+  const itens = [{ nome: 'X', classe: 'Inseticida', maxAplic: 2 }];
+  const c = E.aplicacoesNoCiclo({ base: '2026-09-20', itens, talhoes: [{ nome: 'A', aplicacoes: [{ quando: '2026-10-05', produtos: ['X'] }, { quando: '2026-09-01', produtos: ['x'] }] }] });
+  assert.equal(c.linhas[0].feitas, 1, 'a de outubro é posterior à base');
+  const s = E.aplicacoesNoCiclo({ base: '2026-09-20', itens });
+  assert.equal(s.semTalhao, true);
+  assert.equal(s.linhas[0].comEsta, 1);
+  assert.equal(E.aplicacoesNoCiclo({ base: 'x', itens }), null);
+});

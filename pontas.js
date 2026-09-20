@@ -796,6 +796,77 @@
   ];
   const PONTA_MAP = {}; PONTAS.forEach(p => PONTA_MAP[p.id] = p);
 
+  /* ───────── Pontas cadastradas pelo usuário ─────────
+     Uma ponta que o catálogo não tem entra por aqui e passa a valer em toda a regulagem
+     (pressão, volume, gota, sugestão, calibração). O usuário informa a vazão que conhece —
+     do catálogo do fabricante ou medida na bancada — em L/min a uma ou mais pressões; entre
+     elas o motor interpola em √p e fora delas extrapola pela raiz quadrada, como nas tabelas
+     publicadas. Só o código ISO (ex.: "03") dispensa a vazão: vale a nominal da norma.       */
+  const slug = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  // uma linha por tamanho:  "03"  ou  "SF-02: 0,46@1 0,65@2 0,79@3"  (vazão L/min @ pressão bar)
+  function lerTamanhos(texto) {
+    const tamanhos = [], erros = [], vistos = {};
+    String(texto || '').split(/\r?\n|;/).map(l => l.trim()).filter(Boolean).forEach(linha => {
+      const m = linha.match(/^([^:=]+?)\s*[:=]\s*(.+)$/);
+      const id = (m ? m[1] : linha).trim();
+      if (!id) return;
+      if (vistos[id.toLowerCase()]) { erros.push(`Tamanho "${id}" repetido`); return; }
+      vistos[id.toLowerCase()] = true;
+      if (!m) {
+        if (!ISO_MAP[id]) erros.push(`"${id}": informe a vazão (ex.: ${id}: 0,8@3) — só os códigos ISO 01 a 20 dispensam`);
+        else tamanhos.push({ id });
+        return;
+      }
+      const pontos = [];
+      m[2].split(/[\s]+/).filter(Boolean).forEach(tok => {
+        const t = tok.match(/^([\d.,]+)@([\d.,]+)$/);
+        if (!t) { erros.push(`"${id}": "${tok}" não é vazão@pressão (ex.: 0,79@3)`); return; }
+        const q = num(t[1]), p = num(t[2]);
+        if (!(q > 0) || !(p > 0)) erros.push(`"${id}": vazão e pressão precisam ser maiores que zero`); else pontos.push([p, q]);
+      });
+      if (!pontos.length) { erros.push(`"${id}": nenhum ponto de vazão válido`); return; }
+      pontos.sort((a, b) => a[0] - b[0]);
+      for (let i = 1; i < pontos.length; i++) {
+        if (pontos[i][0] === pontos[i - 1][0]) { erros.push(`"${id}": pressão ${pontos[i][0]} bar aparece duas vezes`); return; }
+        if (pontos[i][1] < pontos[i - 1][1]) { erros.push(`"${id}": a vazão não pode cair quando a pressão sobe (${pontos[i - 1][1]} → ${pontos[i][1]} L/min)`); return; }
+      }
+      tamanhos.push({ id, pontos });
+    });
+    return { tamanhos, erros };
+  }
+  function registrarPonta(def) {
+    def = def || {};
+    const marca = String(def.marca || '').trim(), modelo = String(def.modelo || '').trim();
+    if (!marca || !modelo) throw new Error('Informe marca e modelo da ponta');
+    const tipo = TIPOS[def.tipo] ? def.tipo : 'leque';
+    const lt = lerTamanhos(def.tamanhos);
+    if (lt.erros.length) throw new Error(lt.erros[0]);
+    if (!lt.tamanhos.length) throw new Error('Informe ao menos um tamanho');
+    const pmin = num(def.pressaoMin), pmax = num(def.pressaoMax);
+    if (!(pmin > 0) || !(pmax > pmin)) throw new Error('Informe a faixa de pressão (mínima menor que a máxima, em bar)');
+    const angulos = String(def.angulos == null ? '' : def.angulos).split(/[\s,;]+/).map(Number).filter(a => a > 0 && a <= 180);
+    const id = 'livre:' + slug(marca + ' ' + modelo);
+    const propria = lt.tamanhos.some(t => t.pontos);
+    const p = { id, marca, modelo, tipo, angulos: angulos.length ? angulos : [110], sizes: lt.tamanhos.map(t => t.id), pressao: [pmin, pmax],
+      material: 'Cadastrada por você', usos: ALVOS.map(a => a.id), livre: true, escalaPropria: propria,
+      nota: String(def.nota || '').trim() || 'Ponta cadastrada por você: a vazão vem dos números que você informou.',
+      fonte: 'Cadastrada pelo usuário' };
+    if (propria) {
+      p.vazaoPorTamanho = {};
+      lt.tamanhos.filter(t => t.pontos).forEach(t => { p.vazaoPorTamanho[t.id] = { pressoes: t.pontos.map(x => x[0]), valores: t.pontos.map(x => x[1]) }; });
+    }
+    if (def.gota && GOTA_MAP[def.gota]) { p.gotasPorBar = {}; p.gotasPorBar[pmin] = def.gota; }
+    removerPonta(id);
+    PONTAS.push(p); PONTA_MAP[id] = p;
+    return p;
+  }
+  function removerPonta(id) {
+    const i = PONTAS.findIndex(p => p.id === id && p.livre);
+    if (i >= 0) PONTAS.splice(i, 1);
+    if (PONTA_MAP[id] && PONTA_MAP[id].livre) delete PONTA_MAP[id];
+  }
+
+
   /* ───────── Presets de barra de herbicida para café ─────────
      Fontes: Jacto PH-400 (faixa de 1,40 a 3,60 m, 4 bicos flood 130°, ~500 µm,
      1 kgf/cm², 250 L/ha a 4,5 km/h); Fundação Procafé / Planta Daninha
@@ -849,6 +920,10 @@
         linhas publicadas e extrapola pela raiz quadrada fora da tabela ── */
   function tabelaDaPonta(ponta, tamanho) {
     const p = typeof ponta === 'string' ? PONTA_MAP[ponta] : ponta;
+    if (p && p.vazaoPorTamanho) { // ponta do usuário: cada tamanho com os seus pontos de vazão
+      const k = tamanho == null ? Object.keys(p.vazaoPorTamanho)[0] : String(tamanho), t = p.vazaoPorTamanho[k];
+      return t ? { pressoes: t.pressoes, valores: { [k]: t.valores } } : null;
+    }
     if (!p || !p.vazaoTabela) return null;
     if (tamanho == null) return p.vazaoTabela;
     return p.vazaoTabela.valores[String(tamanho)] ? p.vazaoTabela : null;
@@ -861,7 +936,7 @@
   function tamanhosDaPonta(ponta) {
     const p = typeof ponta === 'string' ? PONTA_MAP[ponta] : ponta;
     if (!p) return [];
-    if (!p.vazaoTabela) return p.sizes;
+    if (p.vazaoPorTamanho || !p.vazaoTabela) return p.sizes;
     // a tabela da marca costuma cobrir mais tamanhos do que a família oferece
     const chaves = Object.keys(p.vazaoTabela.valores);
     return (p.sizes && p.sizes.length) ? p.sizes.filter(s => chaves.indexOf(String(s)) >= 0) : chaves;
@@ -1189,7 +1264,7 @@
       if (e.marca && p.marca !== e.marca) return;
       if (e.tipo && p.tipo !== e.tipo) return;
       if (e.alvo && p.usos.indexOf(e.alvo) < 0 && p.id !== 'iso-generica') return;
-      if (p.escalaPropria && !p.vazaoTabela) return; // sem escala ISO e sem tabela: não dá para calcular
+      if (p.escalaPropria && !p.vazaoTabela && !p.vazaoPorTamanho) return; // sem escala ISO e sem tabela: não dá para calcular
       tamanhosDaPonta(p).forEach(iso => {
         if (!ISO_MAP[iso] && !tabelaDaPonta(p, iso)) return;
         const pressao = pressaoDaPonta(p, iso, q);
@@ -1343,7 +1418,7 @@
     versao: '1.0.0',
     ISO, ISO_MAP, GOTAS, GOTA_MAP, ALVOS, ALVO_MAP, TIPOS, PONTAS, PONTA_MAP, PRESETS,
     vazaoNominal, vazaoPonta, pressaoPara, novaVazao, novaPressao,
-    tabelaDaPonta, tamanhosDaPonta, vazaoDaPonta, pressaoDaPonta, pressaoReferencia,
+    registrarPonta, removerPonta, lerTamanhos, tabelaDaPonta, tamanhosDaPonta, vazaoDaPonta, pressaoDaPonta, pressaoReferencia,
     vazaoNecessaria, volumeAplicado, velocidadeAlvo, velocidadeCampo, velocidadeMedida, tempoNoPercurso,
     alturaBarra, alturaParaFaixa, larguraJato, fatorAltura, classeGota,
     calcular, selecionar, calibracao, cruzar, tabelaCruzada,

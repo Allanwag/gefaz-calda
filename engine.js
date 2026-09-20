@@ -668,5 +668,30 @@
     return { base: isoDia(b), origemBase: origemBase || 'emissao', linhas, liberadoEm: linhas.length ? linhas[0].liberadoEm : null, limitante: linhas.length ? linhas[0].nome : null, semCarencia, talhoes: porTalhao };
   }
 
-  return { analisar, proximaAplicacao, colheitaLiberada, resolverItem, resolverAtivos, dosePorHa, chaveDoConjunto, PASSO_FORMULACAO, PASSOS, norm, alvosLista, alvoCombina, categoriaPorNome, classificarAlvos, alvosDaCultura, CATEGORIAS_ALVO, ROTULO_CATEGORIA, versao: VERSAO, CAMPOS_RASTREIO, codigoDe };
+  // ── Número máximo de aplicações por ciclo ──
+  // O máximo é o da bula/receituário, informado por produto. Conta as aplicações já feitas (marcadas) do mesmo
+  // produto no talhão, desde o início do ciclo (ou todo o histórico, se o início não foi definido), mais esta.
+  function aplicacoesNoCiclo({ itens, base, talhoes }) {
+    const b = diaDe(base); if (!b) return null;
+    const comMax = [], semLimite = [];
+    (itens || []).forEach(i => {
+      const max = Math.round(+i.maxAplic);
+      if (max > 0) comMax.push({ nome: i.nome, max });
+      else if (!SEM_INTERVALO.includes(i.classe) && !(i.tags || []).includes('condicionador')) semLimite.push(i.nome);
+    });
+    const semTalhao = !(talhoes && talhoes.length);
+    const alvos = semTalhao ? [{ nome: '', aplicacoes: [] }] : talhoes;
+    const linhas = [];
+    alvos.forEach(t => {
+      const ini = t.cicloInicio ? diaDe(t.cicloInicio) : null;
+      comMax.forEach(i => {
+        const feitas = (t.aplicacoes || []).filter(a => (a.produtos || []).some(p => norm(p) === norm(i.nome)) && (() => { const d = diaDe(a.quando); return d && d <= b && (!ini || d >= ini); })()).length;
+        const comEsta = feitas + 1;
+        linhas.push({ talhao: t.nome, nome: i.nome, max: i.max, feitas, comEsta, restantes: i.max - comEsta, cicloInicio: ini ? isoDia(ini) : null, situacao: comEsta > i.max ? 'excedido' : comEsta === i.max ? 'ultima' : 'ok' });
+      });
+    });
+    return { base: isoDia(b), linhas, semLimite, semTalhao, excedidos: linhas.filter(l => l.situacao === 'excedido'), ultimas: linhas.filter(l => l.situacao === 'ultima') };
+  }
+
+  return { analisar, proximaAplicacao, aplicacoesNoCiclo, colheitaLiberada, resolverItem, resolverAtivos, dosePorHa, chaveDoConjunto, PASSO_FORMULACAO, PASSOS, norm, alvosLista, alvoCombina, categoriaPorNome, classificarAlvos, alvosDaCultura, CATEGORIAS_ALVO, ROTULO_CATEGORIA, versao: VERSAO, CAMPOS_RASTREIO, codigoDe };
 });

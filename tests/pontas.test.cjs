@@ -497,3 +497,38 @@ test('velocidade pelo cronômetro: 50 m em 22,5 s = 8 km/h; várias passadas usa
   perto(P.tempoNoPercurso(50, 8), 22.5, 0.05);
   assert.equal(P.tempoNoPercurso(50, 0), 0);
 });
+
+test('ponta cadastrada pelo usuário: tamanho por vazão@pressão entra na regulagem', () => {
+  const p = P.registrarPonta({ marca: 'Minha Marca', modelo: 'Leque X', tipo: 'leque', angulos: '110, 80', pressaoMin: 1, pressaoMax: 5, tamanhos: 'SF-02: 0,46@1 0,65@2 0,79@3\n03' });
+  assert.equal(p.id, 'livre:minha-marca-leque-x');
+  assert.deepEqual(P.tamanhosDaPonta(p), ['SF-02', '03']);
+  assert.equal(P.vazaoDaPonta(p, 'SF-02', 3), 0.79, 'exato no ponto informado');
+  assert.equal(P.vazaoDaPonta(p, 'SF-02', 2), 0.65);
+  assert.ok(Math.abs(P.vazaoDaPonta(p, 'SF-02', 4) - 0.79 * Math.sqrt(4 / 3)) < 0.002, 'fora dos pontos: raiz quadrada');
+  assert.equal(P.vazaoDaPonta(p, '03', 3), 1.18, 'código ISO sem vazão usa a nominal da norma');
+  const r = P.calcular({ ponta: p.id, iso: 'SF-02', volumeHa: 150, velocidade: 6, espacamento: 0.5, nBicos: 20, angulo: 110 });
+  assert.ok(r.pressao > 1.5 && r.pressao < 3.5, 'pressão sai da tabela do usuário: ' + r.pressao);
+  assert.ok(Math.abs(r.vazaoPorBico - 0.75) < 0.01);
+  P.removerPonta(p.id);
+  assert.equal(P.PONTA_MAP[p.id], undefined);
+});
+
+test('ponta cadastrada: cadastrar de novo o mesmo modelo substitui, e valida a entrada', () => {
+  const def = { marca: 'M', modelo: 'Z', pressaoMin: 1, pressaoMax: 4, tamanhos: '02' };
+  P.registrarPonta(def); const n = P.PONTAS.length;
+  P.registrarPonta({ ...def, tamanhos: '02\n03' });
+  assert.equal(P.PONTAS.length, n, 'não duplica');
+  assert.deepEqual(P.tamanhosDaPonta(P.PONTA_MAP['livre:m-z']), ['02', '03']);
+  assert.throws(() => P.registrarPonta({ ...def, marca: '' }), /marca e modelo/);
+  assert.throws(() => P.registrarPonta({ ...def, tamanhos: 'XX' }), /informe a vazão/);
+  assert.throws(() => P.registrarPonta({ ...def, tamanhos: 'A: 0,8@3 0,5@4' }), /não pode cair/);
+  assert.throws(() => P.registrarPonta({ ...def, pressaoMin: 5, pressaoMax: 2 }), /faixa de pressão/);
+  P.removerPonta('livre:m-z');
+});
+
+test('ponta cadastrada aparece nas sugestões quando a pressão cai na faixa dela', () => {
+  P.registrarPonta({ marca: 'Minha', modelo: 'Sug', pressaoMin: 2, pressaoMax: 4, tamanhos: 'Q1: 0,8@3', gota: 'M' });
+  const s = P.selecionar({ alvo: 'fungicida', volumeHa: 150, velocidade: 6, espacamento: 0.5, limite: 400 });
+  assert.ok(s.opcoes.some(o => o.ponta === 'livre:minha-sug' && o.iso === 'Q1'));
+  P.removerPonta('livre:minha-sug');
+});
