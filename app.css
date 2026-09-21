@@ -340,3 +340,23 @@ main{padding-bottom:calc(88px + env(safe-area-inset-bottom))}
   body.print-caderno .tabela-rolavel{overflow:visible}
   body.print-caderno .card{border:0}
 }
+/* ───────── estoque, metas e nav com nove abas ───────── */
+.aviso-txt{color:var(--amb)}
+.linha-duvida td{background:rgba(223,173,89,.14)}
+.emb input{width:74px;display:inline-block;margin-left:4px}.emb select{width:64px;display:inline-block}
+#estTabela input[type=number],#estRevTabela input[type=number]{min-width:84px}
+.barra{position:relative;height:10px;border-radius:6px;background:var(--line);margin:6px 0}
+.barra i{display:block;height:100%;border-radius:6px;background:var(--g600)}
+.barra .marca{position:absolute;top:-3px;bottom:-3px;width:3px;border-radius:2px;background:var(--amb)}
+.tarefa{border:1px solid var(--line);border-radius:12px;padding:10px;margin:8px 0}
+.tarefa.atrasada{border-color:var(--red)}
+.tarefa.concluida,.tarefa.cancelada{opacity:.78}
+.tarefa .tarefa-topo{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.tarefa small{display:block;color:var(--ink2)}
+.tarefa .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.meta-topo{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.meta-topo .grande{font-size:2.1rem;line-height:1}
+.bottomnav{overflow-x:auto;scrollbar-width:none}
+.bottomnav::-webkit-scrollbar{display:none}
+.bottomnav button{flex:1 0 auto;min-width:50px}
+.avisos{position:static}

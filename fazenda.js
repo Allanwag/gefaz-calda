@@ -6,6 +6,8 @@
    Carrega depois do app.js e usa o que ele já tem (DB, $, esc, fmt, toast…).
    ═══════════════════════════════════════════════════════════════════════════ */
 
+const ES = window.GCEstoque; // lógica pura (estoque.js); os outros arquivos da fazenda usam este atalho
+
 /* ───────── avisos no topo da tela ───────── */
 function mostrarAviso(id, html, acoes) {
   const box = $('#avisos'); if (!box) return;
@@ -205,6 +207,7 @@ function initCaderno() {
 /* ───────── start ───────── */
 function initFazenda() {
   initFicha(); initCaderno();
+  initEstoqueUI(); initMetasUI();
   vigiarNovaVersao();
   window.addEventListener('afterprint', () => document.body.classList.remove('print-resumido'));
   $('#btnBackup').onclick = exportarBackup;

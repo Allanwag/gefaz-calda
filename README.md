@@ -27,15 +27,18 @@ Gefaz360 Codex — ver [INTEGRACAO.md](INTEGRACAO.md).
 
 | Arquivo | Papel |
 |---|---|
-| `index.html`, `app.css`, `app.js` | Interface (abas Calda · Resultado · Jar test · Pontas · Histórico · Integração · Fontes) |
+| `index.html`, `app.css`, `app.js` | Interface (abas Calda · Resultado · Jar test · Pontas · Estoque · Metas · Histórico · Integração · Fontes) |
 | `pontas.js` | Catálogo de pontas (TeeJet, Albuz, Hypro, Magnojet, Jacto) e motor de regulagem: vazão ISO 10625 e tabelas de vazão dos fabricantes, classe de gota ASABE S572.1, área total × faixa dirigida, cruzamento vazão × pressão, calibração a campo |
 | `engine.js` | Motor puro (sem DOM): `GCEngine.analisar(itens, opts)` → status, alertas, matriz de pares, pH, ordem, jar test, custo, ficha de tanque, checklist |
 | `kb.js` | Base de conhecimento: ~120 ingredientes ativos (classe, grupo, MoA, faixa de pH, tags), produtos comerciais da fazenda, 41 regras de pares com confiança e fonte, fontes |
 | `data/agrofit-index.json` | Índice compacto do AGROFIT (marca, formulação, ativos, classe, culturas, alvos para café/milho/soja/sorgo/trigo/feijão/algodão/pastagens) — 1,5 MB |
 | `tools/build-agrofit-index.js` | Regenera o índice a partir do CSV aberto do MAPA (392 MB) |
+| `estoque.js` | Lógica pura da rotina da fazenda: planilhas CSV, ficha de produtos, estoque lido de PDF/planilha, baixa por receita, previsto × realizado e agenda `.ics` (`GCEstoque`) |
+| `fazenda.js`, `estoque-ui.js`, `metas-ui.js` | Telas da rotina: avisos de backup e de versão, ficha de produtos, caderno de campo, aba Estoque com baixa por aplicação, aba Metas |
+| `vendor/pdfjs/` | pdf.js 3.11.174 (Mozilla, Apache-2.0) para ler o PDF do estoque |
 | `sdk.js` | SDK para os outros apps (deep-link, iframe/postMessage, análise local) |
 | `sw.js`, `manifest.json`, `icon-*.png` | PWA (offline, instalável) |
-| `tests/engine.test.cjs`, `tests/pontas.test.cjs` | Testes dos dois motores (`node --test`) |
+| `tests/engine.test.cjs`, `tests/pontas.test.cjs`, `tests/estoque.test.cjs` | Testes dos motores e da rotina da fazenda (`node --test tests/*.test.cjs`) |
 | `serve.ps1` | Servidor estático local na porta 8124 (não há Node/Python “de sistema” nesta máquina) |
 
 Dados do app ficam em `localStorage` na chave `gefazcalda_v1` (catálogo importado, receitas,
@@ -179,6 +182,43 @@ vai no próprio laudo, então o código é recalculável por quem recebe (`GCEng
 código também entra no checklist pré-saída e no histórico. **Não é assinatura digital**: prova que
 dois registros são o mesmo, não quem os emitiu — por isso o laudo impresso traz linhas de assinatura
 do operador e do responsável técnico.
+
+## Rotina da fazenda: estoque, baixa por aplicação, metas e caderno de campo
+
+Tudo abaixo mora no navegador (`localStorage`) e entra no backup. **Números que vêm da bula — intervalo entre aplicações,
+carência, máximo de aplicações por ciclo e reentrada — o Agrofit aberto não traz, e o app nunca os estima:** você digita
+uma vez por produto (no cartão do produto na calda ou na *Ficha de produtos*, aba Integração) e ele lembra. Sem o número,
+o laudo diz que falta o número em vez de mostrar uma data.
+
+**Estoque (aba Estoque).** *Subir PDF do estoque* lê o texto do PDF (leitor pdf.js 3.11, Apache-2.0, em `vendor/pdfjs/`,
+baixado na primeira vez que se usa e guardado para o modo offline), agrupa por linha, acha o cabeçalho (produto ·
+saldo/quantidade · unidade) e mostra uma **tabela para conferir antes de importar**: nome, quantidade e unidade editáveis,
+a linha original ao lado, “unidade?” quando o arquivo não trazia unidade e escolha de qual número é a quantidade quando o
+PDF não tem cabeçalho. Unidades viram litro ou quilo (mL, g e t convertem; galão/caixa/unidade pedem o tamanho da
+embalagem). O PDF pode *substituir* os saldos (é o retrato do estoque agora) ou *somar* (é uma entrada), com a opção de
+zerar o que não aparece no arquivo. PDF escaneado (só imagem) não tem texto: use planilha CSV ou cadastre à mão. Cada
+mudança de saldo vira uma **movimentação** (inventário, entrada, ajuste, baixa, estorno), com saldo mínimo por produto e
+lista do que falta para as tarefas abertas.
+
+**Baixa automática por receita.** *✅ Registrar aplicação realizada* (aba Calda, ou numa tarefa da aba Metas): informe a data
+e os **litros de calda pulverizados** — hectares = litros ÷ volume de calda por hectare, e cada produto sai na dose por
+hectare × hectares (doses por 100 L dão o mesmo consumo). Exemplo: 21/09, 3.000 L a 400 L/ha = 7,5 ha; 0,5 L/ha de um
+produto baixa 3,75 L. O app liga cada produto da receita a um item do estoque (nome igual ou parecido; se houver dois
+candidatos, você escolhe e ele lembra), avisa se o saldo não cobre (dá para registrar mesmo assim: o saldo fica negativo),
+grava a aplicação como **feita** no histórico dos talhões (com litros, hectares, custo e perfil de ativos/MoA) e desfaz
+tudo com *↩ Desfazer* (produtos voltam ao estoque, o registro sai do histórico).
+
+**Metas (aba Metas).** *Programar tarefa*: receita (calda atual, salva ou importada) + talhões + data + volume de calda =
+**previsto** (hectares e litros), com a checagem do estoque. O **realizado** é a soma das aplicações registradas contra a
+tarefa (parcial ou total). O campo *Meta de conclusão* (% das tarefas do período) compara tarefas concluídas × programadas,
+mostra quantas já deviam estar prontas, quantas faltam para bater a meta, hectares e litros previstos × realizados e as
+atrasadas. *📅 Exportar agenda (.ics)* leva tarefas, reentrada, próxima aplicação e colheita liberadas ao calendário.
+
+**Laudo.** Além do que já havia: classe toxicológica do registro no MAPA por produto com aviso de EPI (categorias 1 e 2 em
+destaque), reentrada com data e hora, laudo resumido de uma página, e o *Caderno de campo* por talhão (aplicações com doses,
+lotes, quem aplicou, receituário, RT, datas liberadas e custo) para imprimir ou abrir no Excel. O talhão guarda entrelinhas,
+faixa, equipamento e regulagem padrão (a aba Pontas já vem preenchida ao marcá-lo) e mostra o custo de defensivos do ciclo.
+O app avisa quando faz dias sem backup e quando há versão nova.
 
 ## Rodar localmente
 
