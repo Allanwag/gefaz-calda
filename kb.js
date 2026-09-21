@@ -139,7 +139,7 @@
   add('redutor-deriva', 'Redutor de deriva', ['redutor de deriva', 'anti-deriva', 'antideriva'], 'Adjuvante', 'Polímero', null, null, ['redutor-deriva', 'condicionador'], { formulacao: 'SL', funcao: 'redutor-deriva' });
 
   /* ───────── FERTILIZANTES FOLIARES ───────── */
-  add('boro', 'Boro (ácido bórico / octaborato)', ['boro', 'acido borico', 'ácido bórico', 'octaborato', 'borax', 'bórax'], 'Fertilizante Foliar', 'Borato', null, [5.0, 8.0], ['foliar', 'boro', 'alcalino', 'sal-alto'], { formulacao: 'SP' });
+  add('boro', 'Boro (ácido bórico / octaborato)', ['boro', 'acido borico', 'ácido bórico', 'octaborato', 'borax', 'bórax', 'borato de', 'tetraborato'], 'Fertilizante Foliar', 'Borato', null, [5.0, 8.0], ['foliar', 'boro', 'alcalino', 'sal-alto'], { formulacao: 'SP' });
   add('calcio', 'Cálcio (cloreto / nitrato)', ['calcio', 'cálcio', 'cloreto de calcio', 'nitrato de calcio', 'ca foliar'], 'Fertilizante Foliar', 'Sal de cálcio', null, [5.0, 7.5], ['foliar', 'calcio', 'cation-divalente', 'sal-alto'], { formulacao: 'SL' });
   add('magnesio', 'Magnésio (sulfato / nitrato)', ['magnesio', 'magnésio', 'sulfato de magnesio', 'nitrato de magnesio'], 'Fertilizante Foliar', 'Sal de magnésio', null, [5.0, 7.5], ['foliar', 'magnesio', 'cation-divalente', 'sulfato', 'sal-alto'], { formulacao: 'SP' });
   add('zinco', 'Zinco (sulfato / óxido)', ['zinco', 'sulfato de zinco', 'oxido de zinco', 'óxido de zinco', 'zn foliar'], 'Fertilizante Foliar', 'Sal de zinco', null, [5.0, 7.0], ['foliar', 'zinco', 'cation-divalente', 'sulfato', 'sal-alto'], { formulacao: 'SP' });
@@ -147,7 +147,7 @@
   add('ferro', 'Ferro (sulfato)', ['ferro', 'sulfato de ferro', 'sulfato ferroso'], 'Fertilizante Foliar', 'Sal de ferro', null, [4.5, 6.5], ['foliar', 'cation-divalente', 'sulfato', 'sal-alto'], { formulacao: 'SP' });
   add('cobre-foliar', 'Cobre foliar (sulfato)', ['cobre foliar', 'cu foliar'], 'Fertilizante Foliar', 'Sal de cobre', null, [5.5, 7.5], ['foliar', 'cuprico', 'cation-divalente', 'sulfato'], { formulacao: 'SP' });
   add('molibdenio', 'Molibdênio (molibdato)', ['molibdenio', 'molibdênio', 'molibdato'], 'Fertilizante Foliar', 'Molibdato', null, [5.5, 8.0], ['foliar', 'sal-alto'], { formulacao: 'SL' });
-  add('map', 'Fosfato monoamônico (MAP)', ['map purificado', 'fosfato monoamonico', 'fosfato monoamônico', 'map foliar'], 'Fertilizante Foliar', 'Fosfato', null, [4.5, 6.5], ['foliar', 'fosfato', 'acido', 'sal-alto'], { formulacao: 'SP' });
+  add('map', 'Fosfato monoamônico (MAP)', ['map purificado', 'fosfato monoamonico', 'fosfato monoamônico', 'map foliar', 'mkp', 'fosfato monopotassico', 'fosfato monopotássico'], 'Fertilizante Foliar', 'Fosfato', null, [4.5, 6.5], ['foliar', 'fosfato', 'acido', 'sal-alto'], { formulacao: 'SP' });
   add('fosfito', 'Fosfito de potássio', ['fosfito', 'phosphite', 'fosfito de potassio', 'fosfito de potássio', 'fosfito de manganes', 'fosfito de cobre'], 'Fertilizante Foliar', 'Fosfito', null, [5.0, 7.0], ['foliar', 'fosfito', 'fosfato', 'acido'], { formulacao: 'SL' });
   add('ureia', 'Ureia', ['ureia', 'uréia', 'urea'], 'Fertilizante Foliar', 'Nitrogênio amídico', null, [5.0, 8.0], ['foliar'], { formulacao: 'SP' });
   add('potassio', 'Potássio (KCl / nitrato / sulfato)', ['cloreto de potassio', 'nitrato de potassio', 'nitrato de potássio', 'sulfato de potassio', 'kcl'], 'Fertilizante Foliar', 'Sal de potássio', null, [5.0, 8.0], ['foliar', 'sal-alto'], { formulacao: 'SP' });
@@ -219,7 +219,7 @@
   ];
 
   return {
-    versao: '1.0.0',
+    versao: '1.0.1',
     ativos: A,
     comerciais,
     regrasPares,

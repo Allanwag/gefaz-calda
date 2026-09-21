@@ -12,7 +12,7 @@
 })(typeof self !== 'undefined' ? self : this, function (KB) {
   'use strict';
 
-  const VERSAO = '1.1.0';
+  const VERSAO = '1.1.1';
   const SEV = { alta: 3, media: 2, baixa: 1, info: 0 };
   const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
   const uniq = a => [...new Set(a)];
@@ -64,6 +64,7 @@
     item.ativosResolvidos = ativos;
     item.tags = uniq([...(item.tags || []), ...ativos.flatMap(a => a.tags || []), ...((com && com.tags) || [])]);
     item.classe = item.classe || (com && com.classe) || (ativos[0] && ativos[0].classe) || 'Outro';
+    if (item.classe === 'Fertilizante Foliar' && !item.tags.includes('foliar')) item.tags = [...item.tags, 'foliar']; // foliar cadastrado à mão também segue as regras de foliar (fosetil, triazol…)
     item.formulacao = String(item.formulacao || (com && com.formulacao) || (ativos[0] && ativos[0].formulacao) || '').toUpperCase();
     item.funcao = item.funcao || (com && com.funcao) || (ativos.find(a => a.funcao) || {}).funcao || '';
     item.moa = uniq(ativos.filter(a => a.moa).map(a => a.moa.sistema + ' ' + a.moa.codigo));
@@ -380,6 +381,7 @@
       if (temTag(it, 'biologico')) notas.push('Biológico: adicionar por último dentro do seu passo e aplicar logo.');
       if (!PASSO_FORMULACAO[it.formulacao] && p >= 4 && p <= 8) notas.push('Formulação não informada — passo estimado.');
       if (it.passo === 4 || it.passo === 5) notas.push('Pré-diluir em balde com água antes de despejar.');
+      if (it.materiaPrima) notas.push('Matéria-prima: ' + it.materiaPrima + '.');
       (passos[p] = passos[p] || []).push({ id: it.id, nome: it.nome, formulacao: it.formulacao, notas });
     });
     const seq = [];

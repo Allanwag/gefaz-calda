@@ -75,13 +75,14 @@
     <div class="card">
       <div class="card-hd"><h2>2 · Produtos da calda</h2><span class="hint" id="nItens">0 produtos</span></div>
       <div class="search-wrap">
-        <input id="busca" aria-label="Buscar produto da calda" placeholder="Buscar por marca, ingrediente ativo ou produto da fazenda (Wetcit, Kantphos…)" autocomplete="off">
+        <input id="busca" aria-label="Buscar produto da calda" placeholder="Buscar por marca, ingrediente ativo, matéria-prima ou Meus produtos (Wetcit, Kantphos…)" autocomplete="off">
         <div id="buscaRes" class="search-res hidden"></div>
       </div>
       <div class="chips" id="chipsRapidos"></div>
       <div id="itens" class="itens"></div>
       <div class="row-btns">
         <button class="btn ghost" id="btnManual">+ Produto manual</button>
+        <button class="btn ghost" id="btnMeus" title="Foliares, adjuvantes e outros produtos que você guardou — não precisam ser cadastrados de novo">⭐ Meus produtos <span id="nMeus"></span></button>
         <button class="btn ghost" id="btnReceita">📋 Carregar receita importada</button>
       </div>
     </div>
@@ -362,6 +363,14 @@
       <label class="check"><input type="checkbox" id="cfgAcidUltimo"> Regra da fazenda: acidificante entra por último (diverge da Embrapa, que o coloca no passo 3)</label>
       <div class="row-btns"><button class="btn" id="btnCfg">Salvar configuração</button><button class="btn ghost" id="btnBackup">⬇️ Backup do Gefaz Calda</button><label class="btn ghost">⬆️ Restaurar<input type="file" id="impBackup" accept=".json" hidden></label></div>
     </div>
+    <div class="card" id="cardMeus">
+      <div class="card-hd"><h2>Meus produtos</h2><span class="hint" id="meusResumo"></span></div>
+      <p class="small muted">Fertilizantes foliares, adjuvantes e outros produtos que a base não traz: cadastre <b>uma vez</b> e eles ficam guardados neste aparelho (entram no backup), voltam na busca e nos atalhos da calda já com classe, nutrientes, matéria-prima, dose e preço. Também dá para guardar direto da calda — botão “⭐ Guardar em Meus produtos” em cada produto — ou preencher uma planilha (salvar como CSV) e importar.</p>
+      <div class="row-btns"><button class="btn" id="btnMeuNovo">＋ Novo produto</button><button class="btn ghost" id="btnMeusCSV" title="Baixa a lista atual (ou só o modelo, se ainda estiver vazia)">⬇️ Planilha (.csv)</button><label class="btn ghost">⬆️ Importar planilha<input type="file" id="impMeus" accept=".csv,.txt,text/csv" hidden></label></div>
+      <p class="small" id="meusMsg"></p>
+      <input id="meusFiltro" placeholder="Filtrar meus produtos…" aria-label="Filtrar meus produtos">
+      <div class="tabela-rolavel"><table class="tb" id="meusTabela"></table></div>
+    </div>
     <div class="card" id="cardFicha">
       <div class="card-hd"><h2>Ficha de produtos da fazenda</h2><span class="hint" id="fichaResumo"></span></div>
       <p class="small muted">Intervalo entre aplicações, carência, máximo de aplicações por ciclo e reentrada são os da <b>bula/receituário</b> — o Agrofit aberto não traz esses números. Preencha uma vez por produto (aqui ou direto na calda) e o app lembra. Também dá para baixar uma planilha com os seus produtos, preencher no Excel (salvar como CSV) e importar.</p>
@@ -423,8 +432,10 @@
 <script src="pontas.js"></script>
 <script src="app.js"></script>
 <script src="estoque.js"></script>
+<script src="produtos.js"></script>
 <script src="fazenda.js"></script>
 <script src="estoque-ui.js"></script>
 <script src="metas-ui.js"></script>
+<script src="produtos-ui.js"></script>
 </body>
 </html>

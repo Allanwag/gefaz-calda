@@ -29,6 +29,8 @@ function ajustarSaldo(e, novo, tipo, obs) {
 function refrescarTudo() {
   renderEstoque(); renderMovs(); renderNecessidade(); renderHistorico(); renderTalhoes(); renderItens();
   if (typeof renderMetas === 'function') renderMetas();
+  if (typeof renderMeusProdutos === 'function') renderMeusProdutos();
+  renderChipsRapidos();
 }
 
 /* ───────── tarefas em aberto (usadas pela baixa e pela necessidade de estoque) ───────── */

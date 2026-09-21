@@ -93,6 +93,7 @@ function nomesConhecidos() {
   Object.values(DB.fichaNomes).forEach(add);
   DB.estoque.forEach(e => add(e.nome));
   DB.catalogo.forEach(p => add(p.nome));
+  DB.meusProdutos.forEach(p => add(p.nome));
   [...DB.caldas, ...DB.receitas].forEach(c => (c.itens || []).forEach(i => add(i.nome)));
   calda.itens.forEach(i => add(i.nome));
   return [...m.values()].sort((a, b) => a.localeCompare(b, 'pt-BR'));
@@ -207,7 +208,7 @@ function initCaderno() {
 /* ───────── start ───────── */
 function initFazenda() {
   initFicha(); initCaderno();
-  initEstoqueUI(); initMetasUI();
+  initEstoqueUI(); initMetasUI(); initProdutosUI();
   vigiarNovaVersao();
   window.addEventListener('afterprint', () => document.body.classList.remove('print-resumido'));
   $('#btnBackup').onclick = exportarBackup;

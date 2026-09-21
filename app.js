@@ -21,9 +21,9 @@ const norm = E.norm;
 /* ───────── armazenamento ───────── */
 let DB;
 function defaultDB() {
-  return { version: 1, config: { ph: 7.5, dureza: null, cultura: 'Café', equipamento: 'turbo', volumeHa: 400, custo: { barra: 60, turbo: 90, drone: 120, costal: 40, aviao: 110, 'herbicida-cafe': 55 }, acidificanteUltimo: false, fazenda: 'Fazenda', rastreio: { maquina: '', operador: '', responsavel: '', crea: '' }, backup: { ultimo: null, lembrarDias: 7, adiadoAte: null }, meta: { pct: 100, de: '', ate: '' } }, catalogo: [], receitas: [], talhoes: [], caldas: [], historico: [], jarTests: [], regulagens: [], pontasLivres: [], estoque: [], movEstoque: [], tarefas: [], realizacoes: [], intervalos: {}, carencias: {}, maxAplic: {}, reentradas: {}, fichaNomes: {}, mapEstoque: {} };
+  return { version: 1, config: { ph: 7.5, dureza: null, cultura: 'Café', equipamento: 'turbo', volumeHa: 400, custo: { barra: 60, turbo: 90, drone: 120, costal: 40, aviao: 110, 'herbicida-cafe': 55 }, acidificanteUltimo: false, fazenda: 'Fazenda', rastreio: { maquina: '', operador: '', responsavel: '', crea: '' }, backup: { ultimo: null, lembrarDias: 7, adiadoAte: null }, meta: { pct: 100, de: '', ate: '' } }, catalogo: [], receitas: [], talhoes: [], caldas: [], historico: [], jarTests: [], regulagens: [], pontasLivres: [], estoque: [], movEstoque: [], tarefas: [], realizacoes: [], meusProdutos: [], intervalos: {}, carencias: {}, maxAplic: {}, reentradas: {}, fichaNomes: {}, mapEstoque: {} };
 }
-const DB_LISTAS = ['catalogo', 'receitas', 'talhoes', 'caldas', 'historico', 'jarTests', 'regulagens', 'pontasLivres', 'estoque', 'movEstoque', 'tarefas', 'realizacoes'];
+const DB_LISTAS = ['catalogo', 'receitas', 'talhoes', 'caldas', 'historico', 'jarTests', 'regulagens', 'pontasLivres', 'estoque', 'movEstoque', 'tarefas', 'realizacoes', 'meusProdutos'];
 const DB_MAPAS = ['intervalos', 'carencias', 'maxAplic', 'reentradas', 'fichaNomes', 'mapEstoque'];
 /* completa o que faltar num banco antigo, importado ou restaurado de backup */
 function normalizarDB() {
@@ -32,6 +32,7 @@ function normalizarDB() {
   DB.config = { ...d.config, ...(DB.config || {}) };
   ['custo', 'rastreio', 'backup', 'meta'].forEach(k => { DB.config[k] = { ...d.config[k], ...(DB.config[k] || {}) }; });
   DB_LISTAS.forEach(k => { if (!Array.isArray(DB[k])) DB[k] = []; });
+  DB.meusProdutos = DB.meusProdutos.filter(p => p && typeof p.nome === 'string' && p.nome.trim() && p.id); // backup/edição à mão com lixo não derruba a busca
   DB_MAPAS.forEach(k => { if (!DB[k] || typeof DB[k] !== 'object' || Array.isArray(DB[k])) DB[k] = {}; });
 }
 function loadDB() { try { DB = JSON.parse(localStorage.getItem(LS)) || null; } catch { DB = null; } normalizarDB(); }
@@ -251,16 +252,22 @@ function buscarCatalogo(q) {
 function renderBusca(q) {
   const box = $('#buscaRes');
   if (norm(q).length < 2) { box.classList.add('hidden'); return; }
+  const meus = typeof buscarMeus === 'function' ? buscarMeus(q) : [];
   const cat = buscarCatalogo(q), kb = buscarKB(q), agro = buscarAgrofit(q);
   const html = [];
+  meus.forEach((r, i) => html.push(`<button type="button" class="it" data-src="meu" data-i="${i}"><span><b>${esc(r.nome)}</b><small>${esc(r.sub)}</small></span><span class="src meu">meu produto</span></button>`));
   cat.forEach((r, i) => html.push(`<button type="button" class="it" data-src="cat" data-i="${i}"><span><b>${esc(r.nome)}</b><small>${esc(r.sub)}</small></span><span class="src cat">catálogo</span></button>`));
   kb.forEach((r, i) => html.push(`<button type="button" class="it" data-src="kb" data-i="${i}"><span><b>${esc(r.nome)}</b><small>${esc(r.sub)}</small></span><span class="src kb">base</span></button>`));
   agro.forEach((r, i) => html.push(`<button type="button" class="it" data-src="agro" data-i="${i}"><span><b>${esc(r.p.m.split(';')[0])}</b><small>${esc(r.p.ia.map(x => x[0].split(' (')[0] + (x[2] ? ' ' + x[2] : '')).join(' + '))} · ${esc(r.p.f || '?')} · ${esc(r.p.cl)}</small></span><span class="src agro">${r.reg ? '✔ ' + esc($('#fCultura').value) : 'Agrofit'}</span></button>`));
-  if (!html.length) html.push('<div class="it"><small>Nada encontrado. Use “+ Produto manual”.</small></div>');
+  if (!html.length) html.push('<div class="it"><small>Nada encontrado na base.</small></div>');
+  // sempre por último: produto que a base não tem (foliar, adjuvante…) entra para Meus produtos e não precisa ser cadastrado de novo
+  if (typeof abrirFormProduto === 'function') html.push(`<button type="button" class="it" data-src="novo"><span><b>＋ Cadastrar “${esc(q.trim())}”</b><small>fica guardado em Meus produtos para as próximas caldas</small></span><span class="src meu">novo</span></button>`);
   box.innerHTML = html.join(''); box.classList.remove('hidden');
   box.querySelectorAll('.it[data-src]').forEach(el => el.onclick = () => {
     const src = el.dataset.src, i = +el.dataset.i;
-    if (src === 'agro') addItem(itemDeAgrofit(agro[i].p));
+    if (src === 'novo') formManual({ nome: q.trim() });
+    else if (src === 'meu') adicionarMeu(meus[i].produto);
+    else if (src === 'agro') addItem(itemDeAgrofit(agro[i].p));
     else if (src === 'kb') addItem({ id: uid(), ...kb[i].item });
     else addItem({ id: uid(), ...cat[i].item });
     $('#busca').value = ''; box.classList.add('hidden');
@@ -301,7 +308,7 @@ function renderItens() {
     const ativos = E.resolverAtivos(it);
     const reg = it.registro ? (it.registro.culturas.some(c => norm(c) === norm(cult) || norm(c) === 'todas as culturas') ? `<span class="tag reg">registro ✔ ${esc(cult)}</span>` : `<span class="tag noreg">sem registro em ${esc(cult)}</span>`) : '';
     return `<div class="item" data-i="${i}">
-      <div><div class="nm">${esc(it.nome)}</div><div class="meta">${it.fonte ? `<span class="tag">${esc(it.fonte)}</span>` : ''}${ativos.map(a => `<span class="tag ${a.tags && a.tags.includes('biologico') ? 'bio' : ''}">${esc(a.nome)}${a.moa ? ' · ' + esc(a.moa.sistema + ' ' + a.moa.codigo) : ''}</span>`).join('')}${!ativos.length ? '<span class="tag noreg">ativo não identificado</span>' : ''}${reg}${it.concentracao ? `<span class="tag">${esc(it.concentracao)}</span>` : ''}${typeof tagEstoque === 'function' ? tagEstoque(it) : ''}</div></div>
+      <div><div class="nm">${esc(it.nome)}</div><div class="meta">${it.fonte ? `<span class="tag">${esc(it.fonte)}</span>` : ''}${ativos.map(a => `<span class="tag ${a.tags && a.tags.includes('biologico') ? 'bio' : ''}">${esc(a.nome)}${a.moa ? ' · ' + esc(a.moa.sistema + ' ' + a.moa.codigo) : ''}</span>`).join('')}${!ativos.length ? '<span class="tag noreg">ativo não identificado</span>' : ''}${reg}${it.concentracao ? `<span class="tag">${esc(it.concentracao)}</span>` : ''}${typeof tagEstoque === 'function' ? tagEstoque(it) : ''}</div>${typeof linhaMeuProduto === 'function' ? linhaMeuProduto(it) : ''}</div>
       <button class="x" data-del="${i}" title="Remover">✕</button>
       <div class="ctl">
         <label>Dose<input type="number" step="any" min="0" data-f="dose" value="${it.dose || ''}"></label>
@@ -314,8 +321,9 @@ function renderItens() {
         <label title="Número máximo de aplicações do produto por ciclo, conforme a bula/receituário">Máx. aplic./ciclo<input type="number" step="1" min="1" data-f="maxAplic" value="${it.maxAplic || ''}" placeholder="bula"></label>
         <label title="Carência: dias entre a última aplicação e a colheita, conforme a bula/receituário (0 = sem carência)">Carência (dias)<input type="number" step="1" min="0" data-f="carencia" value="${temNumero(it.carencia) ? it.carencia : ''}" placeholder="bula"></label>
         <label title="Reentrada: horas depois do término da aplicação até poder entrar na área tratada, conforme a bula/receituário (0 = sem restrição)">Reentrada (horas)<input type="number" step="1" min="0" data-f="reentrada" value="${temNumero(it.reentrada) ? it.reentrada : ''}" placeholder="bula"></label>
-      </div></div>`;
+      </div>${typeof botaoMeuProduto === 'function' ? botaoMeuProduto(it) : ''}</div>`;
   }).join('');
+  if (typeof ligarMeusProdutos === 'function') ligarMeusProdutos(el);
   el.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { calda.itens.splice(+b.dataset.del, 1); renderItens(); });
   el.querySelectorAll('[data-f]').forEach(inp => inp.onchange = () => {
     const it = calda.itens[+inp.closest('.item').dataset.i], f = inp.dataset.f;
@@ -324,20 +332,14 @@ function renderItens() {
     if (f === 'unidade') renderItens();
   });
 }
-function formManual(pre) {
-  pre = pre || {};
-  modal(`<h2>Produto manual</h2><p class="small muted">Informe o nome comercial e, se souber, o ingrediente ativo: a base reconhece o ativo pelo nome (ex.: “Glifosato”, “Tebuconazol”, “Sulfato de zinco”).</p>
-    <label>Nome<input id="mNome" value="${esc(pre.nome || '')}"></label>
-    <label>Ingrediente(s) ativo(s)<input id="mIa" placeholder="ex.: azoxistrobina + ciproconazol" value="${esc(pre.ia || '')}"></label>
-    <div class="grid2"><label>Classe<select id="mClasse">${KB.classes.map(c => `<option ${c === pre.classe ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
-    <label>Formulação<select id="mForm"><option value="">?</option>${Object.keys(KB.formulacoes).map(f => `<option>${f}</option>`).join('')}</select></label>
-    <label>Dose<input id="mDose" type="number" step="any" value="${pre.dose || ''}"></label>
-    <label>Unidade<select id="mUn">${KB.unidades.map(u => `<option ${u === pre.unidade ? 'selected' : ''}>${u}</option>`).join('')}</select></label>
-    <label>Preço (R$/L ou kg)<input id="mPreco" type="number" step="any" value="${pre.preco || ''}"></label></div>
-    <div class="row-btns"><button class="btn primary" id="mOk">Adicionar</button><button class="btn ghost" id="mCancel">Cancelar</button></div>`);
-  $('#mCancel').onclick = closeModal;
-  $('#mOk').onclick = () => { const nome = $('#mNome').value.trim(); if (!nome) return toast('Informe o nome', 'err'); addItem({ id: uid(), nome, ingredientes: $('#mIa').value ? [$('#mIa').value] : [], classe: $('#mClasse').value, formulacao: $('#mForm').value, dose: num($('#mDose').value), unidade: $('#mUn').value, preco: num($('#mPreco').value), fonte: 'manual' }); closeModal(); };
+/* atalhos sob a busca: os produtos de estoque da fazenda que a base já conhece + os mais usados de Meus produtos */
+function renderChipsRapidos() {
+  $('#chipsRapidos').innerHTML = KB.comerciais.filter(c => c.tags && c.tags.includes('estoque-fazenda')).map(c => `<button type="button" class="chip" data-chip="${esc(c.nome)}">+ ${esc(c.nome)}</button>`).join('') + (typeof chipsMeusProdutos === 'function' ? chipsMeusProdutos() : '');
+  $$('#chipsRapidos [data-chip]').forEach(ch => ch.onclick = () => { const c = KB.comerciais.find(x => x.nome === ch.dataset.chip); addItem({ id: uid(), nome: c.nome, classe: c.classe, formulacao: c.formulacao, unidade: 'mL/100L', dose: 0, fonte: 'fazenda' }); });
+  if (typeof ligarChipsMeus === 'function') ligarChipsMeus();
 }
+/* “+ Produto manual” e “＋ Cadastrar” da busca: a janela de cadastro fica em produtos-ui.js e, por padrão, guarda o produto em Meus produtos */
+function formManual(pre) { abrirFormProduto({ modo: 'nova', pre: pre || {} }); }
 
 /* ───────── contexto ───────── */
 function areaPorTanqueCalda() {
@@ -886,7 +888,7 @@ function renderJar() {
 }
 
 /* ───────── histórico e caldas ───────── */
-function caldaComoReceita() { conferirResultadoAtual(); const ctx = lerContexto(); return { id: uid(), nome: `Calda ${ctx.cultura}${ctx.alvo ? ' — ' + textoAlvos(ctx.alvos, true).slice(0, 3).join(', ') + (textoAlvos(ctx.alvos).length > 3 ? '…' : '') : ''} ${hoje()}`, cultura: ctx.cultura, alvo: ctx.alvo, alvos: ctx.alvos, doenca: ctx.doenca, praga: ctx.praga, severidade: ctx.severidade, estadio: ctx.estadio, parte: ctx.parte, volumeHa: ctx.volumeHa, itens: calda.itens.map(i => ({ nome: i.nome, dose: i.dose, lote: i.lote, unidade: i.unidade, classe: i.classe, formulacao: i.formulacao, preco: i.preco, intervalo: i.intervalo, carencia: i.carencia, maxAplic: i.maxAplic, reentrada: i.reentrada, ativos: i.ativos, ingredientes: i.ingredientes, registro: i.registro, tags: i.tags, fonte: i.fonte })), agua: ctx.agua, equipamento: ctx.equipamento, area: ctx.area, tanque: ctx.tanque, rastreio: ctx.rastreio, obs: ctx.obs, fonte: 'gefaz-calda', status: resultado ? resultado.status : null }; }
+function caldaComoReceita() { conferirResultadoAtual(); const ctx = lerContexto(); return { id: uid(), nome: `Calda ${ctx.cultura}${ctx.alvo ? ' — ' + textoAlvos(ctx.alvos, true).slice(0, 3).join(', ') + (textoAlvos(ctx.alvos).length > 3 ? '…' : '') : ''} ${hoje()}`, cultura: ctx.cultura, alvo: ctx.alvo, alvos: ctx.alvos, doenca: ctx.doenca, praga: ctx.praga, severidade: ctx.severidade, estadio: ctx.estadio, parte: ctx.parte, volumeHa: ctx.volumeHa, itens: calda.itens.map(i => ({ nome: i.nome, dose: i.dose, lote: i.lote, unidade: i.unidade, classe: i.classe, formulacao: i.formulacao, preco: i.preco, intervalo: i.intervalo, carencia: i.carencia, maxAplic: i.maxAplic, reentrada: i.reentrada, ativos: i.ativos, ingredientes: i.ingredientes, materiaPrima: i.materiaPrima, registro: i.registro, tags: i.tags, fonte: i.fonte })), agua: ctx.agua, equipamento: ctx.equipamento, area: ctx.area, tanque: ctx.tanque, rastreio: ctx.rastreio, obs: ctx.obs, fonte: 'gefaz-calda', status: resultado ? resultado.status : null }; }
 function salvarCalda() { if (!calda.itens.length) return toast('Nada para salvar', 'err'); const nome = prompt('Nome da calda', caldaComoReceita().nome); if (!nome) return; const c = caldaComoReceita(); c.nome = nome; DB.caldas.unshift(c); saveDB(); toast('Calda salva'); renderHistorico(); }
 function carregarReceita(rec) {
   calda.itens = rec.itens.map(i => ({ ...i, id: uid(), dose: +i.dose || 0, unidade: i.unidade || 'L/ha' }));
@@ -1560,8 +1562,7 @@ function init() {
   $('#fParte').innerHTML = '<option value=""></option>' + KB.partesAlvo.map(s => `<option>${s}</option>`).join('');
   montarAlvos(); atualizarListasCultura();
   $('#fVolume').value = DB.config.volumeHa; if (DB.config.ph != null) $('#fPh').value = DB.config.ph; if (DB.config.dureza != null) $('#fDureza').value = DB.config.dureza;
-  $('#chipsRapidos').innerHTML = KB.comerciais.filter(c => c.tags && c.tags.includes('estoque-fazenda')).map(c => `<button type="button" class="chip" data-chip="${esc(c.nome)}">+ ${esc(c.nome)}</button>`).join('');
-  $$('[data-chip]').forEach(ch => ch.onclick = () => { const c = KB.comerciais.find(x => x.nome === ch.dataset.chip); addItem({ id: uid(), nome: c.nome, classe: c.classe, formulacao: c.formulacao, unidade: 'mL/100L', dose: 0, fonte: 'fazenda' }); });
+  renderChipsRapidos();
   $('#busca').oninput = e => renderBusca(e.target.value);
   document.addEventListener('click', e => { if (!e.target.closest('.search-wrap')) $('#buscaRes').classList.add('hidden'); });
   $('#fCultura').onchange = () => { atualizarAlvos(); atualizarListasCultura(); renderItens(); DB.config.cultura = $('#fCultura').value; saveDB(); };

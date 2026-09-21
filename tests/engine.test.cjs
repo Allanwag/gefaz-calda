@@ -410,3 +410,21 @@ test('reentrada liberada: maior número de horas depois do término, com data e 
   assert.equal(E.reentradaLiberada({ base: 'lixo', itens: [] }), null);
   assert.equal(E.reentradaLiberada({ base: '2026-12-31T22:00', itens: [{ nome: 'A', classe: 'Fungicida', reentrada: 48 }] }).liberadoEm, '2027-01-02T22:00', 'virada de ano');
 });
+
+test('foliar cadastrado à mão (só a classe) segue as regras de foliar e a matéria-prima aparece na ordem de adição', () => {
+  const r = E.analisar([it('Fosetil-Al', 2.5, 'kg/ha', { formulacao: 'WG' }), it('Foliar X', 200, 'mL/100L', { classe: 'Fertilizante Foliar', materiaPrima: 'ácido bórico' })], { volumeHa: 400, agua: { ph: 6 } });
+  assert.ok(has(r, 'R29'), 'fosetil × foliar vale para o foliar cadastrado');
+  const passo10 = r.ordem.find(p => p.passo === 10);
+  assert.deepEqual(passo10.itens.map(i => i.nome), ['Foliar X']);
+  assert.ok(passo10.itens[0].notas.includes('Matéria-prima: ácido bórico.'));
+  const sem = E.analisar([it('Foliar X', 200, 'mL/100L', { classe: 'Fertilizante Foliar' })], { volumeHa: 400, agua: { ph: 6 } });
+  assert.ok(sem.ordem.find(p => p.passo === 10).itens[0].notas.every(n => !/Matéria-prima/.test(n)), 'sem matéria-prima informada, não há nota');
+});
+
+test('nomes de matéria-prima de foliar (borato, MKP) caem nos nutrientes certos', () => {
+  const nut = nome => E.resolverAtivos({ nome }).map(a => a.chave);
+  assert.ok(nut('Borato de sódio').includes('boro'));
+  assert.ok(nut('Tetraborato').includes('boro'));
+  assert.ok(nut('MKP').includes('map'));
+  assert.ok(nut('Fosfato monopotássico').includes('map'));
+});

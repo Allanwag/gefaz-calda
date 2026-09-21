@@ -35,10 +35,11 @@ Gefaz360 Codex — ver [INTEGRACAO.md](INTEGRACAO.md).
 | `tools/build-agrofit-index.js` | Regenera o índice a partir do CSV aberto do MAPA (392 MB) |
 | `estoque.js` | Lógica pura da rotina da fazenda: planilhas CSV, ficha de produtos, estoque lido de PDF/planilha, baixa por receita, previsto × realizado e agenda `.ics` (`GCEstoque`) |
 | `fazenda.js`, `estoque-ui.js`, `metas-ui.js` | Telas da rotina: avisos de backup e de versão, ficha de produtos, caderno de campo, aba Estoque com baixa por aplicação, aba Metas |
+| `produtos.js`, `produtos-ui.js` | Meus produtos: lógica pura do cadastro permanente (busca, nutrientes, matéria-prima, planilha CSV — `GCProdutos`) e a tela (janela de cadastro, atalhos, cartão na aba Integração) |
 | `vendor/pdfjs/` | pdf.js 3.11.174 (Mozilla, Apache-2.0) para ler o PDF do estoque |
 | `sdk.js` | SDK para os outros apps (deep-link, iframe/postMessage, análise local) |
 | `sw.js`, `manifest.json`, `icon-*.png` | PWA (offline, instalável) |
-| `tests/engine.test.cjs`, `tests/pontas.test.cjs`, `tests/estoque.test.cjs` | Testes dos motores e da rotina da fazenda (`node --test tests/*.test.cjs`) |
+| `tests/*.test.cjs` | Testes dos motores, da rotina da fazenda, de Meus produtos, do app e do service worker (`node --test tests/*.test.cjs`) |
 | `serve.ps1` | Servidor estático local na porta 8124 (não há Node/Python “de sistema” nesta máquina) |
 
 Dados do app ficam em `localStorage` na chave `gefazcalda_v1` (catálogo importado, receitas,
@@ -220,6 +221,31 @@ lotes, quem aplicou, receituário, RT, datas liberadas e custo) para imprimir ou
 faixa, equipamento e regulagem padrão (a aba Pontas já vem preenchida ao marcá-lo) e mostra o custo de defensivos do ciclo.
 O app avisa quando faz dias sem backup e quando há versão nova.
 
+## Meus produtos: foliares, adjuvantes e o que a base não traz
+
+O Agrofit só tem defensivos registrados; **fertilizantes foliares têm outro registro** e a base do app cobre os nutrientes
+(14 entradas: B, Ca, Mg, Zn, Mn, Fe, Cu, Mo, P, fosfito, N, K, quelatos, aminoácidos), não as marcas. Por isso o cadastro
+é seu e **permanente**: guardado em `localStorage` (`meusProdutos`), entra no backup e volta sozinho na busca.
+
+* **Como cadastrar.** Na busca da calda, se o produto não existe, a última linha é *＋ Cadastrar “nome”*; também vale *+ Produto
+  manual*, o botão *⭐ Guardar em Meus produtos* de cada linha da calda e *＋ Novo produto* no cartão **Meus produtos**
+  (Integração). A janela pede nome, classe, formulação, dose e unidade padrão, preço, os **nutrientes** (foliar) ou a
+  **função** (adjuvante), a **matéria-prima** quando o rótulo informa (ácido bórico, sulfato de zinco, molibdato de sódio…),
+  composição e observação. Só o nome é obrigatório. Com *Guardar em Meus produtos* desmarcado o produto vale só para aquela calda.
+* **Por que marcar os nutrientes.** É o que liga o produto às regras: zinco marcado → *glifosato × cátion de foliar* (R01),
+  boro × cálcio (R22), fosfato × cátions (R23), sulfato × cálcio (R24), fosetil e triazol × foliar (R29, R40). Digitar a
+  matéria-prima já marca os nutrientes que a base reconhece (“sulfato de cobre” num foliar é o cobre do foliar, não o
+  fungicida; “EDTA” é quelato). Sem nenhum nutriente o app **não finge conhecer**: o laudo diz “ativo não reconhecido” e
+  exige jar test — mas a classe *Fertilizante Foliar* sozinha já entra no passo 10 e nas regras gerais de foliar. A matéria-prima
+  aparece na *Ordem de adição* do laudo.
+* **Uso no dia a dia.** Produtos guardados aparecem na busca (etiqueta *meu produto*, por nome, nutriente, matéria-prima ou
+  classe) e os mais usados viram atalhos ⭐ sob a busca. *💾 Atualizar em Meus produtos* grava a dose, unidade, preço, classe e
+  formulação da linha como novo padrão. Renomear leva junto a ficha da bula e o vínculo com o estoque.
+* **Planilha.** *⬇️ Planilha (.csv)* exporta a lista (ou só o modelo, se vazia); *⬆️ Importar planilha* cria os novos e atualiza
+  só o que veio preenchido (o nome já guardado e a classe de quem não tem coluna de classe não mudam; nutrientes se somam).
+  Colunas em qualquer ordem: Produto, Classe, Formulação, Nutrientes / funções, Composição, Matéria-prima, Dose padrão,
+  Unidade da dose, Preço, Observação.
+
 ## Rodar localmente
 
 ```powershell
@@ -265,4 +291,6 @@ Abra <http://localhost:8124/>. No Claude Preview a configuração `gefaz-calda` 
   (Koppert). Por isso toda mistura com 3+ produtos ou produto desconhecido sai como
   “fazer jar test”, e o jar test registrado vira a base de testes da fazenda.
 * Custo operacional por equipamento é estimativa configurável.
+* Foliar com composição fora dos 14 nutrientes da base (silício, cobalto, níquel…) fica “ativo não reconhecido” até a base
+  ganhar a entrada — o app prefere pedir jar test a inventar uma regra sem fonte.
 * O app apoia a decisão técnica; não substitui bula nem receituário agronômico (IN 40/2018).

@@ -91,3 +91,12 @@ test('volume zero e valores negativos não geram cálculos ou histórico', () =>
     assert.match(a.element('#toast').textContent, /maior que zero/);
   }
 });
+
+test('banco antigo ou backup sem Meus produtos ganha a lista; lixo na lista não entra', () => {
+  const a = app();
+  a.run("DB = { version: 1, meusProdutos: [{ id: 'a', nome: 'Zintrac' }, null, { id: 'b', nome: '  ' }, { nome: 'sem id' }, 'x'] }; normalizarDB();");
+  assert.equal(a.run("DB.meusProdutos.map(p => p.nome).join('|')"), 'Zintrac');
+  a.run('DB = { version: 1 }; normalizarDB();');
+  assert.equal(a.run('Array.isArray(DB.meusProdutos) && DB.meusProdutos.length'), 0);
+  assert.equal(a.run('defaultDB().meusProdutos.length'), 0);
+});

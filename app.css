@@ -377,3 +377,11 @@ main{padding-bottom:calc(104px + env(safe-area-inset-bottom))}
 .bottomnav::-webkit-scrollbar{display:none}
 .bottomnav button{flex:1 0 auto;min-width:50px}
 .avisos{position:static}
+/* Meus produtos */
+.acoes-item{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap}
+.src.meu{background:#f3e5f5;color:#6a1b9a}
+.chip-meu{border-color:#c9a7de}
+.comp-box{margin:10px 0}
+.comp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0 12px}
+.comp-grid label.check{margin:5px 0}
+@media screen{.search-res .src.meu,.src.meu{background:#2d2340;color:#d3bdf0}.chip-meu{border-color:#6b4f86}}
