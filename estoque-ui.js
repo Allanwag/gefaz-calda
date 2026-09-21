@@ -167,6 +167,14 @@ function reinterpretarRevisao() {
 }
 function renderRevisao() {
   const box = $('#estRevisao'); if (!rev) { box.innerHTML = ''; return; }
+  if (rev.origem === 'pdf' && !rev.rows.length) { // leu o texto mas não achou produto e quantidade: mostra o que chegou, para dar para diagnosticar
+    box.innerHTML = `<div class="subcard"><div class="sub-hd"><b>Não reconheci produtos neste PDF</b></div>
+      <p class="small">O texto foi lido, mas não achei linhas com produto e quantidade. Veja abaixo como o PDF chegou ao app; se as colunas estão misturadas, exporte o relatório em <b>planilha (CSV/Excel)</b> e suba por “Subir planilha”.</p>
+      <details open class="small"><summary>Texto lido (${rev.linhas.length} linha(s); mostro as 60 primeiras)</summary><pre class="canonico">${esc(rev.linhas.slice(0, 60).map(l => l.texto).join('\n'))}</pre></details>
+      <div class="row-btns"><button type="button" class="btn ghost" id="btnEstCancelar">Fechar</button></div></div>`;
+    $('#btnEstCancelar').onclick = () => { rev = null; renderRevisao(); msgEstoque(''); };
+    return;
+  }
   const un = ['L', 'kg', 'mL', 'g', 't', 'un'];
   const escolha = rev.origem === 'pdf' && !rev.cabecalho && rev.maxNumericas > 1
     ? `<label>Qual número é a quantidade? <small class="muted">o PDF não tem cabeçalho de colunas</small><select id="estQtdPos"><option value="auto">automático (o número antes da unidade)</option>${[1, 2, 3, 4].filter(n => n <= rev.maxNumericas).map(n => `<option value="esq${n}">${n}º número, contando da esquerda</option><option value="dir${n}">${n}º número, contando da direita</option>`).join('')}</select></label>` : '';

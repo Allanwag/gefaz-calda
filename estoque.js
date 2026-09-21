@@ -166,7 +166,7 @@
   /* ───────── linhas → produtos e quantidades ───────── */
   const RE_UNIDADE_CEL = /^(l|lt|lts|litros?|kg|kgs|kilos?|quilos?|ml|g|gr|gramas?|un|und|unid|unidades?|cx|sc|gl|gal|galao|fr|frasco|bd|balde|pc|pct|t|ton)\.?$/;
   const RE_PULAR = /^(total|subtotal|sub-total|soma|pagina|p[aá]gina|emitido|relat[oó]rio|data|hora|fazenda|estoque\b|saldo\b)/;
-  const CAB_PRODUTO = /^(produto|descricao|item|material|insumo|nome|mercadoria|defensivo)/;
+  const CAB_PRODUTO = /(produto|descricao|item|material|insumo|nome|mercadoria|defensivo)/;
   const CAB_QTD = /(quant|qtd|qtde|saldo|estoque|disponivel|existencia)/;
   const CAB_QTD_RUIM = /(min|max|ideal|reserv|custo|valor|preco|entrada|saida|unit)/;
   const CAB_UN = /^(un\b|unid|und|medida|um\b)/;
@@ -237,7 +237,10 @@
         unidade = un.length ? un[0].c.s : '';
       }
       // nome: textos à esquerda da quantidade (sem unidade e sem código)
-      const nome = nomeCels.filter(p => p.c.x <= q.c.x).map(p => p.c.s).join(' ').replace(/\s+/g, ' ').trim() || nomeCels.map(p => p.c.s).join(' ').trim();
+      // código do produto colado ao nome ("AG-0012", "A123"): sai quando sobra outro texto à esquerda da quantidade
+      let esq = nomeCels.filter(p => p.c.x <= q.c.x);
+      if (esq.length > 1 && /^[A-Za-z]{0,4}[-.]?\d{2,}[A-Za-z]{0,2}$/.test(esq[0].c.s)) esq = esq.slice(1);
+      const nome = esq.map(p => p.c.s).join(' ').replace(/\s+/g, ' ').trim() || nomeCels.map(p => p.c.s).join(' ').trim();
       if ((nome.match(/[A-Za-zÀ-ú]/g) || []).length < 3) { ignoradas.push(texto); return; }
       itens.push({ nome, qtd: q.v, unidade: unidade.replace(/\.$/, ''), unidadeNorm: normUnidade(unidade), bruto: texto, confianca: como, linha: idx });
     });

@@ -162,3 +162,10 @@ test('agenda .ics: dia inteiro, escape de texto e linhas dobradas em 75 octetos'
   ics.split('\r\n').forEach(l => assert.ok(new TextEncoder().encode(l).length <= 75, 'linha longa: ' + l.length));
   assert.ok(ics.includes('\r\n x'), 'continuação começa com espaço');
 });
+
+test('PDF: cabeçalho "Cód. Produto" e código alfanumérico colado ao nome', () => {
+  const cab = [I('Cód. Produto', 40, 700), I('Descrição', 110, 700), I('Saldo atual', 330, 700)];
+  const r = ES.interpretarEstoque(linhasDe(cab, [I('AG-0012', 40, 680), I('ABADIN 72 EC', 110, 680), I('12,50', 340, 680)], [I('A123', 40, 660), I('GLIFOSATO 480 SL', 110, 660), I('40,00', 340, 660)]));
+  assert.equal(r.cabecalho, true);
+  assert.deepEqual(r.itens.map(i => [i.nome, i.qtd]), [['ABADIN 72 EC', 12.5], ['GLIFOSATO 480 SL', 40]]);
+});
