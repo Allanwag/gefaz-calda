@@ -49,7 +49,7 @@ test('resposta 404 não sobrescreve cache e falha de rede usa cache próprio', a
 test('todo arquivo do pré-cache existe: se um faltar, o addAll derruba a instalação inteira', () => {
   const assets = JSON.parse(/const ASSETS = (\[.*?\]);/.exec(CODIGO_SW)[1].replace(/'/g, '"'));
   assert.ok(assets.length > 10);
-  const faltam = assets.filter(a => a !== './' && !fs.existsSync(require('node:path').join(__dirname, '..', a)));
+  const faltam = assets.filter(a => a !== './' && !fs.existsSync(require('node:path').join(__dirname, '..', a.split('?')[0])));
   assert.deepEqual(faltam, []);
   ['./estoque.js', './fazenda.js', './estoque-ui.js', './metas-ui.js'].forEach(a => assert.ok(assets.includes(a), a + ' precisa estar no pré-cache'));
 });
