@@ -126,6 +126,16 @@
 
   <!-- ══════════ PONTAS E REGULAGEM ══════════ -->
   <section id="tab-pontas" class="tab">
+    <div class="card" id="magnojetCatalogo">
+      <div class="card-hd"><h2>Magnojet · catálogo oficial</h2><span class="hint">índice de modelos</span></div>
+      <p class="small muted">Consulte a ficha e as tabelas de cada modelo. O catálogo completo abre no site do fabricante e exige conexão; o índice fica disponível offline após carregar o app.</p>
+      <div class="row-btns"><a class="btn" href="https://www.magnojet.com.br/_files/ugd/9e52d6_db4e8690f96c470a9c32984205fd31a9.pdf" target="_blank" rel="noopener noreferrer">Abrir catálogo completo ↗</a><button class="btn ghost sm" id="mjRecarregar" type="button">Recarregar índice</button></div>
+      <details class="subcard"><summary><b>Explorar modelos Magnojet</b></summary>
+        <label>Buscar modelo ou tipo de jato<input id="mjBusca" type="search" placeholder="Ex.: AD-IA, MUG, cone, sólido"></label>
+        <p class="small muted" id="mjContagem" role="status">Carregando índice…</p>
+        <div id="mjLista" class="lista compact"></div>
+      </details>
+    </div>
     <div class="card">
       <div class="card-hd"><h2>1 · Arranjo do equipamento</h2><span class="hint">área total ou faixa dirigida</span></div>
       <div class="chips" id="chipsPreset"></div>
@@ -308,6 +318,44 @@
     </div>
   </section>
 
+  <section id="tab-daninhas" class="tab">
+    <div class="card">
+      <div class="card-hd"><h2>Plantas daninhas</h2><span class="hint">identificação e manejo</span></div>
+      <p class="small muted">Fichas originais com fontes públicas. Cobertura conforme os alvos de herbicidas na base AGROFIT do app; não representa a lista integral do manual de Lorenzi.</p>
+      <div class="grid2">
+        <label>Nome popular ou científico<input id="dBusca" type="search" placeholder="Ex.: buva, Digitaria insularis"></label>
+        <label>Cultura da consulta<select id="dCultura"><option value="">Aguardando base…</option></select></label>
+      </div>
+      <p class="small muted" id="dStatus" role="status">Carregando AGROFIT…</p>
+      <div class="row-btns"><button type="button" class="btn ghost sm" id="dRecarregar">Recarregar base</button></div>
+      <p class="small" id="dContagem" role="status"></p>
+      <div id="dLista" class="lista compact"></div>
+      <button class="btn ghost" type="button" id="dMais" hidden>Mostrar mais fichas</button>
+    </div>
+    <article class="card" id="dFicha" hidden>
+      <div class="card-hd"><h2 id="dFichaNome"></h2><button class="btn ghost sm" type="button" id="dFecharFicha">Fechar ficha</button></div>
+      <div id="dIdentidade"></div>
+      <h3>Identificação em campo</h3><div id="dSinais"></div>
+      <p class="small muted">Observe folhas, caule, raízes e estruturas reprodutivas. Fotografe detalhes e confirme a espécie antes de definir o controle.</p>
+      <h3>Manejo integrado · orientações gerais</h3><div id="dManejo"></div>
+      <p class="small"><a href="https://www.embrapa.br/tema-plantas-daninhas/sobre-o-tema" target="_blank" rel="noopener noreferrer">Embrapa · manejo integrado ↗</a></p>
+      <div class="row-btns"><button class="btn primary" type="button" id="dUsarAlvo">Adicionar alvo à calda</button></div>
+      <p class="small muted" id="dUsarNota"></p>
+      <h3 id="dCulturaFicha">Controle químico · consulta</h3>
+      <p class="small muted">Os vínculos abaixo são registros da base datada, sem comparação de eficácia. Dose, estádio, modalidade, intervalo, seletividade e restrições devem ser conferidos na bula vigente para a cultura e o alvo. Um registro não comprova que a população seja suscetível.</p>
+      <p class="small"><a href="https://agrofit.agricultura.gov.br/agrofit_cons/principal_agrofit_cons" target="_blank" rel="noopener noreferrer">Consultar registro e bula atuais no AGROFIT/MAPA ↗</a></p>
+      <label>Filtrar produto ou ingrediente ativo<input id="dProdutoBusca" type="search" placeholder="Marca comercial ou ingrediente"></label>
+      <p class="small muted" id="dNProdutos" role="status"></p>
+      <div id="dControles" class="lista compact"></div>
+      <button class="btn ghost" type="button" id="dMaisProdutos" hidden>Mostrar mais produtos</button>
+    </article>
+    <div class="card">
+      <h3>Bibliografia</h3>
+      <p class="small">Embrapa Soja. <a href="https://www.infoteca.cnptia.embrapa.br/handle/doc/1166619" target="_blank" rel="noopener noreferrer">Manual de identificação de plantas daninhas da cultura da soja, 3ª ed., 2024 ↗</a>. Consulte fotos e descrições na publicação original.</p>
+      <p class="small">Lorenzi, Harri. <a href="https://www.plantarum.com.br/produtos/livro-manual-de-identificacao-e-controle-de-plantas-daninhas/" target="_blank" rel="noopener noreferrer">Manual de identificação e controle de plantas daninhas, 7ª ed., Plantarum, 2014 ↗</a>. Referência bibliográfica; textos, fotos e tabelas do livro não foram reproduzidos.</p>
+    </div>
+  </section>
+
   <!-- ══════════ HISTÓRICO ══════════ -->
   <section id="tab-historico" class="tab">
     <div class="card"><div class="card-hd"><h2>Talhões</h2><span class="hint">histórico de análises e aplicações por talhão</span><button class="btn sm ghost" id="btnCadernoTodos">📒 Caderno de todos os talhões</button></div><div id="listaTalhoes" class="lista"></div></div>
@@ -417,6 +465,7 @@
   <button data-tab="resultado">📋<span>Resultado</span></button>
   <button data-tab="jar">🫙<span>Jar test</span></button>
   <button data-tab="pontas">💦<span>Pontas</span></button>
+  <button data-tab="daninhas">🌱<span>Daninhas</span></button>
   <button data-tab="estoque">📦<span>Estoque</span></button>
   <button data-tab="metas">🎯<span>Metas</span></button>
   <button data-tab="historico">🕘<span>Histórico</span></button>
@@ -430,7 +479,9 @@
 <script src="kb.js"></script>
 <script src="engine.js"></script>
 <script src="pontas.js"></script>
+<script src="biblioteca.js"></script>
 <script src="app.js"></script>
+<script src="biblioteca-ui.js"></script>
 <script src="estoque.js"></script>
 <script src="produtos.js"></script>
 <script src="fazenda.js"></script>

@@ -78,7 +78,8 @@ async function carregarAgrofit() {
     agroBusca = AGRO.produtos.map(p => ({ p, txt: norm(p.m + ' ' + p.ia.map(x => x[0]).join(' ')) }));
     st.textContent = `Agrofit ✔ ${AGRO.produtos.length.toLocaleString('pt-BR')}`; st.title = `Índice AGROFIT/MAPA gerado em ${AGRO.gerado} — ${AGRO.produtos.length} produtos com registro ativo`; st.className = 'pill ok';
     atualizarAlvos();
-  } catch (e) { st.textContent = 'Agrofit indisponível'; st.className = 'pill bad'; }
+    if (window.GCBibliotecaUI) window.GCBibliotecaUI.atualizar(AGRO);
+  } catch (e) { st.textContent = 'Agrofit indisponível'; st.className = 'pill bad'; if (!AGRO && window.GCBibliotecaUI) window.GCBibliotecaUI.atualizar(null); }
 }
 function classeAgrofit(cl, iaTxt) {
   const c = norm(cl), ia = norm(iaTxt);

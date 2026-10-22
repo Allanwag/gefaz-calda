@@ -294,3 +294,22 @@ Abra <http://localhost:8124/>. No Claude Preview a configuração `gefaz-calda` 
 * Foliar com composição fora dos 14 nutrientes da base (silício, cobalto, níquel…) fica “ativo não reconhecido” até a base
   ganhar a entrada — o app prefere pedir jar test a inventar uma regra sem fonte.
 * O app apoia a decisão técnica; não substitui bula nem receituário agronômico (IN 40/2018).
+# Catálogo Magnojet e biblioteca de daninhas (2026-10-22)
+
+Na aba **Pontas**, o índice pesquisável aponta para as 51 entradas da página 15 do catálogo oficial Magnojet BR41 digital V4 (172 páginas). Cada entrada informa modelo, tipo de jato e página de consulta. O PDF permanece no site do fabricante. Oito famílias têm atalho para os dados que já estavam no calculador, com a fonte anterior preservada; os demais modelos são de consulta e não recebem vazões ou classes de gota inventadas. O índice fica no cache offline; abrir o PDF exige conexão.
+
+A aba **Daninhas** apresenta todas as 304 fichas nominais obtidas dos alvos classificados como plantas daninhas com vínculo explícito em herbicidas no índice AGROFIT/MAPA do app, gerado em **2026-09-18**, licença CC-BY. Nomes científicos iguais são agrupados sem juntar espécies diferentes. A consulta filtra nome e cultura e lista produto, registro, ingrediente ativo e as culturas que têm vínculo explícito com o alvo. Não amplia registros de “Todas as culturas” para culturas individuais. O índice original contém vínculos somente para Café, Milho, Soja, Sorgo, Trigo, Feijão, Algodão, Pastagens e Todas as culturas; ausência de resultado não demonstra ausência de registro atual.
+
+Onze fichas têm sinais breves de identificação redigidos originalmente a partir de fontes públicas da Embrapa, com link para identificação completa e fotos na origem. As outras fichas informam explicitamente que a descrição botânica não foi incorporada. Manejo integrado geral aparece separado dos vínculos de registro. Dose, modalidade, estádio, suscetibilidade/resistência, intervalos e restrições exigem consulta à bula vigente; não há prescrição automática. “Adicionar alvo à calda” verifica a cultura atual e invalida um laudo anterior, sem incluir produtos ou doses.
+
+O manual de Harri Lorenzi, 7ª edição, consta apenas como referência bibliográfica; suas fichas, fotos e tabelas não foram reproduzidas. A biblioteca pública não se apresenta como a lista integral desse livro.
+
+Fontes consultadas:
+
+- [Catálogo oficial Magnojet](https://www.magnojet.com.br/_files/ugd/9e52d6_db4e8690f96c470a9c32984205fd31a9.pdf), índice p. 15; tipos de jato pp. 10–14. Conferência visual em 2026-10-22.
+- [Dados abertos AGROFIT/MAPA](https://dados.agricultura.gov.br/dataset/sistema-de-agrotoxicos-fitossanitarios-agrofit), arquivo do app de 2026-09-18; fonte e data preservadas.
+- [Embrapa Soja: Manual de identificação de plantas daninhas da cultura da soja, 3ª ed., 2024](https://www.infoteca.cnptia.embrapa.br/handle/doc/1166619). Sinais breves, sem reprodução das descrições ou fotos.
+- [Embrapa: plantas daninhas e manejo integrado](https://www.embrapa.br/tema-plantas-daninhas/sobre-o-tema).
+- [Plantarum: referência do manual de Lorenzi, 7ª edição](https://www.plantarum.com.br/produtos/livro-manual-de-identificacao-e-controle-de-plantas-daninhas/).
+
+Validação: `node --test tests/*.test.cjs`, verificação de sintaxe e `git diff --check`. Os testes da biblioteca verificam cobertura da base, exclusão de fungos/insetos, pesquisa, deduplicação e cada vínculo cultura × alvo × produto. A interface foi conferida em viewport móvel: busca de buva, consulta da ficha, inclusão e remoção do alvo de teste; busca de MUG e seleção no calculador. SW v30 inclui os novos scripts e índice, preservando caches dos outros apps.
