@@ -1120,6 +1120,7 @@ function preencherModelos(sel) {
 }
 function preencherIso(sel) {
   const p = PT.PONTA_MAP[$('#pPonta').value];
+  if ($('#pIsoTitulo')) $('#pIsoTitulo').textContent = p && p.escalaPropria ? 'Tamanho (numeração do fabricante)' : 'Tamanho (cor ISO)';
   const sizes = p ? PT.tamanhosDaPonta(p) : PT.ISO.map(i => i.id);
   const tab = p ? PT.tabelaDaPonta(p) : null;
   const pRef = p ? PT.pressaoReferencia(p) : 3;
