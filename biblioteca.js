@@ -60,7 +60,9 @@
     });
     return [...map.values()].map(d => {
       d.nome = d.perfil ? d.perfil.nome : (d.nomes[0] || d.cientifico);
-      d.busca = norm([d.nome, d.cientifico, ...d.nomes].join(' '));
+      d.grupo = /^amaranthus\s/.test(d.id) ? 'Caruru' : '';
+      if (d.grupo && !norm(d.nome).includes('caruru')) d.nome = 'Caruru · ' + d.nome;
+      d.busca = norm([d.nome, d.grupo, d.cientifico, ...d.nomes].join(' '));
       return d;
     }).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   }
@@ -90,5 +92,11 @@
     const termos = norm(consulta).split(' ').filter(Boolean);
     return lista.filter(p => termos.every(t => norm([p.modelo, p.tipo || '', p.pagina || ''].join(' ')).includes(t)));
   }
-  return { norm, PERFIS, ORIENTACOES, EMBRAPA, AGROFIT, identidade, montarDaninhas, buscarDaninhas, controles, alvoNaCultura, buscarMagnojet };
+  function nomeDeAlvo(texto) {
+    const i = identidade(texto), id = norm(i.cientifico), p = PERFIL_MAP[id];
+    const usual = /^amaranthus\s/.test(id) ? (p ? p.nome : 'Caruru') : p && p.nome;
+    if (!usual || norm(i.popular).includes(norm(usual))) return texto;
+    return `${usual} / ${i.popular} (${i.cientifico})`;
+  }
+  return { norm, PERFIS, ORIENTACOES, EMBRAPA, AGROFIT, identidade, montarDaninhas, buscarDaninhas, controles, alvoNaCultura, buscarMagnojet, nomeDeAlvo };
 });

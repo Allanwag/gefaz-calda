@@ -325,6 +325,32 @@
       '04': [1.33, 1.53, 1.72, 1.88, 2.03, 2.17]
     }
   };
+  const TAB_MJ_TMIA = {
+    fonte: 'Catálogo oficial Magnojet BR41 digital V4, p. 46 (TM-IA), conferido em 22/10/2026',
+    pressoes: [2.07, 2.76, 3.45, 4.14, 4.83, 5.52, 6.21],
+    valores: {
+      '0.5': [0.33, 0.38, 0.42, 0.46, 0.50, 0.53, 0.56],
+      '0.75': [0.50, 0.58, 0.64, 0.70, 0.76, 0.81, 0.86],
+      '1': [0.66, 0.76, 0.85, 0.93, 1.01, 1.08, 1.14],
+      '1.5': [1.00, 1.15, 1.29, 1.41, 1.52, 1.63, 1.73],
+      '2': [1.32, 1.53, 1.71, 1.87, 2.02, 2.16, 2.29],
+      '2.5': [1.65, 1.90, 2.13, 2.33, 2.52, 2.69, 2.85],
+      '3': [1.97, 2.28, 2.55, 2.79, 3.01, 3.22, 3.42],
+      '4': [2.64, 3.05, 3.41, 3.74, 4.04, 4.32, 4.58],
+      '5': [3.25, 3.76, 4.20, 4.60, 4.97, 5.31, 5.64]
+    }
+  };
+  const GOTAS_MJ_TMIA = Object.fromEntries(Object.entries({
+    '0.5': ['UG', 'EG', 'EG', 'MG', 'MG', 'MG', 'MG'],
+    '0.75': ['UG', 'EG', 'EG', 'MG', 'MG', 'MG', 'MG'],
+    '1': ['UG', 'EG', 'EG', 'MG', 'MG', 'MG', 'MG'],
+    '1.5': ['EG', 'EG', 'EG', 'EG', 'EG', 'MG', 'MG'],
+    '2': ['UG', 'UG', 'EG', 'EG', 'EG', 'EG', 'MG'],
+    '2.5': ['UG', 'UG', 'UG', 'EG', 'EG', 'EG', 'EG'],
+    '3': ['UG', 'UG', 'EG', 'EG', 'EG', 'EG', 'MG'],
+    '4': ['UG', 'UG', 'EG', 'EG', 'EG', 'EG', 'MG'],
+    '5': ['UG', 'EG', 'EG', 'MG', 'MG', 'G', 'G']
+  }).map(([s, gotas]) => [s, Object.fromEntries(TAB_MJ_TMIA.pressoes.map((p, i) => [p, gotas[i]]))]));
   const TAB_MJ_MAG = {         // cone vazio cerâmico, escala própria, 60–150 PSI
     fonte: 'Catálogo Magnojet 2025, p. 54 (MAG)',
     pressoes: [4.14, 4.83, 5.52, 6.21, 6.89, 7.58, 8.27, 8.96, 9.65, 10.34],
@@ -462,6 +488,14 @@
       fonte: 'Catálogo TeeJet Brasil (p. 81)'
     },
     /* ── Magnojet ── */
+    {
+      id: 'mj-tm-ia', marca: 'Magnojet', modelo: 'TM-IA (Turbo Magno com indução de ar)', tipo: 'leque-defletor', angulos: [150],
+      sizes: ['0.5', '0.75', '1', '1.5', '2', '2.5', '3', '4', '5'], escalaPropria: true,
+      pressao: [2.07, 6.21], material: 'Cerâmica', vazaoTabela: TAB_MJ_TMIA, gotasPorTamanho: GOTAS_MJ_TMIA,
+      usos: ['herbicida-sistemico', 'pre-emergente', 'herbicida-cafe'],
+      nota: 'Defletor de 150° com indução de ar. Numeração própria de 0,5 a 5: use a tabela, sem converter para tamanho ISO. Vazão e classe de gota conferidas por tamanho e pressão na ficha oficial. A linha TMJ 7,5 da mesma página não foi tratada como TM-IA.',
+      fonte: TAB_MJ_TMIA.fonte
+    },
     {
       id: 'mj-ad', marca: 'Magnojet', modelo: 'AD (leque antideriva com pré-orifício)', tipo: 'leque-pre-orificio', angulos: [110],
       sizes: ['01', '015', '02', '025', '03', '04', '05'], pressao: [1.03, 4.14], material: 'Cerâmica 99 % alumina', vazaoTabela: TAB_MJ_AD,

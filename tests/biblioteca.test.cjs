@@ -23,6 +23,10 @@ test('pesquisa encontra nome original, nome usual, científico e termos sem acen
   assert.equal(B.buscarDaninhas(lista, 'amargoso digitaria')[0].cientifico, 'Digitaria insularis');
   assert.equal(B.buscarDaninhas(lista, 'fura-capa')[0].cientifico, 'Bidens pilosa');
   assert.equal(B.buscarDaninhas(lista, 'tiririca')[0].cientifico, 'Cyperus rotundus');
+  assert.equal(B.buscarDaninhas(lista, 'capim pé de galinha')[0].cientifico, 'Eleusine indica');
+  const carurus = lista.filter(d => /^Amaranthus\s/i.test(d.cientifico));
+  assert.ok(carurus.length >= 5);
+  assert.deepEqual(B.buscarDaninhas(lista, 'caruru').map(d => d.id).sort(), carurus.map(d => d.id).sort());
   assert.ok(B.buscarDaninhas(lista, 'picao preto').length);
   assert.equal(B.buscarDaninhas(lista, 'inexistente-xxx').length, 0);
 });
@@ -68,7 +72,16 @@ test('índice Magnojet cobre as 51 entradas, mantém páginas e só liga calcula
     assert.ok(p.pagina >= 18 && p.pagina <= mj.paginasPDF);
     if (p.calculador) assert.equal(P.PONTA_MAP[p.calculador].marca, 'Magnojet');
   });
-  assert.equal(mj.modelos.filter(p => p.calculador).length, 8);
+  assert.equal(mj.modelos.filter(p => p.calculador).length, 9);
   assert.equal(B.buscarMagnojet(mj.modelos, 'solido').length, 4);
   assert.equal(B.buscarMagnojet(mj.modelos, 'MGA 40')[0].pagina, 64);
+});
+
+test('nomes usuais entram nos alvos da calda sem perder a identidade do registro', () => {
+  for (const texto of ['bredo (1) (Amaranthus viridis)', 'capim-da-cidade (2) (Eleusine indica)']) {
+    const nome = B.nomeDeAlvo(texto);
+    assert.ok(E.alvoCombina(nome, texto));
+    assert.match(nome, /Caruru|Capim-pé-de-galinha/);
+    assert.equal(B.identidade(nome).cientifico, B.identidade(texto).cientifico);
+  }
 });

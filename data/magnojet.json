@@ -32,7 +32,7 @@
     {"modelo":"ST-IA","pagina":43,"tipo":"Jato plano"},
     {"modelo":"ST-IA/D","pagina":44,"tipo":"Plano duplo"},
     {"modelo":"MD-IA/D","pagina":45,"tipo":"Plano duplo"},
-    {"modelo":"TM-IA","pagina":46,"tipo":"Plano defletido"},
+    {"modelo":"TM-IA","pagina":46,"tipo":"Plano defletido","calculador":"mj-tm-ia"},
     {"modelo":"MDC","pagina":47,"tipo":"Plano defletido"},
     {"modelo":"MJC","pagina":48,"tipo":"Plano defletido"},
     {"modelo":"MJE","pagina":49,"tipo":"Jato estendido"},

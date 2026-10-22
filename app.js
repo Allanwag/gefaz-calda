@@ -233,6 +233,7 @@ function atualizarListasCultura() {
   const opts = arr => arr.map(x => `<option value="${esc(x)}">`).join('');
   if (AGRO && !catAlvoAgro) catAlvoAgro = E.classificarAlvos(AGRO);
   alvosCat = E.alvosDaCultura(AGRO, catAlvoAgro, cultura, lista);
+  if (window.GCBiblioteca) alvosCat.daninha = alvosCat.daninha.map(window.GCBiblioteca.nomeDeAlvo);
   CATS_ALVO.forEach(c => { const dl = $('#dl-' + c.id); if (dl) dl.innerHTML = opts(alvosCat[c.id]); });
   $('#dlEstadios').innerHTML = opts(lista.estadios);
   if ($('#alvosGrid').children.length) renderAlvos();
@@ -1280,7 +1281,7 @@ function renderCatalogoPontas(q) {
       <small>${esc(TIPO_PONTA[p.tipo] || p.tipo)} · ${p.angulos.join('°/')}° · ${p.pressao[0]}–${p.pressao[1]} bar · ${esc(p.material)}</small>
       <small>Tamanhos: ${PT.tamanhosDaPonta(p).map(s => acha(p, s) ? `<b>${esc(s)}</b>` : esc(s)).join(', ')}${p.escalaPropria ? ' (escala de cores do fabricante, não ISO)' : ''}${p.vazaoTabela ? ` · <span class="tag reg">tabela de vazão do fabricante, ${p.vazaoTabela.pressoes[0]}–${p.vazaoTabela.pressoes[p.vazaoTabela.pressoes.length - 1]} bar</span>` : ''}</small>
       <small>${esc(p.nota)}</small>
-      <small class="muted">Gota: ${p.gotasPorBar ? Object.entries(p.gotasPorBar).map(([b, g]) => `${b} bar → ${PT.GOTA_MAP[g].nome.toLowerCase()}`).join(' · ') : (p.gotasFaixa || []).map(g => PT.GOTA_MAP[g].nome.toLowerCase()).join(' a ') + ' (faixa do catálogo)'} · Fonte: ${esc(p.fonte)}</small>
+      <small class="muted">Gota: ${p.gotasPorTamanho ? 'classe por tamanho e pressão, disponível na tabela cruzada' : p.gotasPorBar ? Object.entries(p.gotasPorBar).map(([b, g]) => `${b} bar → ${PT.GOTA_MAP[g].nome.toLowerCase()}`).join(' · ') : (p.gotasFaixa || []).map(g => PT.GOTA_MAP[g].nome.toLowerCase()).join(' a ') + ' (faixa do catálogo)'} · Fonte: ${esc(p.fonte)}</small>
     </div><div class="acts"><button class="btn sm ghost" data-ponta="${esc(p.id)}"${exatas[p.id] && exatas[p.id][0] ? ` data-tam="${esc(exatas[p.id][0].tamanho)}" data-ang="${exatas[p.id][0].angulo}"` : ''}>Usar${exatas[p.id] && exatas[p.id][0] ? ' ' + esc(exatas[p.id][0].tamanho) : ''}</button></div></div>`).join('') || '<div class="small muted">Nada encontrado. Dá para cadastrar em Ponta → ＋ Minha ponta.</div>';
   $$('#listaPontas [data-ponta]').forEach(b => b.onclick = () => {
     const p = PT.PONTA_MAP[b.dataset.ponta];

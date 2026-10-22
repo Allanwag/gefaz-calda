@@ -3,6 +3,23 @@ const test = require('node:test');
 const assert = require('node:assert');
 const P = require('../pontas.js');
 
+test('TM-IA é encontrada nas buscas e usa a tabela própria, sem confundir com ISO ou TMJ', () => {
+  assert.equal(P.buscarPontas('tm-ia')[0].ponta, 'mj-tm-ia');
+  const r = P.buscarPontas('TM-IA 0,75')[0];
+  assert.equal(r.tamanho, '0.75');
+  assert.equal(P.tamanhosDaPonta(P.PONTA_MAP['mj-tm-ia']).length, 9);
+  assert.ok(!P.tamanhosDaPonta(P.PONTA_MAP['mj-tm-ia']).includes('7.5'));
+  assert.equal(P.vazaoDaPonta('mj-tm-ia', '0.5', 2.07), 0.33);
+  assert.equal(P.vazaoDaPonta('mj-tm-ia', '1.5', 4.14), 1.41);
+  assert.equal(P.vazaoDaPonta('mj-tm-ia', '5', 6.21), 5.64);
+  assert.equal(P.classeGota('mj-tm-ia', 6.21, '5').id, 'G');
+  assert.equal(P.classeGota('mj-tm-ia', 6.21, '2').id, 'MG');
+  assert.equal(P.classeGota('mj-tm-ia', 2.07, '1.5').id, 'EG');
+  const reg = P.calcular({ modo: 'area', volumeHa: 100, velocidade: 9, espacamento: 0.8, nBicos: 4, ponta: 'mj-tm-ia', iso: '1.5', alvo: 'herbicida-sistemico' });
+  assert.ok(reg.pressao > 2.76 && reg.pressao < 3.45);
+  assert.ok(Math.abs(reg.vazaoPorBico - 1.2) < 0.01);
+});
+
 const perto = (a, b, tol = 0.02) => assert.ok(Math.abs(a - b) <= tol, `${a} ≠ ${b} (tolerância ${tol})`);
 
 test('vazão segue a ISO 10625 e a lei da raiz quadrada', () => {
@@ -140,8 +157,13 @@ test('catálogo é consistente', () => {
       });
     }
     Object.values(p.gotasPorBar || {}).forEach(g => assert.ok(classes.includes(g), `classe inválida em ${p.id}`));
+    Object.entries(p.gotasPorTamanho || {}).forEach(([s, mapa]) => {
+      assert.ok(p.sizes.includes(s), `matriz de gotas para tamanho desconhecido em ${p.id}`);
+      Object.values(mapa).forEach(g => assert.ok(classes.includes(g), `classe inválida em ${p.id} ${s}`));
+      assert.equal(Object.keys(mapa).length, p.vazaoTabela.pressoes.length);
+    });
     (p.gotasFaixa || []).forEach(g => assert.ok(classes.includes(g), `classe inválida em ${p.id}`));
-    assert.ok(p.gotasPorBar || p.gotasFaixa, `${p.id} sem informação de gota`);
+    assert.ok(p.gotasPorBar || p.gotasFaixa || p.gotasPorTamanho, `${p.id} sem informação de gota`);
   });
 });
 
