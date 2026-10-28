@@ -217,7 +217,20 @@ atrasadas. *📅 Exportar agenda (.ics)* leva tarefas, reentrada, próxima aplic
 
 **Laudo.** Além do que já havia: classe toxicológica do registro no MAPA por produto com aviso de EPI (categorias 1 e 2 em
 destaque), reentrada com data e hora, laudo resumido de uma página, e o *Caderno de campo* por talhão (aplicações com doses,
-lotes, quem aplicou, receituário, RT, datas liberadas e custo) para imprimir ou abrir no Excel. O talhão guarda entrelinhas,
+lotes, quem aplicou, receituário, RT, datas liberadas e custo) para imprimir ou abrir no Excel.
+
+**Tamanho dos relatórios (27/10/2026).** O *🖨️ Laudo resumido* é um bloco próprio (`laudoResumoHTML`) que cabe numa
+folha A4: veredito, alertas críticos e de restrição com a conduta (os baixos e informativos só pelo título), uma tabela de
+preparo na ordem de adição com dose/ha, quantidade por carga cheia, última carga, total e lote, regulagem numa linha,
+reentrada/próxima aplicação/colheita com o limitante e o que trava a aplicação (dentro do intervalo, acima do máximo),
+registro MAPA só com o que falta, rastreabilidade, checklist em duas colunas e assinaturas. Matriz de pares, custos,
+fontes e histórico do talhão ficam no laudo completo e no JSON, que levam o mesmo código de conferência. No laudo completo
+(tela e papel) os alertas são um cartão só, a ordem de adição omite os passos sem produto desta calda (como o JSON já
+fazia), reentrada, próxima aplicação, colheita e aplicações por ciclo viraram o cartão *Prazos da bula* com uma linha por
+produto, o cartão "regulagem não anexada" saiu (o alerta operacional diz o mesmo) e, no papel, só abre o texto do código
+de conferência — as equações da regulagem saem na *🖨️ Ficha de regulagem*, que agora imprime só o resultado da aba Pontas
+(e a calibração, se houver), sem o formulário e o catálogo de pontas. Com uma calda de 5 produtos: completo de ~8,3 para
+~6,4 páginas, resumido de ~6,2 para menos de 1, ficha de regulagem de ~10 para ~1,7. O talhão guarda entrelinhas,
 faixa, equipamento e regulagem padrão (a aba Pontas já vem preenchida ao marcá-lo) e mostra o custo de defensivos do ciclo.
 O app avisa quando faz dias sem backup e quando há versão nova.
 

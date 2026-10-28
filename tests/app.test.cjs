@@ -100,3 +100,55 @@ test('banco antigo ou backup sem Meus produtos ganha a lista; lixo na lista não
   assert.equal(a.run('Array.isArray(DB.meusProdutos) && DB.meusProdutos.length'), 0);
   assert.equal(a.run('defaultDB().meusProdutos.length'), 0);
 });
+
+test('laudo resumido: veredito, preparo com dose por carga e lote, prazos e assinaturas numa folha', () => {
+  const a = app();
+  a.run("Object.assign(calda.itens[0], { reentrada: 4, intervalo: 15, carencia: 0 })");
+  a.element('#fTermino').value = '2026-10-27T10:30';
+  a.element('#fOperador').value = 'João';
+  a.run('analisar(true)');
+  const html = a.run('laudoResumoHTML(resultado)');
+  assert.match(html, new RegExp(a.run('resultado.rastreio.codigo')));
+  assert.match(html, /Wetcit/); assert.match(html, /L001/);
+  assert.match(html, /Carga cheia/); // tanque de 2000 L informado
+  assert.match(html, /Reentrada: <b>27\/10\/2026 14:30/);
+  assert.match(html, /Próxima aplicação: <b>11\/11\/2026/);
+  assert.match(html, /Checklist pré-saída/); assert.match(html, /assinaturas/); assert.match(html, /João/);
+  assert.doesNotMatch(html, /Fonte:/); // fonte e detalhe de cada alerta ficam no laudo completo
+});
+
+test('laudo resumido sem tanque não mostra colunas de carga e avisa lote não anotado', () => {
+  const a = app();
+  a.element('#fTanque').value = '0';
+  a.run("calda.itens[0].lote = ''; analisar(true)");
+  const html = a.run('laudoResumoHTML(resultado)');
+  assert.doesNotMatch(html, /Carga cheia/);
+  assert.match(html, /não anotado/);
+});
+
+function prazosDe(r) { const a = app(); a.run('var rr = ' + JSON.stringify(r)); return a.run('blocoPrazos(rr)'); }
+
+test('prazos num cartão só: uma linha por produto e "acima do máximo" uma vez', () => {
+  const html = prazosDe({
+    reentrada: { liberadoEm: '2026-10-28T10:30', limitante: 'A', origemBase: 'termino', base: '2026-10-27T10:30', linhas: [{ nome: 'A', horas: 24, liberadoEm: '2026-10-28T10:30' }], semReentrada: ['B'] },
+    proximaAplicacao: { liberadoEm: '2026-11-17', limitante: 'B', origemBase: 'termino', base: '2026-10-27', linhas: [{ nome: 'A', intervalo: 14, liberadoEm: '2026-11-10' }, { nome: 'B', intervalo: 21, liberadoEm: '2026-11-17' }], semIntervalo: [], conflitos: [] },
+    colheitaLiberada: { liberadoEm: '2026-11-26', limitante: 'A', origemBase: 'termino', base: '2026-10-27', linhas: [{ nome: 'A', carencia: 30, liberadoEm: '2026-11-26' }, { nome: 'B', carencia: 0, liberadoEm: '2026-10-27' }], semCarencia: [], talhoes: [] },
+    aplicacoesCiclo: { linhas: [{ nome: 'B', talhao: 'T3', cicloInicio: '2026-09-01', feitas: 2, comEsta: 3, max: 2, situacao: 'excedido' }], excedidos: [{ nome: 'B', talhao: 'T3', comEsta: 3, max: 2 }], ultimas: [], semLimite: ['A'], semTalhao: false }
+  });
+  assert.equal((html.match(/<h2>/g) || []).length, 1);
+  assert.equal((html.match(/<tr><td>[AB]<\/td>/g) || []).length, 2);
+  assert.equal((html.match(/Acima do máximo de aplicações/g) || []).length, 1);
+  assert.match(html, /24 h → 28\/10\/2026 10:30/); assert.match(html, /sem carência/);
+  assert.match(html, /<b>reentrada:<\/b> B/); assert.match(html, /<b>máximo por ciclo:<\/b> A/);
+});
+
+test('prazos sem nada informado viram um aviso só, sem tabela', () => {
+  const html = prazosDe({
+    reentrada: { liberadoEm: null, linhas: [], semReentrada: ['A'] },
+    proximaAplicacao: { liberadoEm: null, linhas: [], semIntervalo: ['A'], conflitos: [] },
+    colheitaLiberada: { liberadoEm: null, linhas: [], semCarencia: ['A'], talhoes: [] },
+    aplicacoesCiclo: { linhas: [], excedidos: [], ultimas: [], semLimite: ['A'] }
+  });
+  assert.match(html, /Sem prazos: nada informado/);
+  assert.doesNotMatch(html, /<table/);
+});

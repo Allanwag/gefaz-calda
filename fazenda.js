@@ -210,7 +210,7 @@ function initFazenda() {
   initFicha(); initCaderno();
   initEstoqueUI(); initMetasUI(); initProdutosUI();
   vigiarNovaVersao();
-  window.addEventListener('afterprint', () => document.body.classList.remove('print-resumido'));
+  window.addEventListener('afterprint', () => document.body.classList.remove('print-resumido', 'print-regulagem'));
   $('#btnBackup').onclick = exportarBackup;
   const b2 = $('#btnBackup2'); if (b2) b2.onclick = exportarBackup;
   const dias = $('#cfgBackupDias');

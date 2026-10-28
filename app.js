@@ -657,7 +657,9 @@ function analisar(silencioso, registrarHistorico = true) {
   if (!silencioso) navTo('resultado');
   return resultado;
 }
-function resumoExport() { if (!resultado) return null; const r = resultado; return { status: r.status, resumo: r.resumo, score: r.score, regulagem: r.regulagem, rastreio: r.rastreio, confianca: r.confianca, alertas: r.alertas, ph: r.ph, ordem: r.ordem.filter(p => p.itens.length || p.passo <= 2 || p.passo >= 11), custo: r.custo, tanque: r.tanque, checklist: r.checklist, registro: r.registro, jarTest: r.jarTest, data: r.data, contexto: r.contexto, historicoTalhoes: r.historicoTalhoes || [], proximaAplicacao: r.proximaAplicacao || null, colheitaLiberada: r.colheitaLiberada || null, aplicacoesCiclo: r.aplicacoesCiclo || null, reentrada: r.reentrada || null, versao: E.versao }; }
+/* passos sem produto desta calda saem do laudo; abrir/agitar (1–2) e completar/medir (11–12) ficam sempre */
+const ordemDoLaudo = r => r.ordem.filter(p => p.itens.length || p.passo <= 2 || p.passo >= 11);
+function resumoExport() { if (!resultado) return null; const r = resultado; return { status: r.status, resumo: r.resumo, score: r.score, regulagem: r.regulagem, rastreio: r.rastreio, confianca: r.confianca, alertas: r.alertas, ph: r.ph, ordem: ordemDoLaudo(r), custo: r.custo, tanque: r.tanque, checklist: r.checklist, registro: r.registro, jarTest: r.jarTest, data: r.data, contexto: r.contexto, historicoTalhoes: r.historicoTalhoes || [], proximaAplicacao: r.proximaAplicacao || null, colheitaLiberada: r.colheitaLiberada || null, aplicacoesCiclo: r.aplicacoesCiclo || null, reentrada: r.reentrada || null, versao: E.versao }; }
 
 const TIPO_LABEL = { legal: 'Registro / legal', quimica: 'Química', fisica: 'Física', agronomica: 'Agronômica', biologica: 'Biológica', ph: 'pH', agua: 'Água', resistencia: 'Resistência (MoA)', operacional: 'Operacional' };
 const STATUS_LABEL = { compativel: 'Compatível', restricoes: 'Compatível com restrições', incompativel: 'Incompatível', testar: 'Não testado — jar test', 'nao-testado': 'Não testado', atencao: 'Atenção' };
@@ -678,25 +680,24 @@ function renderResultado() {
     <div class="kpi"><b>${r.resumo.contagem.alta}</b><small>críticos</small></div><div class="kpi"><b>${r.resumo.contagem.media}</b><small>restrições</small></div><div class="kpi"><b>${Math.round(r.confianca * 100)} %</b><small>confiança</small></div>
     <div class="kpi"><b>${BRL(r.custo.totalHa)}</b><small>custo total/ha</small></div><div class="kpi"><b>${r.jarTest.obrigatorio ? 'Sim' : 'Recomendado'}</b><small>jar test</small></div></div>
     <div class="row-btns"><button class="btn primary" id="btnPrint">🖨️ Laudo completo</button><button class="btn" id="btnPrintRes" title="Uma página: veredito, alertas, ordem de mistura, datas e assinaturas">🖨️ Laudo resumido</button><button class="btn" id="btnJar">🫙 Jar test</button><button class="btn ghost" id="btnExpLaudo">⬇️ JSON do laudo</button><button class="btn ghost" id="btnAgenda" title="Datas do laudo (próxima aplicação, reentrada, colheita) para o calendário">📅 Agenda (.ics)</button><button class="btn ghost" id="btnExpReceita">⬇️ Receita (PVGest/Gefaz360)</button><button class="btn ghost" id="btnEnvPV">📤 PVGest (este navegador)</button><button class="btn ghost" id="btnEnvG360">📤 Gefaz360 (este navegador)</button><button class="btn ghost" id="btnEnvCodex">📤 Codex (atividade)</button></div></div>
-  ${ordemTipos.filter(t => porTipo[t]).map(t => `<div class="card"><div class="card-hd"><h2>${esc(TIPO_LABEL[t])}</h2><span class="hint">${porTipo[t].length} alerta(s)</span></div>${porTipo[t].map(a => `<div class="al ${a.severidade}"><div class="t"><span>${esc(a.titulo)}</span><span><span class="sev ${a.severidade}">${a.severidade}</span> <span class="conf">C ${a.confianca.toFixed(2)}</span></span></div><div class="d">${esc(a.detalhe)}${a.paresTexto ? ` <i>(${esc(a.paresTexto)})</i>` : a.nomes ? ` <i>(${esc(a.nomes.join(' × '))})</i>` : ''}</div><div class="c">→ ${esc(a.conduta)}</div><div class="f">Fonte: ${esc(a.fonte)}${a.regra ? ' · ' + a.regra : ''}</div></div>`).join('')}</div>`).join('')}
-  ${!alertasVis.length ? '<div class="card"><div class="al info"><div class="t">Nenhum alerta gerado</div><div class="d">Todos os produtos foram reconhecidos e não há regra de incompatibilidade registrada entre eles. Isso não substitui o jar test.</div></div></div>' : ''}
+  ${alertasVis.length ? `<div class="card alertas"><div class="card-hd"><h2>Alertas</h2><span class="hint">${alertasVis.length} no total</span></div>${ordemTipos.filter(t => porTipo[t]).map(t => `<div class="sub-hd">${esc(TIPO_LABEL[t])} <span class="hint">${porTipo[t].length}</span></div>${porTipo[t].map(a => `<div class="al ${a.severidade}"><div class="t"><span>${esc(a.titulo)}</span><span><span class="sev ${a.severidade}">${a.severidade}</span> <span class="conf">C ${a.confianca.toFixed(2)}</span></span></div><div class="d">${esc(a.detalhe)}${a.paresTexto ? ` <i>(${esc(a.paresTexto)})</i>` : a.nomes ? ` <i>(${esc(a.nomes.join(' × '))})</i>` : ''}</div><div class="c">→ ${esc(a.conduta)}</div><div class="f">Fonte: ${esc(a.fonte)}${a.regra ? ' · ' + a.regra : ''}</div></div>`).join('')}`).join('')}</div>`
+    : '<div class="card"><div class="al info"><div class="t">Nenhum alerta gerado</div><div class="d">Todos os produtos foram reconhecidos e não há regra de incompatibilidade registrada entre eles. Isso não substitui o jar test.</div></div></div>'}
   <div class="card so-completo"><div class="card-hd"><h2>pH da calda</h2></div>${phBar}<div class="small muted" style="margin-top:6px">${r.ph.itensSensiveis.map(i => `${esc(i.nome)}: ${i.ph[0]}–${i.ph[1]}`).join(' · ')}</div></div>
   <div class="card so-completo"><div class="card-hd"><h2>Matriz de pares</h2><span class="hint">como no Koppert / Yara: cada par tem um veredito</span></div><div class="matrix">${matrizHTML(r)}</div><div class="legend"><span><i style="background:#c8e6c9"></i>compatível</span><span><i style="background:#bbdefb"></i>atenção</span><span><i style="background:#ffe082"></i>restrições</span><span><i style="background:#ef9a9a"></i>incompatível</span><span><i style="background:#eee"></i>não testado</span></div></div>
-  <div class="card"><div class="card-hd"><h2>Ordem de adição</h2><span class="hint">Embrapa Doc. 437 (formulação)${DB.config.acidificanteUltimo ? ' · regra da fazenda ativa' : ''}</span></div><ol class="steps">${r.ordem.map(p => `<li><div class="n ${p.itens.length ? 'has' : ''}">${p.passo}</div><div><div class="ti">${esc(p.titulo)}</div>${p.nota ? `<div class="no">${esc(p.nota)}</div>` : ''}${p.itens.length ? `<div class="pr">${p.itens.map(i => `<span>${esc(i.nome)}${i.formulacao ? ' <b>' + esc(i.formulacao) + '</b>' : ''}${i.notas.length ? '<small>' + i.notas.map(esc).join(' ') + '</small>' : ''}</span>`).join('')}</div>` : ''}</div></li>`).join('')}</ol></div>
+  <div class="card"><div class="card-hd"><h2>Ordem de adição</h2><span class="hint">Embrapa Doc. 437 (formulação)${DB.config.acidificanteUltimo ? ' · regra da fazenda ativa' : ''}</span></div><ol class="steps">${ordemDoLaudo(r).map(p => `<li><div class="n ${p.itens.length ? 'has' : ''}">${p.passo}</div><div><div class="ti">${esc(p.titulo)}</div>${p.nota ? `<div class="no">${esc(p.nota)}</div>` : ''}${p.itens.length ? `<div class="pr">${p.itens.map(i => `<span>${esc(i.nome)}${i.formulacao ? ' <b>' + esc(i.formulacao) + '</b>' : ''}${i.notas.length ? '<small>' + i.notas.map(esc).join(' ') + '</small>' : ''}</span>`).join('')}</div>` : ''}</div></li>`).join('')}</ol></div>
   <div class="card so-completo"><div class="card-hd"><h2>Custo por hectare</h2><span class="hint">produto + operação (${esc((KB.equipamentos[ctx.equipamento] || {}).nome || '')})</span></div><table class="tb"><thead><tr><th>Produto</th><th class="num">Dose/ha</th><th class="num">Preço</th><th class="num">R$/ha</th></tr></thead><tbody>${r.custo.porItem.map(i => `<tr><td>${esc(i.nome)}</td><td class="num">${fmt(i.dosePorHa, 3)} ${i.base}</td><td class="num">${i.semPreco ? '<span class="tag noreg">sem preço</span>' : BRL(i.preco) + '/' + i.base}</td><td class="num">${BRL(i.custoHa)}</td></tr>`).join('')}</tbody><tfoot><tr><td colspan="3">Produtos</td><td class="num">${BRL(r.custo.produtosHa)}</td></tr><tr><td colspan="3">Operação (${esc(ctx.equipamento)})</td><td class="num">${BRL(r.custo.operacionalHa)}</td></tr><tr><td colspan="3">Total/ha</td><td class="num">${BRL(r.custo.totalHa)}</td></tr><tr><td colspan="3">Total para ${fmt(ctx.area, 1)} ha</td><td class="num">${BRL(r.custo.totalArea)}</td></tr></tfoot></table>${r.custo.semPreco.length ? `<div class="small muted">Sem preço: ${esc(r.custo.semPreco.join(', '))} — importe o estoque do PVGest/Gefaz360 ou informe no item.</div>` : ''}</div>
   ${r.tanque ? `<div class="card"><div class="card-hd"><h2>Ficha de tanque</h2><span class="hint">${r.tanque.tanque} L · ${fmt(r.tanque.haPorCarga, 2)} ha por carga</span></div><div class="kpis"><div class="kpi"><b>${fmt(r.tanque.volumeTotal)}</b><small>L de calda</small></div><div class="kpi"><b>${r.tanque.cargasCheias}</b><small>cargas cheias</small></div><div class="kpi"><b>${fmt(r.tanque.ultimaCarga)}</b><small>L na última carga</small></div></div><table class="tb"><thead><tr><th>Produto (ordem)</th><th class="num">Por carga cheia</th><th class="num">Última carga</th><th class="num">Total</th></tr></thead><tbody>${r.tanque.porCargaCheia.map((i, k) => `<tr><td>${k + 1}. ${esc(i.nome)}</td><td class="num">${fmt(i.qtd, 3)} ${i.unidade}</td><td class="num">${r.tanque.ultimaCargaItens[k] ? fmt(r.tanque.ultimaCargaItens[k].qtd, 3) + ' ' + i.unidade : '—'}</td><td class="num">${fmt(r.tanque.totalPorProduto[k].qtd, 2)} ${i.unidade}</td></tr>`).join('')}</tbody></table></div>` : ''}
   <div class="card"><div class="card-hd"><h2>Registro MAPA (Agrofit)</h2></div><table class="tb"><thead><tr><th>Produto</th><th>${esc(ctx.cultura)}</th><th>Alvo</th><th>Classe toxicológica</th></tr></thead><tbody>${r.registro.map(g => `<tr><td>${esc(g.nome)}</td><td>${g.registrado === null ? '<span class="tag">não verificado</span>' : g.registrado ? '<span class="tag reg">registrado</span>' : '<span class="tag noreg">sem registro</span>'}</td><td>${g.alvoOk === null ? (g.alvos.length ? `<small>${esc(g.alvos.slice(0, 4).join('; '))}${g.alvos.length > 4 ? '…' : ''}</small>` : '—') : g.alvoOk ? '<span class="tag reg">alvo na bula</span>' : '<span class="tag noreg">alvo não consta</span>'}</td><td>${tagTox(r.itens.find(i => i.id === g.id))}</td></tr>`).join('')}</tbody></table>${blocoEPI(r)}</div>
   ${blocoRegulagem(r)}
   ${blocoTalhao(r)}
-  ${blocoProxima(r)}
-  ${blocoReentrada(r)}
-  ${blocoColheita(r)}
-  ${blocoCiclo(r)}
+  ${blocoPrazos(r)}
   ${blocoRastreio(r)}
   <div class="card"><div class="card-hd"><h2>Checklist pré-saída</h2></div><ul class="check-list">${r.checklist.map(c => `<li><input type="checkbox"><span>${esc(c)}</span></li>`).join('')}</ul></div>
   ${ctx.obs ? `<div class="card"><div class="card-hd"><h2>Observações</h2></div><p>${esc(ctx.obs)}</p></div>` : ''}
-  <div class="card small muted">Apoio à decisão técnica. Não substitui bula, receituário agronômico (IN 40/2018) nem o jar test. Confiança abaixo de 0,70 é indicativa.</div>`;
-  $('#btnPrint').onclick = () => { document.body.classList.remove('print-resumido'); $$('#resultado details').forEach(d => { d.open = true; }); window.print(); };
+  <div class="card small muted">Apoio à decisão técnica. Não substitui bula, receituário agronômico (IN 40/2018) nem o jar test. Confiança abaixo de 0,70 é indicativa.</div>
+  ${laudoResumoHTML(r)}`;
+  // no papel abre só o texto do código (é o que confere o impresso); as equações da regulagem saem na ficha de regulagem
+  $('#btnPrint').onclick = () => { document.body.classList.remove('print-resumido'); $$('#resultado details.abre-no-papel').forEach(d => { d.open = true; }); window.print(); };
   $('#btnPrintRes').onclick = () => { document.body.classList.add('print-resumido'); window.print(); };
   $('#btnJar').onclick = () => navTo('jar');
   $('#btnAgenda').onclick = () => exportarAgendaDoLaudo();
@@ -726,7 +727,7 @@ function blocoEPI(r) {
 }
 function blocoRegulagem(r) {
   const g = r.regulagem;
-  if (!g) return `<div class="card"><div class="card-hd"><h2>Regulagem aplicada</h2><span class="hint">não anexada</span></div><div class="al baixa"><div class="t"><span>Este laudo não registra a regulagem</span></div><div class="d">A dose por hectare só se cumpre se a barra entregar o volume de calda para o qual ela foi calculada.</div><div class="c">→ Calcule na aba <b>Pontas</b> e anexe em <b>3 · Rastreabilidade</b>.</div></div></div>`;
+  if (!g) return ''; // o alerta operacional "Laudo sem regulagem anexada" já diz isso e o que fazer
   const p = g.ponta, c = g.clima, cal = g.calibracao;
   const conf = g.desvio == null ? '' : Math.abs(g.desvio) <= 5
     ? `<div class="al info"><div class="t"><span>Volume confere</span></div><div class="d">A regulagem entrega ${fmt(g.volumeEntregue, 0)} L/ha e as doses foram calculadas para ${fmt(g.volumeDosado, 0)} L/ha (desvio de ${fmt(g.desvio, 1)} %).</div></div>`
@@ -771,87 +772,135 @@ function blocoTalhao(r) {
   </div>`;
 }
 const dataBR = iso => { const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${m[3]}/${m[2]}/${m[1]}` : ''; };
-function blocoProxima(r) {
-  const p = r.proximaAplicacao; if (!p) return '';
-  const origem = { termino: 'término da aplicação', inicio: 'início da aplicação', emissao: 'data da emissão do laudo (horário de início/término em branco)' }[p.origemBase];
-  const dias = p.liberadoEm ? Math.round((new Date(p.liberadoEm + 'T00:00') - new Date(p.base + 'T00:00')) / 864e5) : 0;
-  return `<div class="card">
-    <div class="card-hd"><h2>Próxima aplicação permitida</h2><span class="hint">intervalo mínimo entre aplicações informado por produto</span></div>
-    ${p.liberadoEm ? `<div class="codigo-laudo"><b>${dataBR(p.liberadoEm)}</b><small>a partir desta data, ${dias} dia(s) após ${dataBR(p.base)} (${origem}) · limitante: ${esc(p.limitante)}</small></div>
-      <table class="tb"><thead><tr><th>Produto</th><th class="num">Intervalo</th><th class="num">Liberado em</th></tr></thead><tbody>${p.linhas.map(l => `<tr><td>${esc(l.nome)}</td><td class="num">${l.intervalo} d</td><td class="num">${dataBR(l.liberadoEm)}</td></tr>`).join('')}</tbody></table>`
-      : `<div class="al baixa"><div class="t"><span>Sem data: nenhum intervalo informado</span></div><div class="d">Este app não traz o intervalo entre aplicações de nenhum produto, e a data não é estimada.</div><div class="c">→ Preencha “Intervalo mín. (dias)” em cada produto, conforme a bula ou o receituário, e analise de novo.</div></div>`}
-    ${((r.aplicacoesCiclo || {}).ultimas || []).concat((r.aplicacoesCiclo || {}).excedidos || []).map(l => `<div class="al alta"><div class="t"><span>${l.situacao === 'excedido' ? 'Acima do máximo de aplicações' : 'Sem próxima aplicação neste ciclo'}${l.talhao ? ' — ' + esc(l.talhao) : ''}</span></div><div class="d">${esc(l.nome)} ${l.situacao === 'excedido' ? 'passaria de' : 'chega a'} ${l.max} aplicação(ões) por ciclo${l.situacao === 'excedido' ? '' : ' com esta: a data acima só vale para produtos que ainda têm aplicações no ciclo'}.</div></div>`).join('')}
-    ${p.semIntervalo.length ? `<div class="al media"><div class="t"><span>Sem intervalo informado</span></div><div class="d">${esc(p.semIntervalo.join(', '))} — a data acima não os considera.</div><div class="c">→ Confira na bula antes de programar a próxima entrada.</div></div>` : ''}
-    ${p.conflitos.map(c => `<div class="al alta"><div class="t"><span>Dentro do intervalo no talhão ${esc(c.talhao)}</span></div><div class="d">${esc(c.nome)} foi aplicado em ${dataBR(c.ultima)} e o intervalo é de ${c.intervalo} dias: liberado só em <b>${dataBR(c.liberadoEm)}</b> (faltam ${c.diasFaltam} dia(s) em relação à data desta aplicação).</div><div class="c">→ Adiar a aplicação ou trocar o produto, salvo orientação do responsável técnico.</div></div>`).join('')}
-    <div class="small muted">O intervalo entre aplicações e o número máximo de aplicações por ciclo são os da bula/receituário — o Agrofit aberto não traz esses valores. Não confundir com a carência (dias até a colheita).</div>
-  </div>`;
-}
-function blocoColheita(r) {
-  const c = r.colheitaLiberada; if (!c) return '';
-  const origem = { termino: 'término da aplicação', inicio: 'início da aplicação', emissao: 'data da emissão do laudo (horário de início/término em branco)' }[c.origemBase];
-  const dias = c.liberadoEm ? Math.round((new Date(c.liberadoEm + 'T00:00') - new Date(c.base + 'T00:00')) / 864e5) : 0;
-  const tal = (c.talhoes || []).filter(t => t.liberadoEm);
-  return `<div class="card">
-    <div class="card-hd"><h2>Carência e colheita liberada</h2><span class="hint">carência informada por produto · dias entre a aplicação e a colheita</span></div>
-    ${c.liberadoEm ? `<div class="codigo-laudo"><b>${dataBR(c.liberadoEm)}</b><small>colheita liberada a partir desta data, ${dias} dia(s) após ${dataBR(c.base)} (${origem}) · limitante: ${esc(c.limitante)}</small></div>
-      <table class="tb"><thead><tr><th>Produto</th><th class="num">Carência</th><th class="num">Colheita liberada em</th></tr></thead><tbody>${c.linhas.map(l => `<tr><td>${esc(l.nome)}</td><td class="num">${l.carencia ? l.carencia + ' d' : 'sem carência'}</td><td class="num">${dataBR(l.liberadoEm)}</td></tr>`).join('')}</tbody></table>`
-      : `<div class="al baixa"><div class="t"><span>Sem data: nenhuma carência informada</span></div><div class="d">Este app não traz a carência dos produtos (o Agrofit aberto não a publica), e a data não é estimada.</div><div class="c">→ Preencha “Carência (dias)” em cada produto, conforme a bula ou o receituário, e analise de novo.</div></div>`}
-    ${tal.length ? `<div class="sub-hd">Por talhão <span class="hint">vale o que vence por último, contando aplicações anteriores já marcadas como feitas</span></div>
-      <table class="tb"><thead><tr><th>Talhão</th><th class="num">Colheita liberada em</th><th>Limitante</th></tr></thead><tbody>${tal.map(t => `<tr><td>${esc(t.talhao)}</td><td class="num"><b>${dataBR(t.liberadoEm)}</b></td><td>${esc(t.limitante.nome)} <small>${t.limitante.origem === 'esta' ? 'esta aplicação' : 'aplicação de ' + dataBR(t.limitante.aplicadoEm)}</small></td></tr>`).join('')}</tbody></table>` : ''}
-    ${c.semCarencia.length ? `<div class="al media"><div class="t"><span>Sem carência informada</span></div><div class="d">${esc(c.semCarencia.join(', '))} — a data acima não os considera.</div><div class="c">→ Confira na bula antes de liberar a colheita.</div></div>` : ''}
-    <div class="small muted">A carência (intervalo de segurança) é a da bula/receituário para a cultura; muda entre culturas e produtos. Zero significa sem carência. Não substitui o receituário agronômico.</div>
-  </div>`;
-}
 const dataHoraBR = iso => { const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/); return m ? `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}` : dataBR(iso); };
-function blocoReentrada(r) {
-  const c = r.reentrada; if (!c || (!c.linhas.length && !c.semReentrada.length)) return '';
-  const origem = { termino: 'término da aplicação', inicio: 'início da aplicação — informe o término para contar certo', emissao: 'hora da emissão do laudo (início/término em branco)' }[c.origemBase];
-  return `<div class="card">
-    <div class="card-hd"><h2>Reentrada na área tratada</h2><span class="hint">horas informadas por produto · da bula/receituário</span></div>
-    ${c.liberadoEm ? `<div class="codigo-laudo"><b>${dataHoraBR(c.liberadoEm)}</b><small>reentrada liberada a partir deste horário · contada do ${origem} (${dataHoraBR(c.base)}) · limitante: ${esc(c.limitante)}</small></div>
-      <table class="tb"><thead><tr><th>Produto</th><th class="num">Reentrada</th><th class="num">Liberada em</th></tr></thead><tbody>${c.linhas.map(l => `<tr><td>${esc(l.nome)}</td><td class="num">${l.horas ? l.horas + ' h' : 'sem restrição'}</td><td class="num">${dataHoraBR(l.liberadoEm)}</td></tr>`).join('')}</tbody></table>`
-      : `<div class="al baixa"><div class="t"><span>Sem horário: nenhuma reentrada informada</span></div><div class="d">Preencha “Reentrada (horas)” em cada produto, conforme a bula ou o receituário, e analise de novo. O app não estima esse número.</div></div>`}
-    ${c.semReentrada.length ? `<div class="al media"><div class="t"><span>Sem reentrada informada</span></div><div class="d">${esc(c.semReentrada.join(', '))} — o horário acima não os considera.</div><div class="c">→ Sinalize a área e só libere a entrada depois de conferir a bula.</div></div>` : ''}
-    <div class="small muted">Reentrada é o tempo mínimo, contado do término da aplicação, para pessoas voltarem à área tratada, conforme a bula e o receituário (NR-31). Não substitui o receituário agronômico.</div>
+const ORIGEM_PRAZO = { termino: 'término da aplicação', inicio: 'início da aplicação — informe o término para contar certo', emissao: 'emissão do laudo (início/término em branco)' };
+/* Reentrada, próxima aplicação, colheita e aplicações por ciclo num cartão só, com uma linha por produto.
+   Eram quatro cartões, cada um com a sua tabela e o mesmo rodapé, e "acima do máximo" saía duas vezes. */
+function blocoPrazos(r) {
+  const re = r.reentrada, px = r.proximaAplicacao, co = r.colheitaLiberada, ci = r.aplicacoesCiclo;
+  if (!re && !px && !co && !ci) return '';
+  const lin = x => (x && x.linhas) || [];
+  const nomes = [...new Set([...lin(re), ...lin(px), ...lin(co), ...lin(ci)].map(l => l.nome))];
+  const hd = '<div class="card-hd"><h2>Prazos da bula</h2><span class="hint">reentrada · próxima aplicação · colheita · aplicações por ciclo</span></div>';
+  const rodape = '<div class="small muted">Reentrada (NR-31), intervalo, carência e máximo por ciclo são os da bula/receituário, informados por produto — o Agrofit aberto não traz esses números e o app não os estima. Carência (dias até a colheita) não é o intervalo entre aplicações. O ciclo conta por produto, só aplicações marcadas como feitas no talhão; a bula pode limitar também por ingrediente ativo.</div>';
+  if (!nomes.length) return `<div class="card">${hd}<div class="al baixa"><div class="t"><span>Sem prazos: nada informado por produto</span></div><div class="d">Faltam reentrada (horas), intervalo mínimo e carência (dias) e máximo de aplicações por ciclo — sem eles não há data.</div><div class="c">→ Preencha em cada produto da aba Calda, conforme a bula ou o receituário, e analise de novo.</div></div>${rodape}</div>`;
+  const falta = [[re && re.semReentrada, 'reentrada'], [px && px.semIntervalo, 'intervalo entre aplicações'], [co && co.semCarencia, 'carência'], [ci && ci.semLimite, 'máximo por ciclo']].filter(([l]) => l && l.length);
+  const caixa = (x, data, rotulo) => x && x.liberadoEm ? `<div class="codigo-laudo"><b>${data(x.liberadoEm)}</b><small>${rotulo} · limitante: ${esc(x.limitante)}</small></div>` : '';
+  const base = [re, px, co].find(x => x && x.liberadoEm);
+  const nao = '<span class="tag noreg">não informado</span>', vazio = '<span class="muted">—</span>';
+  const celula = (x, nome, semDado, texto) => { const l = lin(x).find(l => l.nome === nome); return l ? texto(l) : (x && (semDado(x) || []).includes(nome) ? nao : vazio); };
+  const sit = { ok: '', ultima: ' <span class="tag noreg">última</span>', excedido: ' <span class="tag noreg">acima do máximo</span>' };
+  const tal = co ? (co.talhoes || []).filter(t => t.liberadoEm) : [];
+  const semIni = lin(ci).some(l => l.talhao && !l.cicloInicio);
+  return `<div class="card">${hd}
+    <div class="prazos">${caixa(re, dataHoraBR, 'reentrada liberada')}${caixa(px, dataBR, 'próxima aplicação permitida')}${caixa(co, dataBR, 'colheita liberada')}</div>
+    ${base ? `<div class="small muted">Contados do ${ORIGEM_PRAZO[base.origemBase] || 'término da aplicação'} (${dataHoraBR(base.base)}).</div>` : ''}
+    <div class="tabela-rolavel"><table class="tb"><thead><tr><th>Produto</th><th>Reentrada</th><th>Intervalo → próxima</th><th>Carência → colheita</th><th>Aplicação no ciclo</th></tr></thead><tbody>${nomes.map(n => `<tr><td>${esc(n)}</td>
+      <td>${celula(re, n, x => x.semReentrada, l => l.horas ? `${l.horas} h → ${dataHoraBR(l.liberadoEm)}` : 'sem restrição')}</td>
+      <td>${celula(px, n, x => x.semIntervalo, l => `${l.intervalo} d → ${dataBR(l.liberadoEm)}`)}</td>
+      <td>${celula(co, n, x => x.semCarencia, l => l.carencia ? `${l.carencia} d → ${dataBR(l.liberadoEm)}` : 'sem carência')}</td>
+      <td>${lin(ci).filter(l => l.nome === n).map(l => `${l.comEsta}ª de ${l.max}${l.talhao ? ' <small>' + esc(l.talhao) + '</small>' : ''}${sit[l.situacao] || ''}`).join('<br>') || (ci && (ci.semLimite || []).includes(n) ? nao : vazio)}</td></tr>`).join('')}</tbody></table></div>
+    ${tal.length ? `<div class="sub-hd">Colheita por talhão <span class="hint">vale o que vence por último, contando aplicações anteriores já feitas</span></div>
+      <table class="tb"><thead><tr><th>Talhão</th><th class="num">Colheita liberada em</th><th>Limitante</th></tr></thead><tbody>${tal.map(t => `<tr><td>${esc(t.talhao)}</td><td class="num"><b>${dataBR(t.liberadoEm)}</b></td><td>${esc(t.limitante.nome)} <small>${t.limitante.origem === 'esta' ? 'esta aplicação' : 'aplicação de ' + dataBR(t.limitante.aplicadoEm)}</small></td></tr>`).join('')}</tbody></table>` : ''}
+    ${(px ? px.conflitos : []).map(c => `<div class="al alta"><div class="t"><span>Dentro do intervalo no talhão ${esc(c.talhao)}</span></div><div class="d">${esc(c.nome)} foi aplicado em ${dataBR(c.ultima)} e o intervalo é de ${c.intervalo} dias: liberado só em <b>${dataBR(c.liberadoEm)}</b> (faltam ${c.diasFaltam} dia(s) em relação à data desta aplicação).</div><div class="c">→ Adiar a aplicação ou trocar o produto, salvo orientação do responsável técnico.</div></div>`).join('')}
+    ${(ci ? ci.excedidos : []).map(l => `<div class="al alta"><div class="t"><span>Acima do máximo de aplicações${l.talhao ? ' no talhão ' + esc(l.talhao) : ''}</span></div><div class="d">${esc(l.nome)}: esta seria a ${l.comEsta}ª aplicação no ciclo e a bula permite ${l.max}.</div><div class="c">→ Não aplicar; trocar de produto ou consultar o responsável técnico.</div></div>`).join('')}
+    ${(ci ? ci.ultimas : []).map(l => `<div class="al media"><div class="t"><span>Última aplicação permitida${l.talhao ? ' no talhão ' + esc(l.talhao) : ''}</span></div><div class="d">${esc(l.nome)}: esta é a ${l.comEsta}ª de ${l.max}; a próxima aplicação acima não vale para ele neste ciclo.</div><div class="c">→ Planeje o restante do ciclo com outro produto ou modo de ação.</div></div>`).join('')}
+    ${falta.length ? `<div class="al media"><div class="t"><span>Prazo não informado — as datas acima não o consideram</span></div>${falta.map(([l, o]) => `<div class="d"><b>${o}:</b> ${esc(l.join(', '))}</div>`).join('')}<div class="c">→ Confira na bula antes de programar a próxima entrada, liberar pessoas na área ou colher.</div></div>` : ''}
+    ${ci && ci.semTalhao && lin(ci).length ? '<div class="small muted">Nenhum talhão marcado: só esta aplicação foi contada no ciclo. Marque o talhão na aba Calda para contar o histórico.</div>' : ''}
+    ${semIni ? '<div class="small muted">Talhão sem início de ciclo definido: contadas todas as aplicações registradas. Informe o início da safra no cadastro do talhão.</div>' : ''}
+    ${rodape}
   </div>`;
 }
-function blocoCiclo(r) {
-  const c = r.aplicacoesCiclo; if (!c || (!c.linhas.length && !c.semLimite.length)) return '';
-  const sit = { ok: '<span class="tag reg">dentro do limite</span>', ultima: '<span class="tag noreg">última permitida</span>', excedido: '<span class="tag noreg">acima do máximo</span>' };
-  const semIni = c.linhas.some(l => l.talhao && !l.cicloInicio);
-  return `<div class="card">
-    <div class="card-hd"><h2>Aplicações por ciclo</h2><span class="hint">máximo da bula por produto · conta as feitas no talhão + esta</span></div>
-    ${c.linhas.length ? `<table class="tb"><thead><tr><th>Produto</th><th>Talhão</th><th class="num">Já feitas</th><th class="num">Esta é a</th><th class="num">Máximo</th><th>Situação</th></tr></thead><tbody>${c.linhas.map(l => `<tr><td>${esc(l.nome)}</td><td>${l.talhao ? esc(l.talhao) : '<span class="muted">—</span>'}${l.cicloInicio ? ` <small class="muted">ciclo desde ${dataBR(l.cicloInicio)}</small>` : ''}</td><td class="num">${l.feitas}</td><td class="num">${l.comEsta}ª</td><td class="num">${l.max}</td><td>${sit[l.situacao]}</td></tr>`).join('')}</tbody></table>`
-      : `<div class="al baixa"><div class="t"><span>Nenhum máximo informado</span></div><div class="d">Este app não traz o número máximo de aplicações por ciclo (o Agrofit aberto não o publica).</div><div class="c">→ Preencha “Máx. aplic./ciclo” em cada produto, conforme a bula ou o receituário, e analise de novo.</div></div>`}
-    ${c.excedidos.map(l => `<div class="al alta"><div class="t"><span>Acima do máximo de aplicações${l.talhao ? ' no talhão ' + esc(l.talhao) : ''}</span></div><div class="d">${esc(l.nome)}: esta seria a ${l.comEsta}ª aplicação no ciclo e a bula permite ${l.max}.</div><div class="c">→ Não aplicar; trocar de produto ou consultar o responsável técnico.</div></div>`).join('')}
-    ${c.ultimas.map(l => `<div class="al media"><div class="t"><span>Última aplicação permitida${l.talhao ? ' no talhão ' + esc(l.talhao) : ''}</span></div><div class="d">${esc(l.nome)}: esta é a ${l.comEsta}ª de ${l.max}; depois dela não há próxima aplicação deste produto neste ciclo.</div><div class="c">→ Planeje o restante do ciclo com outro produto ou modo de ação.</div></div>`).join('')}
-    ${c.semLimite.length ? `<div class="al media"><div class="t"><span>Sem máximo informado</span></div><div class="d">${esc(c.semLimite.join(', '))} — não entram na contagem.</div><div class="c">→ Confira o número máximo de aplicações na bula.</div></div>` : ''}
-    ${c.semTalhao && c.linhas.length ? '<div class="small muted">Nenhum talhão marcado: só esta aplicação foi contada. Marque o talhão na aba Calda para contar o histórico.</div>' : ''}
-    ${semIni ? '<div class="small muted">Talhão sem início de ciclo definido: contadas todas as aplicações registradas. Informe o início do ciclo (safra) no cadastro do talhão para contar só as do ciclo atual.</div>' : ''}
-    <div class="small muted">A contagem é por produto (nome), só com aplicações marcadas como feitas no talhão. O limite pode valer também por ingrediente ativo ou por cultura na bula — confira.</div>
-  </div>`;
+// datetime-local chega como AAAA-MM-DDTHH:MM; na tela vira data brasileira,
+// no texto canônico fica o ISO, que não muda de formato com o navegador.
+const dtLocalBR = v => (v.length === 16 && v[4] === '-' && v[7] === '-' && v[10] === 'T')
+  ? `${v.slice(8, 10)}/${v.slice(5, 7)}/${v.slice(0, 4)} ${v.slice(11, 16)}` : v;
+const campoRastreio = (t, k) => (t.campos.find(c => c.chave === k) || {}).valor || '';
+function gradeRastreio(t, comFazenda) {
+  return `<div class="rast-grid">${comFazenda && t.fazenda ? `<div><small>Fazenda</small>${esc(t.fazenda)}</div>` : ''}${t.campos.map(c => `<div><small>${esc(c.rotulo)}</small>${c.valor ? esc(dtLocalBR(c.valor)) : (c.exigido ? '<span class="tag noreg">em branco</span>' : '<span class="muted">—</span>')}</div>`).join('')}</div>`;
 }
+const assinaturasHTML = (t, cls) => `<div class="${cls} assinaturas">
+      <div><span></span>${esc(campoRastreio(t, 'operador') || 'Operador')}<br><small>operador / aplicador</small></div>
+      <div><span></span>${esc(campoRastreio(t, 'responsavel') || 'Responsável técnico')}<br><small>responsável técnico${campoRastreio(t, 'crea') ? ' — ' + esc(campoRastreio(t, 'crea')) : ''}</small></div>
+    </div>`;
 function blocoRastreio(r) {
   const t = r.rastreio; if (!t) return '';
-  const campo = k => (t.campos.find(c => c.chave === k) || {}).valor || '';
-  // datetime-local chega como AAAA-MM-DDTHH:MM; na tela vira data brasileira,
-  // no texto canônico fica o ISO, que não muda de formato com o navegador.
-  const dtBR = v => (v.length === 16 && v[4] === '-' && v[7] === '-' && v[10] === 'T')
-    ? `${v.slice(8, 10)}/${v.slice(5, 7)}/${v.slice(0, 4)} ${v.slice(11, 16)}` : v;
   return `<div class="card">
     <div class="card-hd"><h2>Rastreabilidade</h2><span class="hint">${t.completo ? 'registro completo' : t.pendencias.length + ' campo(s) em branco'}</span></div>
     <div class="codigo-laudo"><b>${esc(t.codigo)}</b><small>código de conferência do laudo${t.emitido ? ' · emitido em ' + esc(t.emitido) : ''}</small></div>
-    <table class="tb"><tbody>
-      ${t.fazenda ? `<tr><th>Fazenda</th><td>${esc(t.fazenda)}</td></tr>` : ''}
-      ${t.campos.map(c => `<tr><th>${esc(c.rotulo)}</th><td>${c.valor ? esc(dtBR(c.valor)) : (c.exigido ? '<span class="tag noreg">em branco</span>' : '<span class="muted">—</span>')}</td></tr>`).join('')}
-    </tbody></table>
+    ${gradeRastreio(t, true)}
     <div class="sub-hd">Lotes aplicados</div>
     <table class="tb"><thead><tr><th>Produto</th><th>Lote da embalagem</th></tr></thead><tbody>${t.lotes.map(l => `<tr><td>${esc(l.nome)}</td><td>${l.lote ? esc(l.lote) : '<span class="tag noreg">não anotado</span>'}</td></tr>`).join('')}</tbody></table>
-    <details class="small"><summary>Texto conferido pelo código</summary><pre class="canonico">${esc(t.canonico)}</pre><p class="muted">O código é um resumo (hash FNV-1a de 32 bits) deste texto. Mudou uma dose, um lote, a regulagem ou o talhão, muda o código — é o que casa o papel impresso com o registro em JSON. Não é assinatura digital: prova que dois registros são o mesmo, não quem os emitiu.</p></details>
-    <div class="print-only assinaturas">
-      <div><span></span>${esc(campo('operador') || 'Operador')}<br><small>operador / aplicador</small></div>
-      <div><span></span>${esc(campo('responsavel') || 'Responsável técnico')}<br><small>responsável técnico${campo('crea') ? ' — ' + esc(campo('crea')) : ''}</small></div>
-    </div>
+    <details class="small abre-no-papel"><summary>Texto conferido pelo código</summary><pre class="canonico">${esc(t.canonico)}</pre><p class="muted">O código é um resumo (hash FNV-1a de 32 bits) deste texto. Mudou uma dose, um lote, a regulagem ou o talhão, muda o código — é o que casa o papel impresso com o registro em JSON. Não é assinatura digital: prova que dois registros são o mesmo, não quem os emitiu.</p></details>
+    ${assinaturasHTML(t, 'print-only')}
+  </div>`;
+}
+
+/* ───────── laudo resumido: uma folha para levar ao campo ─────────
+   Bloco próprio, só no papel: com body.print-resumido o resto do #resultado some. Alertas altos e médios vão
+   com a conduta; baixos e informativos só pelo título. Ordem de mistura, dose, carga e lote numa tabela só.
+   Matriz de pares, custos, fontes e histórico ficam no laudo completo e no JSON, que têm o mesmo código. */
+function laudoResumoHTML(r) {
+  const ctx = r.contexto, t = r.rastreio, g = r.regulagem, tq = r.tanque;
+  const porId = (lista, id) => (lista || []).find(x => x.id === id);
+  const qtd = x => x ? `${fmt(x.qtd, 3)} ${x.unidade}` : '—';
+  const lista = l => esc(l.join(', '));
+  const loteDe = nome => ((t && t.lotes.find(l => l.nome === nome)) || {}).lote || '';
+  const acao = r.alertas.filter(a => a.severidade === 'alta').concat(r.alertas.filter(a => a.severidade === 'media'));
+  const outros = r.alertas.filter(a => !acao.includes(a));
+  const alvos = CATS_ALVO.filter(c => ((ctx.alvos || {})[c.id] || []).length).map(c => ctx.alvos[c.id].join('; ')).join(' · ');
+  const extras = [ctx.severidade, ctx.estadio, ctx.parte].filter(Boolean);
+  const talhao = t ? campoRastreio(t, 'talhao') : '';
+  const passos = ordemDoLaudo(r);
+  const produtos = passos.flatMap(p => p.itens.map(i => ({ ...i, passo: p.passo })));
+  const antes = passos.filter(p => !p.itens.length && p.passo <= 2), depois = passos.filter(p => !p.itens.length && p.passo >= 11);
+  const ph = r.ph || {};
+  const re = r.reentrada, px = r.proximaAplicacao, co = r.colheitaLiberada, ci = r.aplicacoesCiclo;
+  const prazos = [[re, dataHoraBR, 'Reentrada'], [px, dataBR, 'Próxima aplicação'], [co, dataBR, 'Colheita liberada']].filter(([x]) => x && x.liberadoEm);
+  const travas = [...(px ? px.conflitos.map(c => `${esc(c.nome)} dentro do intervalo no talhão ${esc(c.talhao)}: liberado só em ${dataBR(c.liberadoEm)}`) : []),
+    ...(ci ? ci.excedidos.map(l => `${esc(l.nome)} acima do máximo: seria a ${l.comEsta}ª de ${l.max}${l.talhao ? ' (' + esc(l.talhao) + ')' : ''} — não aplicar`) : [])];
+  const ultimas = ci ? ci.ultimas.map(l => `${esc(l.nome)}: última aplicação permitida no ciclo (${l.comEsta}ª de ${l.max})`) : [];
+  const semPrazo = [...new Set([re && re.semReentrada, px && px.semIntervalo, co && co.semCarencia].flatMap(l => l || []))];
+  const tal = co ? (co.talhoes || []).filter(x => x.liberadoEm && x.liberadoEm !== co.liberadoEm) : [];
+  const reg = r.registro || [];
+  const semReg = reg.filter(x => x.registrado === false).map(x => x.nome);
+  const semAlvo = reg.filter(x => x.registrado && x.alvoOk === false).map(x => x.nome);
+  const fora = reg.filter(x => x.registrado === null).map(x => x.nome);
+  const fortes = r.itens.filter(i => { const x = infoTox(i.agrofit && i.agrofit.tox); return x && [1, 2].includes(Number(x.chave)); }).map(i => i.nome);
+  const regLinhas = [semReg.length ? `<b>sem registro para ${esc(ctx.cultura)}:</b> ${lista(semReg)}` : '', semAlvo.length ? `<b>alvo não consta na bula:</b> ${lista(semAlvo)}` : '',
+    !semReg.length && !semAlvo.length && reg.some(x => x.registrado) ? `registrados para ${esc(ctx.cultura)}: ${lista(reg.filter(x => x.registrado).map(x => x.nome))}` : '',
+    fortes.length ? `<b>categoria toxicológica 1–2:</b> ${lista(fortes)} — EPI da bula e só aplicador treinado` : '', fora.length ? `fora do Agrofit (não verificados): ${lista(fora)}` : ''].filter(Boolean);
+  const regulagem = g ? [g.ponta ? '<b>' + esc(g.ponta.marca + ' ' + g.ponta.modelo) + '</b>' : 'sem ponta', g.iso ? corBadge(g.iso) : '', g.gota ? gotaBadge(g.gota) : '', fmt(g.pressao, 2) + ' bar', fmt(g.velocidade, 1) + ' km/h',
+    fmt(g.volumeEntregue, 0) + ' L/ha' + (g.desvio != null ? ` (${g.desvio > 0 ? '+' : ''}${fmt(g.desvio, 1)} % — ${Math.abs(g.desvio) <= 5 ? 'confere' : '<b>fora do alvo</b>'})` : ''),
+    g.clima && g.clima.deltaT != null ? `ΔT ${fmt(g.clima.deltaT, 1)} · ${esc(g.clima.rotulo)}` : '', g.calibracao ? `calibração ${esc(g.calibracao.veredito)}, CV ${fmt(g.calibracao.cv, 1)} %` : ''].filter(Boolean).join(' · ')
+    : '<span class="tag noreg">não anexada</span> — sem ela o laudo não prova com que ponta, pressão e velocidade a dose foi aplicada.';
+  return `<div class="laudo-resumo">
+    <div class="lr-cab"><div><h1>Laudo de calda — resumo</h1><div>${esc(DB.config.fazenda)} · ${esc(r.data)} · Gefaz Calda ${E.versao}</div></div>${t ? `<div class="lr-cod">${esc(t.codigo)}<small>código de conferência</small></div>` : ''}</div>
+    <div>${[esc(ctx.cultura), esc((KB.equipamentos[ctx.equipamento] || {}).nome || ctx.equipamento), ctx.volumeHa + ' L/ha', ctx.area ? fmt(ctx.area, 2) + ' ha' : '', talhao ? 'talhão ' + esc(talhao) : ''].filter(Boolean).join(' · ')}${alvos ? ' · alvo: ' + esc(alvos) : ''}${extras.length ? ' · ' + extras.map(esc).join(' · ') : ''}</div>
+    <div class="lr-status"><b>${esc(r.resumo.rotulo)}</b> · ${r.resumo.contagem.alta} crítico(s) · ${r.resumo.contagem.media} restrição(ões) · confiança ${Math.round(r.confianca * 100)} % · jar test ${r.jarTest && r.jarTest.obrigatorio ? '<b>obrigatório</b>' : 'recomendado'}</div>
+    <h3>Alertas que pedem ação</h3>
+    ${acao.length ? acao.map(a => `<div class="lr-al ${a.severidade}"><b>${a.severidade === 'alta' ? 'CRÍTICO' : 'RESTRIÇÃO'} · ${esc(a.titulo)}</b> → ${esc(a.conduta)}</div>`).join('') : '<div>Nenhum alerta crítico ou de restrição.</div>'}
+    ${outros.length ? `<div class="lr-menor">Outros avisos (detalhe no laudo completo): ${outros.map(a => esc(a.titulo)).join(' · ')}</div>` : ''}
+    <h3>Preparo${tq ? ` — tanque de ${fmt(tq.tanque, 0)} L · ${fmt(tq.haPorCarga, 2)} ha por carga · ${tq.cargasCheias} carga(s) cheia(s)${tq.ultimaCarga ? ' + 1 de ' + fmt(tq.ultimaCarga) + ' L' : ''} · ${fmt(tq.volumeTotal)} L de calda` : ''}</h3>
+    <table><thead><tr><th class="num">Passo</th><th>Produto, na ordem de adição</th><th class="num">Dose/ha</th>${tq ? '<th class="num">Carga cheia</th><th class="num">Última carga</th><th class="num">Total</th>' : ''}<th>Lote</th></tr></thead><tbody>${produtos.map(i => {
+      const c = porId(r.custo && r.custo.porItem, i.id), lote = loteDe(i.nome);
+      return `<tr><td class="num">${i.passo}</td><td><b>${esc(i.nome)}</b>${i.formulacao ? ' <small>' + esc(i.formulacao) + '</small>' : ''}${i.notas.length ? '<div class="nota">' + i.notas.map(esc).join(' ') + '</div>' : ''}</td><td class="num">${c ? fmt(c.dosePorHa, 3) + ' ' + c.base : '—'}</td>${tq ? `<td class="num">${qtd(porId(tq.porCargaCheia, i.id))}</td><td class="num">${tq.ultimaCarga ? qtd(porId(tq.ultimaCargaItens, i.id)) : '—'}</td><td class="num">${qtd(porId(tq.totalPorProduto, i.id))}</td>` : ''}<td>${lote ? esc(lote) : '<span class="tag noreg">não anotado</span>'}</td></tr>`;
+    }).join('')}</tbody></table>
+    <div class="lr-menor">${[...antes.map(p => p.passo + '. ' + esc(p.titulo)), 'produtos na ordem da tabela', ...depois.map(p => p.passo + '. ' + esc(p.titulo))].join(' → ')}.
+      ${ph.faixaVazia ? '<b>Sem faixa de pH comum entre os produtos.</b>' : ph.alvoMin != null ? `pH: água ${ph.aguaPh != null ? ph.aguaPh : 'não medida'}, alvo ${ph.alvoMin.toFixed(1)}–${ph.alvoMax.toFixed(1)}${ph.precisaCorrigir && ph.sugestao ? ' — ' + esc(ph.sugestao) : ''}` : ''}</div>
+    <h3>Regulagem</h3>
+    <div>${regulagem}</div>
+    <h3>Prazos</h3>
+    <div>${prazos.length ? prazos.map(([x, d, rot]) => `${rot}: <b>${d(x.liberadoEm)}</b> <small>(${esc(x.limitante)})</small>`).join(' · ') : 'Nenhum prazo informado por produto.'}${tal.length ? '<br>Colheita por talhão: ' + tal.map(x => `${esc(x.talhao)} <b>${dataBR(x.liberadoEm)}</b>`).join(' · ') : ''}</div>
+    ${travas.map(s => `<div class="lr-al alta"><b>CRÍTICO ·</b> ${s}</div>`).join('')}${ultimas.map(s => `<div class="lr-al media">${s}</div>`).join('')}
+    ${semPrazo.length ? `<div class="lr-menor">Sem prazo informado (conferir na bula): ${lista(semPrazo)}</div>` : ''}
+    ${regLinhas.length ? `<h3>Registro MAPA e toxicologia</h3><div>${regLinhas.join('<br>')}</div>` : ''}
+    ${t ? `<h3>Rastreabilidade${t.completo ? '' : ` <small>· ${t.pendencias.length} campo(s) em branco</small>`}</h3>${gradeRastreio(t, false)}` : ''}
+    <h3>Checklist pré-saída</h3>
+    <ul class="lr-check">${r.checklist.map(c => `<li>☐ ${esc(c)}</li>`).join('')}</ul>
+    ${ctx.obs ? `<h3>Observações</h3><div>${esc(ctx.obs)}</div>` : ''}
+    ${t ? assinaturasHTML(t, '') : ''}
+    <div class="lr-menor lr-rodape">Apoio à decisão técnica — não substitui bula, receituário agronômico (IN 40/2018) nem jar test. Matriz de pares, custos, fontes e histórico do talhão estão no laudo completo e no JSON${t ? ' com o mesmo código ' + esc(t.codigo) : ''}.</div>
   </div>`;
 }
 
@@ -1172,6 +1221,7 @@ function renderRegulagem() {
   const p = r.ponta;
   const sev = { alta: 'bad', media: 'warn', baixa: 'info', info: 'info' };
   el.innerHTML = `
+  <div class="print-only"><h1>Ficha de regulagem — ${esc(DB.config.fazenda)}</h1><p id="pRegEmissao"></p></div>
   <div class="card">
     <div class="card-hd"><h2>Regulagem calculada</h2><span class="hint">${r.modo === 'faixa' ? 'faixa dirigida' : 'área total'} · ${p ? esc(p.marca + ' ' + p.modelo) : 'sem ponta selecionada'}</span></div>
     <div class="kpis">
@@ -1208,6 +1258,7 @@ function renderRegulagem() {
       <tr><td>Vazão de referência por bico</td><td class="num">${fmt(r.vazaoPorBico, 3)} L/min = <b>${fmt(r.vazaoPorBico * 1000 / 2, 0)} mL em 30 s</b></td></tr>
       ${r.ficha ? `<tr><td>Por tanque de ${fmt(r.entrada.tanque, 0)} L</td><td class="num">${fmt(r.ficha.haPorTanque, 2)} ha · ${fmt(r.ficha.distancia, 0)} m de percurso · ${fmt(r.ficha.minutos, 0)} min</td></tr>
       ${r.ficha.cargas ? `<tr><td>Para ${fmt(r.ficha.area, 1)} ha</td><td class="num">${r.ficha.cargas} tanque(s)</td></tr>` : ''}` : ''}
+      ${r.clima && r.clima.deltaT != null ? `<tr><td>Condição do ar</td><td class="num">Delta T ${fmt(r.clima.deltaT, 1)} · ${esc(r.clima.rotulo)} ·${fmt(r.clima.temperatura, 1)} °C · ${fmt(r.clima.umidade, 0)} %${r.clima.vento != null ? ' · vento ' + fmt(r.clima.vento, 1) + ' km/h' : ''}</td></tr>` : ''}
     </tbody></table>
     ${p ? `<p class="small muted">Fonte dos dados da ponta: ${esc(p.fonte)}.</p>` : ''}
   </div>`;
@@ -1219,7 +1270,11 @@ function renderRegulagem() {
     DB.config.volumeHa = v; saveDB();
     navTo('calda'); toast(`Volume de ${v} L/ha aplicado na calda`);
   };
-  $('#btnPrintReg').onclick = () => window.print();
+  $('#btnPrintReg').onclick = () => {
+    $('#pRegEmissao').textContent = `emitida em ${agora()} · Gefaz Calda · pontas ${PT.versao}`;
+    $('#cardCalib').classList.toggle('sem-calib', !$('#cResultado').innerHTML.trim());
+    document.body.classList.add('print-regulagem'); window.print();
+  };
   $('#btnExpReg').onclick = () => download(`regulagem-${hoje()}.json`, JSON.stringify({ app: 'gefaz-calda', modulo: 'pontas', versao: PT.versao, regulagem: r }, null, 1));
 }
 function sugerirPontas() {

@@ -153,6 +153,12 @@ label.check input[type=checkbox]{width:auto;flex:0 0 auto;margin:0}
 .codigo-laudo small{color:var(--ink2)}
 .canonico{white-space:pre-wrap;word-break:break-word;background:#f5f5f5;border:1px solid #e0e0e0;border-radius:6px;padding:8px;font-size:.72rem;line-height:1.45;max-height:260px;overflow:auto}
 .sub-hd{font-weight:700;font-size:.95rem;margin:12px 0 6px}
+.rast-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px 14px;margin:0 0 8px}
+.rast-grid small{display:block;font-size:.72rem;color:var(--ink2)}
+.prazos{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0 8px}
+.prazos .codigo-laudo{margin-bottom:6px;padding:6px 10px}
+.prazos .codigo-laudo b{font-size:1.05rem}
+@media print{.tabela-rolavel{overflow:visible}}
 .alvos-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px 14px;margin-top:6px}
 .alvo-grupo>b{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:.85rem;margin-bottom:3px}
 .alvo-grupo>b small{font-weight:400;color:var(--ink2)}
@@ -183,6 +189,9 @@ label.check input[type=checkbox]{width:auto;flex:0 0 auto;margin:0}
   .assinaturas{display:flex;gap:28px;margin-top:30px}
   .codigo-laudo{border:1px solid #000;background:#fff!important}
   .canonico{max-height:none;overflow:visible;border:1px solid #ccc}
+  /* laudo completo: os alertas são um cartão só e podem quebrar entre páginas; cada alerta não */
+  .card.alertas{break-inside:auto}.card.alertas .al{break-inside:avoid}
+  .check-list{columns:2;column-gap:18px}.check-list li{break-inside:avoid;padding:2px 0}
 }
 
 /* ───────── Tema "vidro verde" (só na tela; o laudo impresso continua claro) ───────── */
@@ -344,11 +353,36 @@ main{padding-bottom:calc(104px + env(safe-area-inset-bottom))}
 .aviso{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--amb100);border:1px solid var(--amb);border-radius:12px;padding:9px 12px;margin-top:8px;font-size:.85rem;box-shadow:var(--sh)}
 .aviso .acts{display:flex;gap:6px}
 @media print{.avisos{display:none!important}}
-/* ───────── laudo resumido (uma página) e classes toxicológicas ───────── */
+/* ───────── laudo resumido (uma folha) e classes toxicológicas ───────── */
 .tag.amar{background:#ffe082;color:#5d4037}.tag.azul{background:#bbdefb;color:#0d47a1}
+.laudo-resumo{display:none}
 @media print{
-  body.print-resumido .so-completo,body.print-resumido #resultado details{display:none!important}
-  body.print-resumido .card{padding:8px}
+  /* o resumo é um bloco próprio (laudoResumoHTML): no papel resumido só ele sai */
+  body.print-resumido #resultado>:not(.laudo-resumo){display:none!important}
+  body.print-resumido .laudo-resumo{display:block;font-size:10px;line-height:1.3;color:#000}
+  .laudo-resumo h1{font-size:14px;margin:0}
+  .laudo-resumo h3{font-size:11px;margin:7px 0 2px;padding-bottom:1px;border-bottom:1px solid #999;break-after:avoid}
+  .lr-cab{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;border-bottom:2px solid #000;padding-bottom:3px;margin-bottom:3px}
+  .lr-cod{font-size:14px;font-weight:800;letter-spacing:.06em;text-align:right;white-space:nowrap}
+  .lr-cod small{display:block;font-size:8px;font-weight:400;letter-spacing:0}
+  .lr-status{border:2px solid #000;padding:3px 8px;margin-top:5px;font-size:11px}
+  .lr-al{margin:2px 0;padding-left:6px;border-left:3px solid #999}
+  .lr-al.alta{border-left:4px solid #000}
+  .lr-menor{font-size:9px;color:#333;margin-top:2px}
+  .laudo-resumo table{width:100%;border-collapse:collapse;margin:2px 0}
+  .laudo-resumo th,.laudo-resumo td{border:1px solid #bbb;padding:1px 4px;text-align:left;vertical-align:top}
+  .laudo-resumo th{background:#f2f2f2!important;font-size:9px}
+  .laudo-resumo .num{text-align:right;white-space:nowrap}
+  .laudo-resumo .nota{font-size:8.5px;color:#444}
+  .laudo-resumo .rast-grid{grid-template-columns:repeat(4,1fr);gap:1px 10px;margin:0}
+  .laudo-resumo .rast-grid small{font-size:8px;color:#555}
+  .lr-check{columns:2;column-gap:16px;list-style:none;margin:0;padding:0;font-size:9px}
+  .lr-check li{break-inside:avoid;margin-bottom:1px}
+  .laudo-resumo .assinaturas{margin-top:26px}
+  .lr-rodape{margin-top:8px;border-top:1px solid #999;padding-top:2px}
+  /* ficha de regulagem: só o resultado e a calibração conferida, sem formulário nem catálogo de pontas */
+  body.print-regulagem #tab-pontas>:not(#pResultado):not(#cardCalib){display:none!important}
+  body.print-regulagem #cardCalib.sem-calib,body.print-regulagem #cardCalib>:not(.card-hd):not(#cResultado){display:none!important}
 }
 
 .tabela-rolavel{overflow-x:auto;margin-top:8px}
