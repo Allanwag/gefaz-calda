@@ -1242,13 +1242,15 @@ function preencherIso(sel) {
   $('#pIso').innerHTML = sizes.map(s => {
     const i = PT.ISO_MAP[s], q = PT.vazaoDaPonta(p, s, pRef);
     const cor = i ? i.cor : s.charAt(0).toUpperCase() + s.slice(1);
-    return `<option value="${esc(s)}">${esc(s)}${i ? ' · ' + cor : ''}${q ? ' · ' + fmt(q, 2) + ' L/min a ' + fmtPressao(pRef) : ' (sem tabela)'}</option>`;
+    const malha = tab && tab.malhaPorTamanho && tab.malhaPorTamanho[s];
+    return `<option value="${esc(s)}">${esc(s)}${i ? ' · ' + cor : ''}${malha ? ' · malha ' + malha : ''}${q ? ' · ' + fmt(q, 2) + ' L/min a ' + fmtPressao(pRef) : ' (sem tabela)'}</option>`;
   }).join('');
   if (sel && sizes.indexOf(sel) >= 0) $('#pIso').value = sel;
 }
 function preencherAngulos(sel) {
   const p = PT.PONTA_MAP[$('#pPonta').value];
-  const angs = p ? p.angulos : [110, 80];
+  const tamanho = $('#pIso').value;
+  const angs = p ? ((p.vazaoTabela && p.vazaoTabela.angulosPorTamanho && p.vazaoTabela.angulosPorTamanho[tamanho]) || p.angulos) : [110, 80];
   $('#pAng').innerHTML = angs.map(a => `<option>${a}</option>`).join('');
   if (sel && angs.indexOf(+sel) >= 0) $('#pAng').value = sel;
 }
@@ -1526,7 +1528,7 @@ function renderTabelaCruzada() {
   $('#xTabela').innerHTML = `<h3>Tabela cruzada — ${p ? esc(p.marca + ' ' + p.modelo) : 'pontas ISO'}</h3>
     <p class="small muted">L/min por bico e, embaixo, o volume que sai a ${fmt(e.velocidade, 1)} km/h${PT.geometria(e).larguraInformada ? ' em passadas de ' + fmt(e.larguraEfetiva, 2) + ' m, distribuídas entre ' + e.nBicos + ' pontas (espaçamento físico de ' + fmt(e.espacamento, 2) + ' m)' : ' com ' + fmt(t.faixaPorBico, 2) + ' m por bico'}. ${e.modo === 'faixa' ? 'Os volumes da tabela são por hectare de faixa tratada. ' : ''}Verde = dentro de 5 % do alvo de ${fmt(e.volumeHa, 1)} L/ha; a linha destacada é a ponta em uso.</p>
     <div class="cruzada"><table class="tb"><thead><tr><th>${unidadePressaoRotulo()}</th>${t.sizes.map(s => `<th class="num">${corBadge(s)}</th>`).join('')}</tr></thead>
-    <tbody>${t.linhas.map(l => `<tr><th>${fmt(PT.pressaoNaUnidade(l.bar, unidadePressaoAtual), 2)}</th>${l.celulas.map(c => `<td class="num ${c.noAlvo ? 'alvo' : ''} ${c.iso === e.iso ? 'sel' : ''}" title="${c.gota ? esc(c.gota.nome) : ''}">${fmt(c.vazao, 2)}${c.volume != null ? `<small>${fmt(c.volume, 1)} L/ha</small>` : ''}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+    <tbody>${t.linhas.map(l => `<tr><th>${fmt(PT.pressaoNaUnidade(l.bar, unidadePressaoAtual), 2)}</th>${l.celulas.map(c => `<td class="num ${c.noAlvo ? 'alvo' : ''} ${c.iso === e.iso ? 'sel' : ''}" title="${c.gota ? esc(c.gota.nome) : ''}">${c.vazao == null ? '—' : fmt(c.vazao, 2)}${c.volume != null ? `<small>${fmt(c.volume, 1)} L/ha</small>` : ''}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
 function preencherCruzarDaPonta() {
   const e = lerRegulagem();
@@ -1704,6 +1706,7 @@ function initPontas() {
   ['#pDist', '#pTempo'].forEach(s => { $(s).oninput = () => { atualizarVelocidade(true); recalc(); }; });
   $('#pVel').addEventListener('input', () => atualizarVelocidade()); atualizarVelocidade();
   ['#pIso', '#pAng', '#pVel', '#pVol', '#pEsp', '#pNb', '#pLargura', '#pLf', '#pBf', '#pEl', '#pTq', '#pArea', '#pPress'].forEach(s => { $(s).oninput = recalc; $(s).onchange = recalc; });
+  $('#pIso').onchange = () => { preencherAngulos($('#pAng').value); recalc(); };
   $('#btnColumbiaCross').onclick = () => {
     aplicarRegulagem({ ...lerRegulagem(), modo: 'area', espacamento: 0.4, nBicos: 46, larguraEfetiva: 18 });
     calcularRegulagem(); toast('Columbia Cross: 18 m de passada, 46 pontas e 40 cm entre pontas.');

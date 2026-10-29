@@ -290,20 +290,52 @@
       '05': [1.17, 1.36, 1.66, 1.92, 2.14, 2.35]
     }
   };
-  const TAB_MJ_ADIA = {        // jato plano com indução de ar, 30–110 PSI
-    fonte: 'Catálogo Magnojet 2025, p. 29 (AD-IA)',
-    pressoes: [2.07, 2.76, 3.45, 4.14, 4.83, 5.52, 6.21, 6.89, 7.58],
+  // Transcrição da tabela AD-IA enviada pelo usuário: pressão em bar e vazão em L/min.
+  // A 007 e a 01 começam em 2,7 bar; os demais tamanhos têm linha a 2 bar.
+  const TAB_MJ_ADIA = {
+    fonte: 'Tabela AD-IA fornecida pelo usuário (imagem, espaçamento de 0,5 m)',
+    espacamento: 0.5,
+    velocidades: [4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20, 25],
+    pressoes: [2, 2.7, 3.4, 4.8, 6.2, 7.6],
+    malhaPorTamanho: { '007': 50, '01': 100, '015': 100, '02': 50, '025': 50, '03': 50, '04': 50, '05': 50, '06': 50, '08': 50 },
+    angulosPorTamanho: { '007': [110], '01': [80, 110], '015': [80, 110], '02': [80, 110], '025': [80, 110], '03': [80, 110], '04': [80, 110], '05': [110], '06': [110], '08': [110] },
+    pressoesPorTamanho: {
+      '007': [2.7, 3.4, 4.8, 6.2, 7.6],
+      '01': [2.7, 3.4, 4.8, 6.2, 7.6],
+      '015': [2, 3.4, 4.8, 6.2, 7.6],
+      '02': [2, 3.4, 4.8, 6.2, 7.6],
+      '025': [2, 3.4, 4.8, 6.2, 7.6],
+      '03': [2, 3.4, 4.8, 6.2, 7.6],
+      '04': [2, 3.4, 4.8, 6.2, 7.6],
+      '05': [2, 3.4, 4.8, 6.2, 7.6],
+      '06': [2, 3.4, 4.8, 6.2, 7.6],
+      '08': [2, 3.4, 4.8, 6.2, 7.6]
+    },
     valores: {
-      '015': [0.50, 0.58, 0.64, 0.70, 0.76, 0.81, 0.86, 0.91, 0.95],
-      '02': [0.66, 0.77, 0.86, 0.94, 1.01, 1.08, 1.15, 1.21, 1.27],
-      '025': [0.83, 0.96, 1.07, 1.17, 1.27, 1.36, 1.44, 1.52, 1.59],
-      '03': [1.00, 1.15, 1.29, 1.41, 1.52, 1.63, 1.73, 1.82, 1.91],
-      '04': [1.33, 1.53, 1.72, 1.88, 2.03, 2.17, 2.30, 2.43, 2.54],
-      '05': [1.66, 1.92, 2.14, 2.35, 2.54, 2.71, 2.88, 3.03, 3.18],
-      '06': [1.99, 2.30, 2.57, 2.82, 3.04, 3.25, 3.45, 3.64, 3.82],
-      '08': [2.66, 3.07, 3.43, 3.76, 4.06, 4.34, 4.60, 4.85, 5.09]
+      '007': [0.28, 0.31, 0.37, 0.40, 0.46],
+      '01': [0.38, 0.43, 0.50, 0.56, 0.62],
+      '015': [0.48, 0.65, 0.77, 0.86, 0.95],
+      '02': [0.67, 0.89, 1.04, 1.18, 1.29],
+      '025': [0.83, 1.09, 1.29, 1.46, 1.61],
+      '03': [1.01, 1.33, 1.58, 1.80, 1.97],
+      '04': [1.33, 1.73, 2.06, 2.32, 2.57],
+      '05': [1.64, 2.14, 2.56, 2.87, 3.17],
+      '06': [2.00, 2.57, 3.03, 3.53, 3.85],
+      '08': [2.65, 3.46, 4.00, 4.65, 5.05]
     }
   };
+  const GOTAS_MJ_ADIA = Object.fromEntries(Object.entries({
+    '007': ['EG', 'MG', 'MG', 'G', 'G'],
+    '01': ['EG', 'MG', 'MG', 'G', 'G'],
+    '015': ['EG', 'MG', 'MG', 'G', 'G'],
+    '02': ['EG', 'EG', 'MG', 'MG', 'G'],
+    '025': ['EG', 'EG', 'MG', 'MG', 'G'],
+    '03': ['EG', 'EG', 'MG', 'MG', 'MG'],
+    '04': ['EG', 'EG', 'MG', 'MG', 'MG'],
+    '05': ['EG', 'EG', 'EG', 'MG', 'MG'],
+    '06': ['EG', 'EG', 'EG', 'MG', 'MG'],
+    '08': ['EG', 'EG', 'EG', 'MG', 'MG']
+  }).map(([s, gotas]) => [s, Object.fromEntries((TAB_MJ_ADIA.pressoesPorTamanho[s] || [2, 3.4, 4.8, 6.2, 7.6]).map((p, i) => [p, gotas[i]]))]));
   const TAB_MJ_MUG = {         // Magno Ultra Grossa, jato plano, 30–100 PSI
     fonte: 'Catálogo Magnojet 2025, p. 16 (MUG)',
     pressoes: [2.07, 2.76, 3.45, 4.14, 4.83, 5.52, 6.21, 6.89],
@@ -526,11 +558,11 @@
     },
     {
       id: 'mj-ad-ia', marca: 'Magnojet', modelo: 'AD-IA (indução de ar)', tipo: 'leque-inducao', angulos: [110, 80],
-      sizes: ['015', '02', '025', '03', '04', '05', '06', '08'], pressao: [2.07, 7.58], material: 'Cerâmica', vazaoTabela: TAB_MJ_ADIA,
-      gotasPorBar: { 2.07: 'UG', 2.76: 'EG', 3.45: 'EG', 4.14: 'EG', 4.83: 'MG', 5.52: 'MG', 6.21: 'MG', 6.89: 'MG', 7.58: 'G' },
+      sizes: ['007', '01', '015', '02', '025', '03', '04', '05', '06', '08'], pressao: [2, 7.6], material: 'Cerâmica', vazaoTabela: TAB_MJ_ADIA,
+      gotasPorTamanho: GOTAS_MJ_ADIA,
       usos: ['herbicida-sistemico', 'pre-emergente', 'herbicida-cafe', 'dessecacao'],
-      nota: 'Venturi com pré-orifício, 30 a 110 PSI: ultragrossa a 2 bar, vai afinando até grossa a 7,6 bar. Indicada pelo fabricante para herbicida sistêmico em pré e pós, e para aplicação perto de cultura sensível ou bordadura. Também em 80°.',
-      fonte: 'Catálogo Magnojet 2025 (p. 29)'
+      nota: 'Tabela enviada pelo usuário: vazões e classes de gotas variam conforme o tamanho e a pressão. Espaçamento de referência de 0,5 m; confira a vazão por coleta no bico em uso.',
+      fonte: TAB_MJ_ADIA.fonte
     },
     {
       id: 'mj-ad-ia-d', marca: 'Magnojet', modelo: 'AD-IA/D (indução de ar, jato duplo)', tipo: 'leque-duplo', angulos: [110],
@@ -1006,7 +1038,9 @@
     }
     if (!p || !p.vazaoTabela) return null;
     if (tamanho == null) return p.vazaoTabela;
-    return p.vazaoTabela.valores[String(tamanho)] ? p.vazaoTabela : null;
+    if (!p.vazaoTabela.valores[String(tamanho)]) return null;
+    const ps = p.vazaoTabela.pressoesPorTamanho && p.vazaoTabela.pressoesPorTamanho[String(tamanho)];
+    return ps ? { ...p.vazaoTabela, pressoes: ps } : p.vazaoTabela;
   }
   function pressaoReferencia(ponta) {
     const p = typeof ponta === 'string' ? PONTA_MAP[ponta] : ponta;
@@ -1301,7 +1335,7 @@
 
     /* ── avisos ── */
     if (ponta && pressao > 0) {
-      const [pmin, pmax] = ponta.pressao;
+      const [pmin, pmax] = tabela ? [tabela.pressoes[0], tabela.pressoes[tabela.pressoes.length - 1]] : ponta.pressao;
       if (pressao < pmin) avisos.push({ nivel: 'alta', texto: `Pressão calculada (${pressao} bar) abaixo do mínimo da ${ponta.modelo} (${pmin} bar): o leque não fecha e a distribuição fica irregular.`, conduta: `Use uma ponta menor ou um modelo que trabalhe a partir de ${pmin} bar. Para o mesmo tamanho de ponta, aumentar a velocidade ou o volume alvo aumenta a pressão necessária.` });
       else if (pressao > pmax) avisos.push({ nivel: 'alta', texto: `Pressão calculada (${pressao} bar) acima do máximo da ${ponta.modelo} (${pmax} bar): gota fina demais, deriva e desgaste.`, conduta: 'Use uma ponta maior (ISO seguinte), reduza a velocidade ou aumente o número de bicos.' });
       else if (pressao > pmin && pressao < pmin * 1.3) avisos.push({ nivel: 'baixa', texto: `Pressão no limite inferior da ponta (${pressao} bar, mínimo ${pmin} bar).`, conduta: 'Confira o padrão do leque com o pulverizador parado antes de sair.' });
@@ -1377,7 +1411,10 @@
       tamanhosDaPonta(p).forEach(iso => {
         if (!ISO_MAP[iso] && !tabelaDaPonta(p, iso)) return;
         const pressao = pressaoDaPonta(p, iso, q);
-        if (pressao < p.pressao[0] || pressao > p.pressao[1]) return;
+        const tabelaTamanho = tabelaDaPonta(p, iso);
+        const min = p.id === 'mj-ad-ia' ? tabelaTamanho.pressoes[0] : p.pressao[0];
+        const max = p.id === 'mj-ad-ia' ? tabelaTamanho.pressoes[tabelaTamanho.pressoes.length - 1] : p.pressao[1];
+        if (pressao < min || pressao > max) return;
         const gota = classeGota(p, pressao, iso);
         let score = 40;
         if (gota && ideais.length) {
@@ -1386,7 +1423,7 @@
           else score += Math.max(0, 25 - 12 * Math.min(Math.abs(gota.grau - min), Math.abs(gota.grau - max)));
         }
         // pressão confortável: perto do meio da faixa útil da ponta
-        const meio = (p.pressao[0] + p.pressao[1]) / 2, span = (p.pressao[1] - p.pressao[0]) / 2 || 1;
+        const meio = (min + max) / 2, span = (max - min) / 2 || 1;
         score += Math.round(20 * (1 - Math.min(Math.abs(pressao - meio) / span, 1)));
         if (pressao >= 1.5 && pressao <= 4) score += 8;
         if (gota && gota.estimado) score -= 4;
@@ -1519,6 +1556,8 @@
     const linhas = pressoes.map(bar => ({
       bar,
       celulas: sizes.map(iso => {
+        const linhasPublicadas = tab && tab.pressoesPorTamanho && tab.pressoesPorTamanho[iso];
+        if (linhasPublicadas && !linhasPublicadas.includes(bar)) return { iso, vazao: null, volume: null, gota: null, noAlvo: false };
         const vazao = vazaoDaPonta(ponta, iso, bar);
         const volume = (velocidade > 0 && faixaPorBico > 0) ? volumeAplicado(vazao, velocidade, faixaPorBico) : null;
         const gota = ponta ? classeGota(ponta, bar, iso) : null;
