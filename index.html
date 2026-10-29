@@ -158,6 +158,9 @@
       <div class="grid2" id="camposArea">
         <label>Espaçamento entre bicos (m)<input id="pEsp" type="number" min="0.1" step="0.05" value="0.5"></label>
         <label>Nº de bicos<input id="pNb" type="number" min="1" step="1" value="40"></label>
+        <label>Largura efetiva da passada (m)<input id="pLargura" type="number" min="0.01" step="any" placeholder="automática: bicos × espaçamento"></label>
+        <div><button type="button" class="btn ghost" id="btnColumbiaCross">Columbia Cross · 18 m · 46 pontas · 40 cm</button></div>
+        <p class="small muted" id="pLarguraNota" style="grid-column:1/-1">Informe a distância entre passadas. Deixe vazio para usar bicos × espaçamento. O espaçamento físico entre pontas não é alterado.</p>
       </div>
       <div class="grid2 hidden" id="camposFaixa">
         <label>Largura total da faixa tratada (m)<input id="pLf" type="number" min="0.1" step="0.1" value="1.6"></label>
@@ -483,9 +486,9 @@
 
 <script src="kb.js"></script>
 <script src="engine.js"></script>
-<script src="pontas.js?v=35"></script>
+<script src="pontas.js?v=36"></script>
 <script src="biblioteca.js?v=33"></script>
-<script src="app.js?v=35"></script>
+<script src="app.js?v=36"></script>
 <script src="biblioteca-ui.js?v=33"></script>
 <script src="estoque.js"></script>
 <script src="produtos.js"></script>

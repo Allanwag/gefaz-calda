@@ -41,6 +41,64 @@ function appFaixa() {
   return a;
 }
 
+test('Columbia: botão preenche 18 m, 46 pontas e 40 cm preservando velocidade e volume do operador', () => {
+  const a = appFaixa(); a.element('#btnColumbiaCross').onclick();
+  assert.equal(a.element('#pModo').value, 'area');
+  assert.equal(a.run('regulagem.larguraTrabalho'), 18);
+  assert.equal(a.run('regulagem.nBicos'), 46);
+  assert.equal(a.run('regulagem.espacamento'), 0.4);
+  assert.equal(a.run('regulagem.velocidade'), 4.5);
+  assert.equal(a.run('regulagem.volumeHa'), 200);
+  assert.equal(a.run('DB.config.pontas.larguraEfetiva'), 18);
+});
+
+test('Columbia: largura efetiva é salva e restaurada, e uma regulagem antiga limpa o campo', () => {
+  const a = appFaixa(); a.element('#btnColumbiaCross').onclick();
+  a.run('var salvaColumbia = JSON.parse(JSON.stringify(DB.config.pontas))');
+  a.element('#pLargura').value = '20';
+  a.run('aplicarRegulagem(salvaColumbia); calcularRegulagem(true)');
+  assert.equal(a.run('regulagem.larguraTrabalho'), 18);
+  a.run("aplicarRegulagem({modo:'area', espacamento:0.4, nBicos:46}); calcularRegulagem(true)");
+  assert.equal(a.element('#pLargura').value, '');
+  assert.equal(a.run('regulagem.larguraTrabalho'), 18.4);
+});
+
+test('Columbia: calibração e tabela cruzada usam 18 m em vez de 18,4 m', () => {
+  const a = appFaixa(); a.element('#btnColumbiaCross').onclick();
+  a.element('#pVel').value = '6'; a.element('#cSeg').value = '60';
+  a.element('#cColetas').value = Array(46).fill('800').join(' ');
+  a.run('renderCalibracao(); renderTabelaCruzada()');
+  assert.equal(a.run('ultimaCalibracao.volumeReal'), 204.4);
+  assert.equal(a.run('ultimaCalibracao.bicos.length'), 46);
+  assert.match(a.element('#cResultado').innerHTML, /600 × 0.8 × 46/);
+  assert.match(a.element('#xTabela').innerHTML, /passadas de 18 m/);
+  assert.match(a.element('#xTabela').innerHTML, /201,9 L\/ha/);
+  assert.match(a.element('#pLarguraNota').textContent, /0,4 m/);
+});
+
+test('Columbia: cruzamento e vazão alvo compartilham a geometria da largura informada', () => {
+  const a = appFaixa(); a.element('#btnColumbiaCross').onclick();
+  a.element('#pVel').value = '6'; a.element('#xQ1').value = '0.79'; a.element('#xP1').value = '3';
+  a.element('#xModo').value = 'volume'; a.element('#xAlvo').value = '200';
+  a.run('atualizarVazaoAlvo(); cruzarVazaoPressao()');
+  assert.match(a.element('#pVazaoAlvo').textContent, /0,783 L\/min/);
+  assert.match(a.element('#pVazaoAlvo').textContent, /18 m de passada ÷ 46 bicos/);
+  assert.match(a.element('#xResultado').innerHTML, /2,95 bar/);
+  a.element('#btnUsarPressao').onclick();
+  assert.equal(a.run('regulagem.larguraTrabalho'), 18);
+  assert.ok(Math.abs(a.run('regulagem.volumeAplicado') - 200) < 0.5);
+});
+
+test('Columbia: editar largura invalida a calibração e largura zero não reaproveita ficha antiga', () => {
+  const a = appFaixa(); a.element('#btnColumbiaCross').onclick(); a.run('renderCalibracao()');
+  a.element('#pLargura').value = '20'; a.element('#pLargura').oninput();
+  assert.equal(a.run('ultimaCalibracao'), null);
+  assert.equal(a.run('regulagem.larguraTrabalho'), 20);
+  a.element('#pLargura').value = '0'; a.element('#pLargura').oninput();
+  assert.equal(a.run('regulagem'), null);
+  assert.match(a.element('#pResultado').innerHTML, /largura efetiva/);
+});
+
 test('PSI: converte pressão fixa preservando vazão, volume e unidade nos dados', () => {
   const a = appFaixa(); a.element('#pFixar').checked = true; a.element('#pPress').value = '3';
   a.run('calcularRegulagem(true)'); const vol = a.run('regulagem.volumeAplicado');

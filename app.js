@@ -1167,6 +1167,7 @@ function lerRegulagem() {
     velocidade: num($('#pVel').value), volumeHa: num($('#pVol').value),
     distancia: num($('#pDist').value), tempos: $('#pTempo').value.trim(),
     espacamento: num($('#pEsp').value), nBicos: num($('#pNb').value),
+    larguraEfetiva: String($('#pLargura').value).trim() === '' ? null : num($('#pLargura').value),
     larguraFaixa: num($('#pLf').value), bicosPorPassada: num($('#pBf').value), entreLinhas: num($('#pEl').value), protecao: $('#pProt').checked,
     ponta: $('#pPonta').value, iso: $('#pIso').value, angulo: num($('#pAng').value),
     pressao: lerPressao('#pPress'), fixarPressao: $('#pFixar').checked,
@@ -1181,6 +1182,7 @@ function aplicarRegulagem(e) {
   set('#pAlvo', e.alvo); set('#pVel', e.velocidade); set('#pVol', e.volumeHa);
   set('#pDist', e.distancia); $('#pTempo').value = e.tempos || '';
   set('#pEsp', e.espacamento); set('#pNb', e.nBicos);
+  $('#pLargura').value = e.larguraEfetiva == null ? '' : e.larguraEfetiva;
   set('#pLf', e.larguraFaixa); set('#pBf', e.bicosPorPassada); set('#pEl', e.entreLinhas); $('#pProt').checked = !!e.protecao;
   set('#pTq', e.tanque); set('#pArea', e.area);
   set('#pTemp', e.temperatura); set('#pUr', e.umidade); set('#pVento', e.vento); set('#pHora', e.hora);
@@ -1252,9 +1254,10 @@ function preencherAngulos(sel) {
 }
 function atualizarVazaoAlvo() {
   const e = lerRegulagem();
-  const faixaPorBico = e.modo === 'faixa' ? (e.larguraFaixa / Math.max(1, e.bicosPorPassada)) : e.espacamento;
+  const g = PT.geometria(e), faixaPorBico = g.faixaPorBico;
   const q = PT.vazaoNecessaria(e.volumeHa, e.velocidade, faixaPorBico);
-  $('#pVazaoAlvo').textContent = q > 0 ? `precisa de ${fmt(q, 3)} L/min por bico (${fmt(faixaPorBico, 2)} m por bico)` : '';
+  $('#pVazaoAlvo').textContent = q > 0 ? `precisa de ${fmt(q, 3)} L/min por bico (${g.larguraInformada ? fmt(g.larguraTrabalho, 2) + ' m de passada ÷ ' + g.nBicos + ' bicos' : fmt(faixaPorBico, 2) + ' m por bico'})` : '';
+  $('#pLarguraNota').textContent = g.larguraInformada ? `Largura efetiva: ${fmt(g.larguraTrabalho, 2)} m por passada, com ${g.nBicos} pontas a ${fmt(e.espacamento, 2)} m. Os L/ha e o rendimento usam a largura efetiva; a altura de barra continua usando o espaçamento físico.` : 'Informe a distância entre passadas. Deixe vazio para usar bicos × espaçamento. O espaçamento físico entre pontas não é alterado.';
   const a = PT.ALVO_MAP[e.alvo];
   $('#pAlvoNota').textContent = a ? `${a.nome}: gota ${a.gotas.map(g => PT.GOTA_MAP[g].nome.toLowerCase()).join(' a ')}, volume usual ${a.volume[0]}–${a.volume[1]} L/ha.${a.nota ? ' ' + a.nota : ''}` : '';
 }
@@ -1320,12 +1323,12 @@ function renderRegulagem() {
   <div class="card"><div class="card-hd"><h2>Equações usadas</h2><span class="hint">com os seus números</span></div>
     <table class="tb formulas"><thead><tr><th>O quê</th><th>Equação</th><th>Com os seus números</th><th class="num">Resultado</th></tr></thead>
     <tbody>${r.formulas.map(f => `<tr><td>${esc(f.nome)}</td><td><code>${esc(f.formula)}</code></td><td class="small">${esc(f.calculo)}</td><td class="num"><b>${esc(textoComPressao(f.resultado))}</b></td></tr>`).join('')}</tbody></table>
-    <p class="small muted">V = volume (L/ha) · v = velocidade (km/h) · e = faixa de cada bico (m) · q = vazão do bico (L/min). Nas equações do motor, p é calculada em bar; a pressão apresentada segue a unidade escolhida. 1 bar ≈ 14,5038 PSI. A vazão nominal ISO é referida a 3 bar (≈ 43,51 PSI). Dobrar a vazão exige 4× a pressão.</p>
+    <p class="small muted">V = volume (L/ha) · v = velocidade (km/h) · e = faixa de cada bico (m) · q = vazão do bico (L/min) · L = largura efetiva da passada (m) · N = número de pontas ativas. Nas equações do motor, p é calculada em bar; a pressão apresentada segue a unidade escolhida. 1 bar ≈ 14,5038 PSI. A vazão nominal ISO é referida a 3 bar (≈ 43,51 PSI). Dobrar a vazão exige 4× a pressão.</p>
   </div>
 
   <div class="card"><div class="card-hd"><h2>Ficha de campo</h2></div>
     <table class="tb"><tbody>
-      <tr><td>Arranjo</td><td class="num">${r.modo === 'faixa' ? `faixa de ${fmt(r.larguraFaixa, 2)} m em entrelinhas de ${fmt(r.entreLinhas, 2)} m · ${r.nBicos} bico(s)` : `${r.nBicos} bicos a ${fmt(r.espacamento, 2)} m · barra de ${fmt(r.larguraTrabalho, 1)} m`}</td></tr>
+      <tr><td>Arranjo</td><td class="num">${r.modo === 'faixa' ? `faixa de ${fmt(r.larguraFaixa, 2)} m em entrelinhas de ${fmt(r.entreLinhas, 2)} m · ${r.nBicos} bico(s)` : `${r.nBicos} bicos a ${fmt(r.espacamento, 2)} m · ${r.larguraEfetiva ? 'passada efetiva' : 'largura calculada'} de ${fmt(r.larguraTrabalho, 2)} m`}</td></tr>
       <tr><td>Ponta</td><td class="num">${p ? esc(p.marca + ' ' + p.modelo) : '—'} ${esc(r.iso)} (${esc(r.cor)}) · ${r.angulo}°</td></tr>
       <tr><td>Pressão no manômetro</td><td class="num"><b>${r.pressao ? fmtPressao(r.pressao) : '—'}</b></td></tr>
       <tr><td>Velocidade</td><td class="num"><b>${fmt(r.velocidade, 1)} km/h</b> (${fmt(3600 / (r.velocidade * 1000) * 50, 1)} s para 50 m)</td></tr>
@@ -1399,7 +1402,7 @@ function renderCalibracao() {
   if ($('#cPress').value !== '' && !(num($('#cPress').value) > 0)) { $('#cResultado').innerHTML = ''; return toast('Informe pressão de coleta maior que zero ou deixe em branco.', 'err'); }
   const c = PT.calibracao({
     coletas, segundos: num($('#cSeg').value), pressao: lerPressao('#cPress') || e.pressao, iso: e.iso, ponta: e.ponta,
-    modo: e.modo, espacamento: e.espacamento, larguraFaixa: e.larguraFaixa, bicosPorPassada: e.bicosPorPassada, entreLinhas: e.entreLinhas,
+    modo: e.modo, espacamento: e.espacamento, nBicos: e.nBicos, larguraEfetiva: e.larguraEfetiva, larguraFaixa: e.larguraFaixa, bicosPorPassada: e.bicosPorPassada, entreLinhas: e.entreLinhas,
     velocidade: e.velocidade, distancia: e.distancia, tempo: (PT.velocidadeMedida(e.distancia, e.tempos) || {}).tempoMedio || 0, volumeHa: e.volumeHa
   });
   if (!c) return;
@@ -1475,7 +1478,7 @@ let origemReferenciaCruzamento = null;
 const X_LABEL = { vazao: 'Vazão desejada (L/min)', volume: 'Volume desejado (L/ha)', pressao: 'Pressão desejada (bar)' };
 function faixaPorBicoAtual() {
   const e = lerRegulagem();
-  return e.modo === 'faixa' ? (e.larguraFaixa / Math.max(1, e.bicosPorPassada)) : e.espacamento;
+  return PT.geometria(e).faixaPorBico;
 }
 function atualizarLabelCruzar() {
   const m = $('#xModo').value;
@@ -1521,9 +1524,9 @@ function renderTabelaCruzada() {
   const p = PT.PONTA_MAP[e.ponta];
   if (!t.sizes.length) { $('#xTabela').innerHTML = ''; return; }
   $('#xTabela').innerHTML = `<h3>Tabela cruzada — ${p ? esc(p.marca + ' ' + p.modelo) : 'pontas ISO'}</h3>
-    <p class="small muted">L/min por bico e, embaixo, o volume que sai a ${fmt(e.velocidade, 1)} km/h com ${fmt(t.faixaPorBico, 2)} m por bico. ${e.modo === 'faixa' ? 'Os volumes da tabela são por hectare de faixa tratada. ' : ''}Verde = dentro de 5 % do alvo de ${fmt(e.volumeHa, 1)} L/ha; a linha destacada é a ponta em uso.</p>
+    <p class="small muted">L/min por bico e, embaixo, o volume que sai a ${fmt(e.velocidade, 1)} km/h${PT.geometria(e).larguraInformada ? ' em passadas de ' + fmt(e.larguraEfetiva, 2) + ' m, distribuídas entre ' + e.nBicos + ' pontas (espaçamento físico de ' + fmt(e.espacamento, 2) + ' m)' : ' com ' + fmt(t.faixaPorBico, 2) + ' m por bico'}. ${e.modo === 'faixa' ? 'Os volumes da tabela são por hectare de faixa tratada. ' : ''}Verde = dentro de 5 % do alvo de ${fmt(e.volumeHa, 1)} L/ha; a linha destacada é a ponta em uso.</p>
     <div class="cruzada"><table class="tb"><thead><tr><th>${unidadePressaoRotulo()}</th>${t.sizes.map(s => `<th class="num">${corBadge(s)}</th>`).join('')}</tr></thead>
-    <tbody>${t.linhas.map(l => `<tr><th>${fmt(PT.pressaoNaUnidade(l.bar, unidadePressaoAtual), 2)}</th>${l.celulas.map(c => `<td class="num ${c.noAlvo ? 'alvo' : ''} ${c.iso === e.iso ? 'sel' : ''}" title="${c.gota ? esc(c.gota.nome) : ''}">${fmt(c.vazao, 2)}${c.volume != null ? `<small>${fmt(c.volume, 0)} L/ha</small>` : ''}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+    <tbody>${t.linhas.map(l => `<tr><th>${fmt(PT.pressaoNaUnidade(l.bar, unidadePressaoAtual), 2)}</th>${l.celulas.map(c => `<td class="num ${c.noAlvo ? 'alvo' : ''} ${c.iso === e.iso ? 'sel' : ''}" title="${c.gota ? esc(c.gota.nome) : ''}">${fmt(c.vazao, 2)}${c.volume != null ? `<small>${fmt(c.volume, 1)} L/ha</small>` : ''}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
 function preencherCruzarDaPonta() {
   const e = lerRegulagem();
@@ -1700,7 +1703,11 @@ function initPontas() {
   document.addEventListener('click', e => { if (!e.target.closest('#pBuscaRapidaWrap')) $('#pBuscaRapidaRes').classList.add('hidden'); });
   ['#pDist', '#pTempo'].forEach(s => { $(s).oninput = () => { atualizarVelocidade(true); recalc(); }; });
   $('#pVel').addEventListener('input', () => atualizarVelocidade()); atualizarVelocidade();
-  ['#pIso', '#pAng', '#pVel', '#pVol', '#pEsp', '#pNb', '#pLf', '#pBf', '#pEl', '#pTq', '#pArea', '#pPress'].forEach(s => { $(s).oninput = recalc; $(s).onchange = recalc; });
+  ['#pIso', '#pAng', '#pVel', '#pVol', '#pEsp', '#pNb', '#pLargura', '#pLf', '#pBf', '#pEl', '#pTq', '#pArea', '#pPress'].forEach(s => { $(s).oninput = recalc; $(s).onchange = recalc; });
+  $('#btnColumbiaCross').onclick = () => {
+    aplicarRegulagem({ ...lerRegulagem(), modo: 'area', espacamento: 0.4, nBicos: 46, larguraEfetiva: 18 });
+    calcularRegulagem(); toast('Columbia Cross: 18 m de passada, 46 pontas e 40 cm entre pontas.');
+  };
   $('#pFixar').onchange = recalc; $('#pProt').onchange = recalc;
   ['#pTemp', '#pUr', '#pVento', '#pHora'].forEach(s => { $(s).oninput = () => { renderClima(); recalc(); }; });
   ['#pTq', '#pVol'].forEach(s => { const antes = $(s).oninput; $(s).oninput = ev => { if (antes) antes(ev); atualizarAreaTanque(); }; });

@@ -1,5 +1,5 @@
-const CACHE = 'gefaz-calda-v35';
-const ASSETS = ['./', './index.html', './app.css', './app.js?v=35', './kb.js', './engine.js', './pontas.js?v=35', './biblioteca.js?v=33', './biblioteca-ui.js?v=33', './estoque.js', './produtos.js', './fazenda.js', './estoque-ui.js', './metas-ui.js', './produtos-ui.js', './sdk.js', './manifest.json', './icon-192.png', './icon-512.png', './data/agrofit-index.json', './data/magnojet.json'];
+const CACHE = 'gefaz-calda-v36';
+const ASSETS = ['./', './index.html', './app.css', './app.js?v=36', './kb.js', './engine.js', './pontas.js?v=36', './biblioteca.js?v=33', './biblioteca-ui.js?v=33', './estoque.js', './produtos.js', './fazenda.js', './estoque-ui.js', './metas-ui.js', './produtos-ui.js', './sdk.js', './manifest.json', './icon-192.png', './icon-512.png', './data/agrofit-index.json', './data/magnojet.json'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
 });
