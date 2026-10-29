@@ -152,7 +152,7 @@ test('catálogo é consistente', () => {
     if (p.vazaoTabela) {
       assert.ok(p.vazaoTabela.fonte, `tabela de vazão sem fonte em ${p.id}`);
       Object.entries(p.vazaoTabela.valores).forEach(([s, v]) => {
-        assert.equal(v.length, p.vazaoTabela.pressoes.length, `linha ${s} de ${p.id} com tamanho diferente das pressões`);
+        assert.equal(v.length, P.tabelaDaPonta(p, s).pressoes.length, `linha ${s} de ${p.id} com tamanho diferente das pressões`);
         for (let i = 1; i < v.length; i++) assert.ok(v[i] > v[i - 1], `vazão não cresce com a pressão em ${p.id} ${s}`);
       });
     }
@@ -160,7 +160,7 @@ test('catálogo é consistente', () => {
     Object.entries(p.gotasPorTamanho || {}).forEach(([s, mapa]) => {
       assert.ok(p.sizes.includes(s), `matriz de gotas para tamanho desconhecido em ${p.id}`);
       Object.values(mapa).forEach(g => assert.ok(classes.includes(g), `classe inválida em ${p.id} ${s}`));
-      assert.equal(Object.keys(mapa).length, p.vazaoTabela.pressoes.length);
+      assert.equal(Object.keys(mapa).length, P.tabelaDaPonta(p, s).pressoes.length);
     });
     (p.gotasFaixa || []).forEach(g => assert.ok(classes.includes(g), `classe inválida em ${p.id}`));
     assert.ok(p.gotasPorBar || p.gotasFaixa || p.gotasPorTamanho, `${p.id} sem informação de gota`);
@@ -319,18 +319,54 @@ test('tabela cruzada de ponta com tabela usa as pressões do fabricante', () => 
 test('tabelas Magnojet batem com o catálogo', () => {
   perto(P.vazaoDaPonta('mj-ad', '02', 3.45), 0.86, 0.01);        // AD, 50 PSI
   perto(P.vazaoDaPonta('mj-ad', '01', 1.03), 0.23, 0.01);        // AD, 15 PSI
-  perto(P.vazaoDaPonta('mj-ad-ia', '03', 2.07), 1.00, 0.01);     // AD-IA, 30 PSI
-  perto(P.vazaoDaPonta('mj-ad-ia', '08', 7.58), 5.09, 0.02);     // AD-IA, 110 PSI
+  perto(P.vazaoDaPonta('mj-ad-ia', '03', 2), 1.01, 0.001);
+  perto(P.vazaoDaPonta('mj-ad-ia', '08', 7.6), 5.05, 0.001);
   perto(P.vazaoDaPonta('mj-mug', '035', 4.14), 1.64, 0.01);      // MUG, 60 PSI
   perto(P.vazaoDaPonta('mj-mug-cv', '02', 5.52), 1.08, 0.01);    // MUG-CV, 80 PSI
   perto(P.vazaoDaPonta('mj-mag', 'MAG3', 8.27), 1.24, 0.01);     // MAG, 120 PSI (escala própria)
   perto(P.vazaoDaPonta('mj-mag', 'MAG6', 4.14), 2.10, 0.01);
 });
 
+test('tabela AD-IA enviada: todos os tamanhos, pressões, gotas e velocidades', () => {
+  const p = P.PONTA_MAP['mj-ad-ia'], t = p.vazaoTabela;
+  const esperadas = {
+    '007': [0.28, 0.31, 0.37, 0.40, 0.46],
+    '01': [0.38, 0.43, 0.50, 0.56, 0.62],
+    '015': [0.48, 0.65, 0.77, 0.86, 0.95],
+    '02': [0.67, 0.89, 1.04, 1.18, 1.29],
+    '025': [0.83, 1.09, 1.29, 1.46, 1.61],
+    '03': [1.01, 1.33, 1.58, 1.80, 1.97],
+    '04': [1.33, 1.73, 2.06, 2.32, 2.57],
+    '05': [1.64, 2.14, 2.56, 2.87, 3.17],
+    '06': [2.00, 2.57, 3.03, 3.53, 3.85],
+    '08': [2.65, 3.46, 4.00, 4.65, 5.05]
+  };
+  assert.deepEqual(P.tamanhosDaPonta(p), Object.keys(esperadas));
+  assert.equal(P.ISO_MAP['01'].cor, 'Laranja');
+  assert.equal(t.malhaPorTamanho['01'], 100);
+  assert.deepEqual(t.angulosPorTamanho['01'], [80, 110]);
+  assert.deepEqual(t.velocidades, [4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20, 25]);
+  Object.entries(esperadas).forEach(([s, vazoes]) => {
+    const ps = P.tabelaDaPonta(p, s).pressoes;
+    assert.equal(ps.length, 5);
+    ps.forEach((bar, i) => {
+      assert.equal(P.vazaoDaPonta(p, s, bar), vazoes[i], `${s} a ${bar} bar`);
+      assert.ok(P.classeGota(p, bar, s));
+      t.velocidades.forEach(v => assert.ok(P.volumeAplicado(vazoes[i], v, t.espacamento) > 0));
+    });
+  });
+  assert.equal(P.classeGota(p, 3.4, '01').id, 'MG');
+  assert.equal(P.volumeAplicado(0.38, 4, 0.5), 114);
+  assert.equal(P.volumeAplicado(0.50, 10, 0.5), 60);
+  const cruzada = P.tabelaCruzada({ ponta: p.id, velocidade: 8, faixaPorBico: 0.5 });
+  assert.equal(cruzada.linhas.find(l => l.bar === 2.7).celulas.find(c => c.iso === '01').volume, 114 / 2);
+  assert.equal(cruzada.linhas.find(l => l.bar === 2).celulas.find(c => c.iso === '01').vazao, null);
+});
+
 test('classe de gota da Magnojet acompanha a pressão', () => {
-  assert.equal(P.classeGota('mj-ad-ia', 2.07, '02').id, 'UG');   // ultragrossa a 30 PSI
-  assert.equal(P.classeGota('mj-ad-ia', 4.14, '02').id, 'EG');
-  assert.equal(P.classeGota('mj-ad-ia', 7.58, '02').id, 'G');    // e só grossa a 110 PSI
+  assert.equal(P.classeGota('mj-ad-ia', 2, '02').id, 'EG');
+  assert.equal(P.classeGota('mj-ad-ia', 4.8, '02').id, 'MG');
+  assert.equal(P.classeGota('mj-ad-ia', 7.6, '02').id, 'G');
   assert.equal(P.classeGota('mj-mug', 5, '02').id, 'UG');        // MUG é ultragrossa em toda a faixa
   assert.equal(P.classeGota('mj-mug-cv', 3, '02').id, 'UG');
   assert.equal(P.classeGota('mj-ad', 2, '02').id, 'M');
@@ -349,7 +385,7 @@ test('toda ponta com tabela declara a fonte e cobre a faixa de pressão', () => 
   assert.ok(comTabela.length >= 9, `só ${comTabela.length} pontas com tabela`);
   comTabela.forEach(p => {
     const t = p.vazaoTabela;
-    assert.ok(/Cat[áa]logo|Guide|Catalog|Folheto/.test(t.fonte), `fonte fraca em ${p.id}`);
+    assert.ok(/Cat[áa]logo|Guide|Catalog|Folheto|Tabela AD-IA fornecida pelo usuário/.test(t.fonte), `fonte fraca em ${p.id}`);
     // a tabela publicada pode passar da faixa útil (o fabricante imprime além dela),
     // mas tem de cobrir a faixa em que a ponta trabalha
     assert.ok(t.pressoes[0] <= p.pressao[1], `${p.id}: tabela começa depois da faixa útil`);
