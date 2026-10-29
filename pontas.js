@@ -16,6 +16,10 @@
   'use strict';
   const round = (v, d = 2) => { const f = Math.pow(10, d); return Math.round((+v || 0) * f) / f; };
   const num = v => { const n = parseFloat(String(v).replace(',', '.')); return Number.isFinite(n) ? n : 0; };
+  // 1 bar = 100000 Pa; 1 PSI = 6894,757293168 Pa. O motor e os dados salvos usam bar.
+  const PSI_POR_BAR = 100000 / 6894.757293168;
+  const pressaoEmBar = (valor, unidade = 'bar') => num(valor) / (unidade === 'psi' ? PSI_POR_BAR : 1);
+  const pressaoNaUnidade = (bar, unidade = 'bar') => num(bar) * (unidade === 'psi' ? PSI_POR_BAR : 1);
 
   /* ───────── ISO 10625: tamanho → cor e vazão nominal a 3 bar (L/min) ───────── */
   const ISO = [
@@ -1169,8 +1173,24 @@
   }
 
   /* ───────── regulagem completa ───────── */
+  function validarRegulagem(e) {
+    if (!(num(e.velocidade) > 0) || !(num(e.volumeHa) > 0)) return 'Informe velocidade e volume de calda maiores que zero.';
+    if (e.modo === 'faixa') {
+      if (!(num(e.larguraFaixa) > 0) || !(num(e.entreLinhas) > 0)) return 'Informe largura tratada e entrelinhas maiores que zero.';
+      if (num(e.larguraFaixa) > num(e.entreLinhas)) return 'A largura total tratada por passada não pode superar as entrelinhas.';
+      if (!Number.isInteger(num(e.bicosPorPassada)) || !(num(e.bicosPorPassada) > 0)) return 'Informe um número inteiro de bicos na faixa, maior que zero.';
+    } else {
+      if (!(num(e.espacamento) > 0)) return 'Informe espaçamento entre bicos maior que zero.';
+      if (!Number.isInteger(num(e.nBicos)) || !(num(e.nBicos) > 0)) return 'Informe um número inteiro de bicos, maior que zero.';
+    }
+    if (e.fixarPressao && !(num(e.pressao) > 0)) return 'Informe a pressão fixa, maior que zero.';
+    if (num(e.tanque) < 0 || num(e.area) < 0) return 'Tanque e área não podem ser negativos.';
+    return null;
+  }
   function calcular(e) {
     e = e || {};
+    const erro = validarRegulagem(e);
+    if (erro) throw new RangeError(erro);
     const modo = e.modo === 'faixa' ? 'faixa' : 'area';
     const volumeHa = num(e.volumeHa), velocidade = num(e.velocidade);
     const ponta = PONTA_MAP[e.ponta] || null, iso = e.iso || '';
@@ -1200,7 +1220,7 @@
       `q = (${volumeHa} L/ha × ${velocidade} km/h × ${round(faixaPorBico, 3)} m) ÷ 600`, `${round(qNecessaria, 3)} L/min`);
 
     // pressão para essa vazão com a ponta escolhida (ou vazão real na pressão informada)
-    let pressao = num(e.pressao), qReal = qNecessaria, pressaoCalculada = null, gota = null, vazaoNom = 0;
+    let pressao = num(e.pressao), qReal = volumeHa * velocidade * faixaPorBico / 600, pressaoCalculada = null, gota = null, vazaoNom = 0;
     const tabela = tabelaDaPonta(ponta, iso);
     if (iso && (ISO_MAP[iso] || tabela)) {
       const pRef = tabela ? pressaoReferencia(ponta) : 3;
@@ -1211,7 +1231,7 @@
           tabela ? `${ponta.modelo} ${iso} a ${pressao} bar (tabela de ${tabela.pressoes[0]} a ${tabela.pressoes[tabela.pressoes.length - 1]} bar)` : `q = ${vazaoNom} × √(${pressao} ÷ 3)`,
           `${qReal} L/min`);
       } else {
-        pressaoCalculada = pressaoDaPonta(ponta, iso, qNecessaria);
+        pressaoCalculada = pressaoDaPonta(ponta, iso, qReal);
         pressao = pressaoCalculada;
         F('Pressão necessária', tabela ? 'inversão da tabela do fabricante (q ∝ √p entre as linhas)' : 'p = 3 × (q ÷ q₃bar)²',
           tabela ? `${round(qNecessaria, 3)} L/min na tabela da ${ponta.modelo} ${iso} (${vazaoNom} L/min a ${pRef} bar)` : `p = 3 × (${round(qNecessaria, 3)} ÷ ${vazaoNom})²`,
@@ -1220,17 +1240,19 @@
       gota = classeGota(ponta, pressao, iso);
     }
 
-    const volumeReal = volumeAplicado(qReal, velocidade, faixaPorBico);
+    // Conservar precisão nos cálculos seguintes; arredondar só o que é exibido.
+    const volumeExato = 600 * qReal / (velocidade * faixaPorBico);
+    const volumeReal = round(volumeExato, 1);
     if (e.fixarPressao) F('Volume aplicado', 'V = (600 × q) ÷ (v × e)',
-      `V = (600 × ${qReal}) ÷ (${velocidade} × ${round(faixaPorBico, 3)})`, `${volumeReal} L/ha`);
+      `V = (600 × ${round(qReal, 3)}) ÷ (${velocidade} × ${round(faixaPorBico, 3)})`, `${volumeReal} L/ha`);
 
     const vazaoTotal = round(qReal * nBicos, 2);
-    F('Vazão total do conjunto', 'Q = q × nº de bicos', `Q = ${qReal} × ${nBicos}`, `${vazaoTotal} L/min`);
+    F('Vazão total do conjunto', 'Q = q × nº de bicos', `Q = ${round(qReal, 3)} × ${nBicos}`, `${vazaoTotal} L/min`);
 
     // faixa: volume por hectare de lavoura e economia
     let volumeLavoura = volumeReal, economia = 0;
     if (modo === 'faixa') {
-      volumeLavoura = round(volumeReal * fracaoTratada, 1);
+      volumeLavoura = round(volumeExato * fracaoTratada, 1);
       economia = round((1 - fracaoTratada) * 100, 1);
       F('Volume por hectare de lavoura', 'V_lavoura = V_faixa × (largura da faixa ÷ entrelinhas)',
         `V = ${volumeReal} × (${larguraFaixa} ÷ ${entreLinhas})`, `${volumeLavoura} L/ha de lavoura`);
@@ -1245,11 +1267,12 @@
     const tanque = num(e.tanque), area = num(e.area);
     let ficha = null;
     if (tanque > 0 && volumeLavoura > 0) {
-      const haPorTanque = round(tanque / volumeLavoura, 2);
-      const distancia = larguraTrabalho > 0 ? round(haPorTanque * 10000 / larguraTrabalho, 0) : 0;
-      const minutos = vazaoTotal > 0 ? round(tanque / vazaoTotal, 0) : 0;
-      const cargas = area > 0 ? Math.ceil(area / haPorTanque) : 0;
-      ficha = { haPorTanque, distancia, minutos, cargas, area };
+      const haExatos = tanque / (volumeExato * fracaoTratada);
+      const haPorTanque = round(haExatos, 2);
+      const distancia = larguraTrabalho > 0 ? round(haExatos * 10000 / larguraTrabalho, 0) : 0;
+      const minutos = qReal > 0 ? round(tanque / (qReal * nBicos), 0) : 0;
+      const cargas = area > 0 ? Math.ceil(area / haExatos - 1e-10) : 0;
+      ficha = { haPorTanque, haExatos, distancia, minutos, cargas, area };
       F('Área por tanque', 'A = capacidade do tanque ÷ volume por hectare',
         `A = ${tanque} ÷ ${volumeLavoura}`, `${haPorTanque} ha (≈ ${distancia} m de percurso, ${minutos} min de pulverização)`);
     }
@@ -1267,7 +1290,7 @@
     /* ── avisos ── */
     if (ponta && pressao > 0) {
       const [pmin, pmax] = ponta.pressao;
-      if (pressao < pmin) avisos.push({ nivel: 'alta', texto: `Pressão calculada (${pressao} bar) abaixo do mínimo da ${ponta.modelo} (${pmin} bar): o leque não fecha e a distribuição fica irregular.`, conduta: `Use uma ponta menor, aumente a velocidade ou reduza o volume — ou troque por um modelo que trabalhe a partir de ${pmin} bar.` });
+      if (pressao < pmin) avisos.push({ nivel: 'alta', texto: `Pressão calculada (${pressao} bar) abaixo do mínimo da ${ponta.modelo} (${pmin} bar): o leque não fecha e a distribuição fica irregular.`, conduta: `Use uma ponta menor ou um modelo que trabalhe a partir de ${pmin} bar. Para o mesmo tamanho de ponta, aumentar a velocidade ou o volume alvo aumenta a pressão necessária.` });
       else if (pressao > pmax) avisos.push({ nivel: 'alta', texto: `Pressão calculada (${pressao} bar) acima do máximo da ${ponta.modelo} (${pmax} bar): gota fina demais, deriva e desgaste.`, conduta: 'Use uma ponta maior (ISO seguinte), reduza a velocidade ou aumente o número de bicos.' });
       else if (pressao > pmin && pressao < pmin * 1.3) avisos.push({ nivel: 'baixa', texto: `Pressão no limite inferior da ponta (${pressao} bar, mínimo ${pmin} bar).`, conduta: 'Confira o padrão do leque com o pulverizador parado antes de sair.' });
     }
@@ -1318,8 +1341,8 @@
       larguraTrabalho, larguraFaixa, entreLinhas, fracaoTratada: round(fracaoTratada, 3), economia,
       ponta: ponta ? { id: ponta.id, marca: ponta.marca, modelo: ponta.modelo, tipo: ponta.tipo, material: ponta.material, pressao: ponta.pressao, fonte: ponta.fonte } : null,
       iso, cor: ISO_MAP[iso] ? ISO_MAP[iso].cor : '', hex: ISO_MAP[iso] ? ISO_MAP[iso].hex : '', malha: ISO_MAP[iso] ? ISO_MAP[iso].malha : null,
-      vazaoNominal: vazaoNom, vazaoNecessaria: qNecessaria, vazaoPorBico: qReal, vazaoTotal,
-      pressao: round(pressao, 2), pressaoCalculada, volumeAplicado: volumeReal, volumeLavoura,
+      vazaoNominal: vazaoNom, vazaoNecessaria: qNecessaria, vazaoPorBico: round(qReal, 3), vazaoTotal,
+      pressao: e.fixarPressao ? pressao : round(pressao, 2), pressaoCalculada, volumeAplicado: volumeReal, volumeLavoura,
       angulo, protecao, ehCone, altura, alturaFaixa: alturaParaFaixa(angulo, faixaPorBico), gota, rendimento, ficha, alvo: e.alvo || null,
       avisos, formulas, versao: '1.0.0'
     };
@@ -1374,38 +1397,44 @@
   /* ───────── calibração a campo (coleta) ───────── */
   function calibracao(e) {
     e = e || {};
-    const segundos = num(e.segundos) || 60;
-    const coletas = (e.coletas || []).map(num).filter(v => v > 0);
-    if (!coletas.length) return null;
-    const vazoes = coletas.map(ml => round(ml * 60 / (1000 * segundos), 3)); // mL em t s → L/min
-    const media = round(vazoes.reduce((s, v) => s + v, 0) / vazoes.length, 3);
+    const segundos = e.segundos == null ? 60 : num(e.segundos);
+    const coletas = (e.coletas || []).map(v => String(v).trim() === '' ? NaN : Number(String(v).replace(',', '.')));
+    if (!(segundos > 0) || !coletas.length || coletas.some(v => !Number.isFinite(v) || v < 0)) return null;
+    if (e.modo === 'faixa' && (!(num(e.larguraFaixa) > 0) || !(num(e.entreLinhas) > 0)
+      || num(e.larguraFaixa) > num(e.entreLinhas) || !(num(e.bicosPorPassada) > 0) || !Number.isInteger(num(e.bicosPorPassada)))) return null;
+    if (e.modo !== 'faixa' && e.espacamento != null && !(num(e.espacamento) > 0)) return null;
+    const vazoes = coletas.map(ml => ml * 60 / (1000 * segundos)); // mL em t s → L/min
+    const media = vazoes.reduce((s, v) => s + v, 0) / vazoes.length;
     const dp = Math.sqrt(vazoes.reduce((s, v) => s + Math.pow(v - media, 2), 0) / vazoes.length);
     const cv = round(media > 0 ? 100 * dp / media : 0, 1);
-    const nominal = e.iso ? vazaoPonta(e.iso, num(e.pressao)) : 0;
+    const nominal = e.iso ? vazaoDaPonta(e.ponta, e.iso, num(e.pressao)) : 0;
     const bicos = vazoes.map((v, i) => {
       const desvio = round(media > 0 ? 100 * (v - media) / media : 0, 1);
       const desgaste = nominal > 0 ? round(100 * (v - nominal) / nominal, 1) : null;
-      return { n: i + 1, vazao: v, desvio, desgaste, trocar: Math.abs(desvio) > 10 || (desgaste != null && desgaste > 10) };
+      return { n: i + 1, vazao: round(v, 3), desvio, desgaste, trocar: v === 0 || Math.abs(desvio) > 10 || (desgaste != null && desgaste > 10) };
     });
     const faixaPorBico = e.modo === 'faixa'
       ? (num(e.larguraFaixa) / Math.max(1, Math.round(num(e.bicosPorPassada) || 1)))
       : (num(e.espacamento) || 0.5);
     const velocidade = num(e.velocidade) || (num(e.distancia) && num(e.tempo) ? velocidadeCampo(num(e.distancia), num(e.tempo)) : 0);
+    if (!(velocidade > 0) || !(faixaPorBico > 0)) return null;
     const volumeReal = volumeAplicado(media, velocidade, faixaPorBico);
+    const volumeLavoura = e.modo === 'faixa' ? round(600 * media / (velocidade * faixaPorBico) * num(e.larguraFaixa) / num(e.entreLinhas), 1) : volumeReal;
     const alvoVolume = num(e.volumeHa);
     const erro = alvoVolume > 0 ? round(100 * (volumeReal - alvoVolume) / alvoVolume, 1) : null;
     const correcao = [];
-    if (erro != null && Math.abs(erro) > 5) {
+    // Não compensar bico parado ou conjunto desuniforme aumentando pressão/reduzindo velocidade.
+    if (media > 0 && cv <= 10 && !bicos.some(b => b.vazao === 0 || Math.abs(b.desvio) > 10) && erro != null && Math.abs(erro) > 5) {
       const pAtual = num(e.pressao);
       if (pAtual > 0) correcao.push(`Pressão: de ${pAtual} bar para ${novaPressao(pAtual, media, vazaoNecessaria(alvoVolume, velocidade, faixaPorBico))} bar.`);
       if (velocidade > 0) correcao.push(`Ou velocidade: de ${velocidade} km/h para ${velocidadeAlvo(media, alvoVolume, faixaPorBico)} km/h.`);
     }
     return {
-      segundos, vazoes, media, cv, nominal, bicos, velocidade, faixaPorBico: round(faixaPorBico, 3),
-      volumeReal, alvoVolume, erro, correcao,
-      veredito: cv > 10 ? 'irregular' : (erro != null && Math.abs(erro) > 10 ? 'fora-do-alvo' : (cv > 5 ? 'aceitavel' : 'bom')),
+      segundos, vazoes: vazoes.map(v => round(v, 3)), media: round(media, 3), cv, nominal, bicos, velocidade, pressao: num(e.pressao), faixaPorBico: round(faixaPorBico, 3),
+      volumeReal, volumeLavoura, alvoVolume, erro, correcao,
+      veredito: cv > 10 || bicos.some(b => b.vazao === 0) ? 'irregular' : (erro != null && Math.abs(erro) > 10 ? 'fora-do-alvo' : (bicos.some(b => b.trocar) ? 'irregular' : (cv > 5 ? 'aceitavel' : 'bom'))),
       formulas: [
-        { nome: 'Vazão medida', formula: 'q = (mL coletados × 60) ÷ (1000 × tempo em s)', calculo: `q = (${coletas[0]} × 60) ÷ (1000 × ${segundos})`, resultado: `${vazoes[0]} L/min` },
+        { nome: 'Vazão medida (bico 1)', formula: 'q = (mL coletados × 60) ÷ (1000 × tempo em s)', calculo: `q = (${coletas[0]} × 60) ÷ (1000 × ${segundos})`, resultado: `${round(vazoes[0], 3)} L/min` },
         { nome: 'Volume real', formula: 'V = (600 × q) ÷ (v × e)', calculo: `V = (600 × ${media}) ÷ (${velocidade} × ${round(faixaPorBico, 3)})`, resultado: `${volumeReal} L/ha` },
         { nome: 'Coeficiente de variação', formula: 'CV = desvio-padrão ÷ média × 100', calculo: `CV = ${round(dp, 3)} ÷ ${media} × 100`, resultado: `${cv} %` }
       ]
@@ -1439,7 +1468,7 @@
       out.formulas.push({ nome: 'Pressão para a vazão desejada', formula: 'p₂ = p₁ × (q₂ ÷ q₁)²', calculo: `p₂ = ${round(p1, 2)} × (${round(qd, 3)} ÷ ${round(q1, 3)})²`, resultado: `${out.p2} bar` });
     } else if (pd > 0) {
       out.alvo = 'pressao';
-      out.p2 = round(pd, 2);
+      out.p2 = pd; // conservar a pressão informada em PSI após converter para bar
       out.q2 = novaVazao(q1, p1, pd);
       out.formulas.push({ nome: 'Vazão na pressão desejada', formula: 'q₂ = q₁ × √(p₂ ÷ p₁)', calculo: `q₂ = ${round(q1, 3)} × √(${round(pd, 2)} ÷ ${round(p1, 2)})`, resultado: `${out.q2} L/min` });
     } else return null;
@@ -1492,12 +1521,13 @@
   /* ───────── API ───────── */
   return {
     versao: '1.0.0',
+    PSI_POR_BAR, pressaoEmBar, pressaoNaUnidade,
     ISO, ISO_MAP, GOTAS, GOTA_MAP, ALVOS, ALVO_MAP, TIPOS, PONTAS, PONTA_MAP, PRESETS,
     vazaoNominal, vazaoPonta, pressaoPara, novaVazao, novaPressao,
     registrarPonta, removerPonta, lerTamanhos, buscarPontas, tabelaDaPonta, tamanhosDaPonta, vazaoDaPonta, pressaoDaPonta, pressaoReferencia,
     vazaoNecessaria, volumeAplicado, velocidadeAlvo, velocidadeCampo, velocidadeMedida, tempoNoPercurso,
     alturaBarra, alturaParaFaixa, larguraJato, fatorAltura, classeGota,
-    calcular, selecionar, calibracao, cruzar, tabelaCruzada,
+    calcular, validarRegulagem, selecionar, calibracao, cruzar, tabelaCruzada,
     clima, bulboUmido, pontoOrvalho, dpv, FAIXAS_DT, FAIXAS_VENTO
   };
 });

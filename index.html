@@ -139,11 +139,13 @@
     <div class="card">
       <div class="card-hd"><h2>1 · Arranjo do equipamento</h2><span class="hint">área total ou faixa dirigida</span></div>
       <div class="chips" id="chipsPreset"></div>
+      <label>Unidade de pressão<select id="pUnidadePressao"><option value="bar">bar</option><option value="psi">PSI</option></select></label>
+      <p class="small muted">Ao trocar a unidade, os valores preenchidos são convertidos. 1 bar ≈ 14,5038 PSI.</p>
       <div class="grid2">
         <label>Modo de aplicação<select id="pModo"><option value="area">Área total (barra, turbo, drone)</option><option value="faixa">Faixa dirigida (café, linha de plantio)</option></select></label>
         <label>Alvo da aplicação<select id="pAlvo"></select></label>
         <label>Velocidade (km/h)<input id="pVel" type="number" min="0.5" step="0.1" value="8"></label>
-        <label>Volume de calda (L/ha)<input id="pVol" type="number" min="1" step="1" value="100"></label>
+        <label><span id="pVolTitulo">Volume de calda (L/ha)</span><input id="pVol" type="number" min="1" step="0.1" value="100"></label>
       </div>
       <div class="subcard">
         <div class="sub-hd"><b>Velocidade pelo cronômetro</b><span class="hint">percurso marcado no talhão, com o trator na marcha e rotação de trabalho</span></div>
@@ -163,9 +165,10 @@
         <label>Entrelinhas da cultura (m)<input id="pEl" type="number" min="0.5" step="0.1" value="3.5"></label>
         <label class="check" style="grid-column:1/-1"><input type="checkbox" id="pProt"> Bicos com proteção física contra deriva (chapéu de Napoleão, saia protetora, cortina)</label>
       </div>
+      <p class="small muted hidden" id="pFaixaNota">Em faixa dirigida, informe o volume por hectare efetivamente tratado. A largura é a soma das faixas tratadas na mesma passada, e o número de bicos inclui todos os que as atendem. L/ha de lavoura = L/ha tratado × largura total tratada ÷ entrelinhas.</p>
       <div class="grid2">
         <label>Tanque (L)<input id="pTq" type="number" min="0" step="10" value="2000"></label>
-        <label>Área (ha)<input id="pArea" type="number" min="0" step="0.1" value="10"></label>
+        <label><span id="pAreaTitulo">Área (ha)</span><input id="pArea" type="number" min="0" step="any" value="10"></label>
       </div>
       <p class="small muted" id="pAreaTanque"></p>
       <p class="small muted" id="pAlvoNota"></p>
@@ -193,7 +196,7 @@
         <label>Modelo<select id="pPonta"></select></label>
         <label><span id="pIsoTitulo">Tamanho (cor ISO)</span><select id="pIso"></select></label>
         <label>Ângulo do leque (°)<select id="pAng"></select></label>
-        <label>Pressão de trabalho (bar)<input id="pPress" type="number" min="0.3" step="0.1" placeholder="calculada"></label>
+        <label><span id="pPressTitulo">Pressão de trabalho (bar)</span><input id="pPress" type="number" min="0.3" step="any" placeholder="calculada"></label>
       </div>
       <label class="check"><input type="checkbox" id="pFixar"> Pressão fixa (tenho manômetro travado nesse valor) — o app calcula o volume que sai</label>
       <div class="row-btns"><button class="btn primary" id="btnRegular">📐 Calcular regulagem</button><button class="btn ghost" id="btnSugerir">🔎 Sugerir pontas para este alvo</button><button class="btn ghost" id="btnSalvarReg">💾 Salvar regulagem</button></div>
@@ -205,13 +208,13 @@
           <label>Modelo<input id="plModelo" placeholder="ex.: IDK 120-03" autocomplete="off"></label>
           <label>Tipo de jato<select id="plTipo"></select></label>
           <label>Ângulo(s) (°)<input id="plAng" value="110" placeholder="110, 80"></label>
-          <label>Pressão mínima (bar)<input id="plPmin" type="number" min="0.1" step="0.1" value="1"></label>
-          <label>Pressão máxima (bar)<input id="plPmax" type="number" min="0.2" step="0.1" value="6"></label>
+          <label><span id="plPminTitulo">Pressão mínima (bar)</span><input id="plPmin" type="number" min="0.1" step="any" value="1"></label>
+          <label><span id="plPmaxTitulo">Pressão máxima (bar)</span><input id="plPmax" type="number" min="0.2" step="any" value="6"></label>
           <label>Classe de gota (se souber)<select id="plGota"></select></label>
           <label>Observação<input id="plNota" placeholder="opcional"></label>
         </div>
         <label style="margin-top:8px">Tamanhos e vazões<textarea id="plTam" rows="4" placeholder="03&#10;SF-02: 0,46@1 0,65@2 0,79@3&#10;Amarelo: 0,8@3"></textarea></label>
-        <p class="small muted">Uma linha por tamanho. <b>Vazão@pressão</b> = litros por minuto à pressão em bar, do catálogo do fabricante ou medida na bancada (pode dar vários pontos separados por espaço; entre eles o app interpola e fora deles usa a lei da raiz quadrada). Só o código ISO puro (<code>03</code>) dispensa a vazão: vale a nominal da norma.</p>
+        <p class="small muted">Uma linha por tamanho. <b>Vazão@pressão</b> = litros por minuto à pressão em <b id="plUnidadePressao">bar</b>, do catálogo do fabricante ou medida na bancada (pode dar vários pontos separados por espaço; entre eles o app interpola e fora deles usa a lei da raiz quadrada). Só o código ISO puro (<code>03</code>) dispensa a vazão: vale a nominal da norma.</p>
         <div class="row-btns"><button type="button" class="btn primary" id="btnPlSalvar">Salvar e usar esta ponta</button><button type="button" class="btn ghost" id="btnPlLimpar">Limpar formulário</button></div>
         <div id="plLista" class="lista"></div>
       </details>
@@ -222,7 +225,7 @@
       <p class="small muted">A vazão anda com a raiz quadrada da pressão: <code>q₂ = q₁ × √(p₂ ÷ p₁)</code> e <code>p₂ = p₁ × (q₂ ÷ q₁)²</code>. Serve para ponta sem tabela, já gasta ou de escala própria — basta um par medido.</p>
       <div class="grid2">
         <label>Vazão conhecida (L/min por bico)<input id="xQ1" type="number" min="0.01" step="0.01" placeholder="medida no bico ou do catálogo"></label>
-        <label>Na pressão de (bar)<input id="xP1" type="number" min="0.1" step="0.1" placeholder="ex.: 3"></label>
+        <label><span id="xP1Titulo">Na pressão de (bar)</span><input id="xP1" type="number" min="0.1" step="any" placeholder="ex.: 3"></label>
         <label>Quero determinar<select id="xModo"><option value="vazao">A pressão para uma vazão desejada</option><option value="volume">A pressão para um volume desejado (L/ha)</option><option value="pressao">A vazão numa pressão desejada</option></select></label>
         <label id="xAlvoLabel">Vazão desejada (L/min)<input id="xAlvo" type="number" min="0.01" step="0.01"></label>
       </div>
@@ -236,9 +239,11 @@
       <div class="card-hd"><h2>Calibração a campo</h2><span class="hint">coleta nos bicos · aferição de desgaste</span></div>
       <div class="grid2">
         <label>Tempo de coleta (s)<input id="cSeg" type="number" min="5" step="5" value="60"></label>
-        <label>Pressão no manômetro (bar)<input id="cPress" type="number" min="0.3" step="0.1"></label>
+        <label><span id="cPressTitulo">Pressão no manômetro (bar)</span><input id="cPress" type="number" min="0.3" step="any"></label>
+        <label>Unidade da coleta<select id="cUnidadeColeta"><option value="mL">mL — mililitros</option><option value="L">L — litros</option></select></label>
       </div>
-      <label>Volume coletado por bico (mL, separados por vírgula ou espaço)<input id="cColetas" placeholder="ex.: 820 790 900 810 830"></label>
+      <label><span id="cColetasTitulo">Volume coletado por bico (mL; separe por espaço ou ponto e vírgula)</span><input id="cColetas" placeholder="ex.: 1800 1750 0 1800"></label>
+      <p class="small muted">Sem separador de milhar: 1800 mL = 1,8 L. Vírgula é decimal; espaço ou ponto e vírgula separam bicos. Registre 0 para bico sem vazão, mantendo a ordem de coleta. Use pontas iguais para comparar a uniformidade do conjunto.</p>
       <div class="row-btns"><button class="btn" id="btnCalibrar">🧮 Conferir calibração</button></div>
       <div id="cResultado"></div>
     </div>
@@ -478,9 +483,9 @@
 
 <script src="kb.js"></script>
 <script src="engine.js"></script>
-<script src="pontas.js?v=33"></script>
+<script src="pontas.js?v=35"></script>
 <script src="biblioteca.js?v=33"></script>
-<script src="app.js?v=33"></script>
+<script src="app.js?v=35"></script>
 <script src="biblioteca-ui.js?v=33"></script>
 <script src="estoque.js"></script>
 <script src="produtos.js"></script>

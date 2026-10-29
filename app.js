@@ -610,6 +610,7 @@ function regulagemDoLaudo() {
     if (!salva) return null;
     try { const g = PT.calcular(salva.entrada); g.entrada = salva.entrada; g.nome = salva.nome; g.origem = 'regulagem salva em ' + salva.data; return g; } catch (e) { return null; }
   }
+  if (regulagemAlterada) return null;
   if (regulagem) return { ...regulagem, origem: 'aba Pontas', calibracao: ultimaCalibracao };
   if (DB.config.pontas) { try { const g = PT.calcular(DB.config.pontas); g.entrada = DB.config.pontas; g.origem = 'última regulagem da aba Pontas'; return g; } catch (e) { return null; } }
   return null;
@@ -621,7 +622,7 @@ function notaRegulagem() {
   const entregue = g.modo === 'faixa' ? g.volumeLavoura : g.volumeAplicado;
   const vol = num($('#fVolume').value);
   const desvio = vol && entregue ? (entregue - vol) / vol * 100 : null;
-  el.innerHTML = `${g.ponta ? esc(g.ponta.marca + ' ' + g.ponta.modelo + ' ' + g.iso) : 'Sem ponta'} · ${fmt(g.pressao, 2)} bar · ${fmt(entregue, 0)} L/ha`
+  el.innerHTML = `${g.ponta ? esc(g.ponta.marca + ' ' + g.ponta.modelo + ' ' + g.iso) : 'Sem ponta'} · ${fmtPressao(g.pressao)} · ${fmt(entregue, 0)} L/ha`
     + (desvio == null ? '' : Math.abs(desvio) <= 5
       ? ` · <b>confere</b> com os ${fmt(vol, 0)} L/ha da calda.`
       : ` · <b class="danger-txt">desvio de ${desvio > 0 ? '+' : ''}${fmt(desvio, 1)} %</b> contra os ${fmt(vol, 0)} L/ha da calda — a dose por hectare sai errada na mesma proporção.`);
@@ -680,7 +681,7 @@ function renderResultado() {
     <div class="kpi"><b>${r.resumo.contagem.alta}</b><small>críticos</small></div><div class="kpi"><b>${r.resumo.contagem.media}</b><small>restrições</small></div><div class="kpi"><b>${Math.round(r.confianca * 100)} %</b><small>confiança</small></div>
     <div class="kpi"><b>${BRL(r.custo.totalHa)}</b><small>custo total/ha</small></div><div class="kpi"><b>${r.jarTest.obrigatorio ? 'Sim' : 'Recomendado'}</b><small>jar test</small></div></div>
     <div class="row-btns"><button class="btn primary" id="btnPrint">🖨️ Laudo completo</button><button class="btn" id="btnPrintRes" title="Uma página: veredito, alertas, ordem de mistura, datas e assinaturas">🖨️ Laudo resumido</button><button class="btn" id="btnJar">🫙 Jar test</button><button class="btn ghost" id="btnExpLaudo">⬇️ JSON do laudo</button><button class="btn ghost" id="btnAgenda" title="Datas do laudo (próxima aplicação, reentrada, colheita) para o calendário">📅 Agenda (.ics)</button><button class="btn ghost" id="btnExpReceita">⬇️ Receita (PVGest/Gefaz360)</button><button class="btn ghost" id="btnEnvPV">📤 PVGest (este navegador)</button><button class="btn ghost" id="btnEnvG360">📤 Gefaz360 (este navegador)</button><button class="btn ghost" id="btnEnvCodex">📤 Codex (atividade)</button></div></div>
-  ${alertasVis.length ? `<div class="card alertas"><div class="card-hd"><h2>Alertas</h2><span class="hint">${alertasVis.length} no total</span></div>${ordemTipos.filter(t => porTipo[t]).map(t => `<div class="sub-hd">${esc(TIPO_LABEL[t])} <span class="hint">${porTipo[t].length}</span></div>${porTipo[t].map(a => `<div class="al ${a.severidade}"><div class="t"><span>${esc(a.titulo)}</span><span><span class="sev ${a.severidade}">${a.severidade}</span> <span class="conf">C ${a.confianca.toFixed(2)}</span></span></div><div class="d">${esc(a.detalhe)}${a.paresTexto ? ` <i>(${esc(a.paresTexto)})</i>` : a.nomes ? ` <i>(${esc(a.nomes.join(' × '))})</i>` : ''}</div><div class="c">→ ${esc(a.conduta)}</div><div class="f">Fonte: ${esc(a.fonte)}${a.regra ? ' · ' + a.regra : ''}</div></div>`).join('')}`).join('')}</div>`
+  ${alertasVis.length ? `<div class="card alertas"><div class="card-hd"><h2>Alertas</h2><span class="hint">${alertasVis.length} no total</span></div>${ordemTipos.filter(t => porTipo[t]).map(t => `<div class="sub-hd">${esc(TIPO_LABEL[t])} <span class="hint">${porTipo[t].length}</span></div>${porTipo[t].map(a => `<div class="al ${a.severidade}"><div class="t"><span>${esc(a.titulo)}</span><span><span class="sev ${a.severidade}">${a.severidade}</span> <span class="conf">C ${a.confianca.toFixed(2)}</span></span></div><div class="d">${esc(a.detalhe)}${a.paresTexto ? ` <i>(${esc(a.paresTexto)})</i>` : a.nomes ? ` <i>(${esc(a.nomes.join(' × '))})</i>` : ''}</div><div class="c">→ ${esc(textoComPressao(a.conduta))}</div><div class="f">Fonte: ${esc(a.fonte)}${a.regra ? ' · ' + a.regra : ''}</div></div>`).join('')}`).join('')}</div>`
     : '<div class="card"><div class="al info"><div class="t">Nenhum alerta gerado</div><div class="d">Todos os produtos foram reconhecidos e não há regra de incompatibilidade registrada entre eles. Isso não substitui o jar test.</div></div></div>'}
   <div class="card so-completo"><div class="card-hd"><h2>pH da calda</h2></div>${phBar}<div class="small muted" style="margin-top:6px">${r.ph.itensSensiveis.map(i => `${esc(i.nome)}: ${i.ph[0]}–${i.ph[1]}`).join(' · ')}</div></div>
   <div class="card so-completo"><div class="card-hd"><h2>Matriz de pares</h2><span class="hint">como no Koppert / Yara: cada par tem um veredito</span></div><div class="matrix">${matrizHTML(r)}</div><div class="legend"><span><i style="background:#c8e6c9"></i>compatível</span><span><i style="background:#bbdefb"></i>atenção</span><span><i style="background:#ffe082"></i>restrições</span><span><i style="background:#ef9a9a"></i>incompatível</span><span><i style="background:#eee"></i>não testado</span></div></div>
@@ -736,7 +737,7 @@ function blocoRegulagem(r) {
     <div class="card-hd"><h2>Regulagem aplicada</h2><span class="hint">${esc(g.nome || g.origem || '')}${g.modo === 'faixa' ? ' · faixa dirigida' : ' · área total'}</span></div>
     <div class="ponta-resumo">${p ? `<b>${esc(p.marca + ' ' + p.modelo)}</b>` : '<b>sem ponta</b>'} ${corBadge(g.iso)} ${gotaBadge(g.gota)}${g.angulo ? `<span class="tag">${g.angulo}°</span>` : ''}${g.modo === 'faixa' && g.protecao ? '<span class="tag">proteção física contra deriva</span>' : ''}</div>
     <div class="kpis">
-      <div class="kpi"><b>${fmt(g.pressao, 2)} bar</b><small>${g.pressaoCalculada ? 'pressão necessária' : 'pressão fixada'}</small></div>
+      <div class="kpi"><b>${fmtPressao(g.pressao)}</b><small>${g.pressaoCalculada ? 'pressão necessária' : 'pressão fixada'}</small></div>
       <div class="kpi"><b>${fmt(g.vazaoPorBico, 3)}</b><small>L/min por bico</small></div>
       <div class="kpi"><b>${fmt(g.vazaoTotal, 1)}</b><small>L/min no conjunto</small></div>
       <div class="kpi"><b>${fmt(g.velocidade, 1)}</b><small>km/h${(vm => vm ? ' · medida em ' + fmt(vm.distancia, 0) + ' m: ' + fmt(vm.tempoMedio, 1) + ' s' : '')(g.entrada && PT.velocidadeMedida(g.entrada.distancia, g.entrada.tempos))}</small></div>
@@ -750,7 +751,7 @@ function blocoRegulagem(r) {
     ${conf}
     ${c && c.deltaT != null ? `<div class="al ${c.pode ? 'info' : (c.nivel || 'media')}"><div class="t"><span>Condição do ar no registro: Delta T ${fmt(c.deltaT, 1)} · ${esc(c.rotulo)}</span></div><div class="d">${fmt(c.temperatura, 1)} °C · ${fmt(c.umidade, 0)} % de umidade · vento ${fmt(c.vento, 1)} km/h (${esc(c.ventoRotulo || '')}) · bulbo úmido ${fmt(c.bulboUmido, 1)} °C · ponto de orvalho ${fmt(c.pontoOrvalho, 1)} °C.</div><div class="c">→ ${esc(c.conduta)}</div></div>` : ''}
     ${cal ? `<div class="al ${cal.veredito === 'bom' || cal.veredito === 'aceitavel' ? 'info' : 'media'}"><div class="t"><span>Calibração a campo: ${esc(cal.veredito)}</span></div><div class="d">${cal.bicos} bico(s) coletados em ${cal.segundos} s · média ${fmt(cal.media, 3)} L/min · CV ${fmt(cal.cv, 1)} %${cal.volumeReal ? ' · volume real ' + fmt(cal.volumeReal, 0) + ' L/ha' : ''}${cal.erro != null ? ' (erro de ' + fmt(cal.erro, 1) + ' % contra o alvo)' : ''}.</div>${cal.correcao ? `<div class="c">→ ${esc(cal.correcao)}</div>` : ''}</div>` : ''}
-    ${g.formulas && g.formulas.length ? `<details class="small"><summary>Como esses números foram obtidos</summary><table class="tb formulas"><tbody>${g.formulas.map(f => `<tr><td>${esc(f.nome)}</td><td><code>${esc(f.formula)}</code></td><td><code>${esc(f.calculo)}</code></td><td><b>${esc(f.resultado)}</b></td></tr>`).join('')}</tbody></table></details>` : ''}
+    ${g.formulas && g.formulas.length ? `<details class="small"><summary>Como esses números foram obtidos</summary><table class="tb formulas"><tbody>${g.formulas.map(f => `<tr><td>${esc(f.nome)}</td><td><code>${esc(f.formula)}</code></td><td><code>${esc(f.calculo)}</code></td><td><b>${esc(textoComPressao(f.resultado))}</b></td></tr>`).join('')}</tbody></table></details>` : ''}
   </div>`;
 }
 
@@ -870,7 +871,7 @@ function laudoResumoHTML(r) {
   const regLinhas = [semReg.length ? `<b>sem registro para ${esc(ctx.cultura)}:</b> ${lista(semReg)}` : '', semAlvo.length ? `<b>alvo não consta na bula:</b> ${lista(semAlvo)}` : '',
     !semReg.length && !semAlvo.length && reg.some(x => x.registrado) ? `registrados para ${esc(ctx.cultura)}: ${lista(reg.filter(x => x.registrado).map(x => x.nome))}` : '',
     fortes.length ? `<b>categoria toxicológica 1–2:</b> ${lista(fortes)} — EPI da bula e só aplicador treinado` : '', fora.length ? `fora do Agrofit (não verificados): ${lista(fora)}` : ''].filter(Boolean);
-  const regulagem = g ? [g.ponta ? '<b>' + esc(g.ponta.marca + ' ' + g.ponta.modelo) + '</b>' : 'sem ponta', g.iso ? corBadge(g.iso) : '', g.gota ? gotaBadge(g.gota) : '', fmt(g.pressao, 2) + ' bar', fmt(g.velocidade, 1) + ' km/h',
+  const regulagem = g ? [g.ponta ? '<b>' + esc(g.ponta.marca + ' ' + g.ponta.modelo) + '</b>' : 'sem ponta', g.iso ? corBadge(g.iso) : '', g.gota ? gotaBadge(g.gota) : '', fmtPressao(g.pressao), fmt(g.velocidade, 1) + ' km/h',
     fmt(g.volumeEntregue, 0) + ' L/ha' + (g.desvio != null ? ` (${g.desvio > 0 ? '+' : ''}${fmt(g.desvio, 1)} % — ${Math.abs(g.desvio) <= 5 ? 'confere' : '<b>fora do alvo</b>'})` : ''),
     g.clima && g.clima.deltaT != null ? `ΔT ${fmt(g.clima.deltaT, 1)} · ${esc(g.clima.rotulo)}` : '', g.calibracao ? `calibração ${esc(g.calibracao.veredito)}, CV ${fmt(g.calibracao.cv, 1)} %` : ''].filter(Boolean).join(' · ')
     : '<span class="tag noreg">não anexada</span> — sem ela o laudo não prova com que ponta, pressão e velocidade a dose foi aplicada.';
@@ -879,7 +880,7 @@ function laudoResumoHTML(r) {
     <div>${[esc(ctx.cultura), esc((KB.equipamentos[ctx.equipamento] || {}).nome || ctx.equipamento), ctx.volumeHa + ' L/ha', ctx.area ? fmt(ctx.area, 2) + ' ha' : '', talhao ? 'talhão ' + esc(talhao) : ''].filter(Boolean).join(' · ')}${alvos ? ' · alvo: ' + esc(alvos) : ''}${extras.length ? ' · ' + extras.map(esc).join(' · ') : ''}</div>
     <div class="lr-status"><b>${esc(r.resumo.rotulo)}</b> · ${r.resumo.contagem.alta} crítico(s) · ${r.resumo.contagem.media} restrição(ões) · confiança ${Math.round(r.confianca * 100)} % · jar test ${r.jarTest && r.jarTest.obrigatorio ? '<b>obrigatório</b>' : 'recomendado'}</div>
     <h3>Alertas que pedem ação</h3>
-    ${acao.length ? acao.map(a => `<div class="lr-al ${a.severidade}"><b>${a.severidade === 'alta' ? 'CRÍTICO' : 'RESTRIÇÃO'} · ${esc(a.titulo)}</b> → ${esc(a.conduta)}</div>`).join('') : '<div>Nenhum alerta crítico ou de restrição.</div>'}
+    ${acao.length ? acao.map(a => `<div class="lr-al ${a.severidade}"><b>${a.severidade === 'alta' ? 'CRÍTICO' : 'RESTRIÇÃO'} · ${esc(a.titulo)}</b> → ${esc(textoComPressao(a.conduta))}</div>`).join('') : '<div>Nenhum alerta crítico ou de restrição.</div>'}
     ${outros.length ? `<div class="lr-menor">Outros avisos (detalhe no laudo completo): ${outros.map(a => esc(a.titulo)).join(' · ')}</div>` : ''}
     <h3>Preparo${tq ? ` — tanque de ${fmt(tq.tanque, 0)} L · ${fmt(tq.haPorCarga, 2)} ha por carga · ${tq.cargasCheias} carga(s) cheia(s)${tq.ultimaCarga ? ' + 1 de ' + fmt(tq.ultimaCarga) + ' L' : ''} · ${fmt(tq.volumeTotal)} L de calda` : ''}</h3>
     <table><thead><tr><th class="num">Passo</th><th>Produto, na ordem de adição</th><th class="num">Dose/ha</th>${tq ? '<th class="num">Carga cheia</th><th class="num">Última carga</th><th class="num">Total</th>' : ''}<th>Lote</th></tr></thead><tbody>${produtos.map(i => {
@@ -1098,7 +1099,66 @@ function renderReferencias() {
 /* ───────── pontas e regulagem ───────── */
 const PT = window.GCPontas;
 let regulagem = null;
+let regulagemAlterada = false;
 const TIPO_PONTA = PT.TIPOS;
+let unidadePressaoAtual = 'bar';
+const unidadePressaoRotulo = () => unidadePressaoAtual === 'psi' ? 'PSI' : 'bar';
+const valorPressao = bar => Number(PT.pressaoNaUnidade(bar, unidadePressaoAtual).toPrecision(12));
+const lerPressao = sel => {
+  const el = $(sel);
+  return el.dataset.pressaoExibida === String(el.value) ? Number(el.dataset.pressaoBar)
+    : Number(PT.pressaoEmBar(el.value, unidadePressaoAtual).toPrecision(12));
+};
+function escreverPressao(sel, bar) {
+  const el = $(sel), valor = PT.pressaoNaUnidade(bar, unidadePressaoAtual);
+  el.value = valor > 0 && valor < 0.01 ? Number(valor.toPrecision(6)) : Number(valor.toFixed(2));
+  el.dataset.pressaoBar = String(bar); el.dataset.pressaoExibida = String(el.value);
+}
+const fmtPressao = bar => `${fmt(PT.pressaoNaUnidade(bar, unidadePressaoAtual), 2)} ${unidadePressaoRotulo()}`;
+const faixaPressao = (min, max) => `${fmt(PT.pressaoNaUnidade(min, unidadePressaoAtual), 2)}–${fmt(PT.pressaoNaUnidade(max, unidadePressaoAtual), 2)} ${unidadePressaoRotulo()}`;
+function textoComPressao(texto) {
+  const t = String(texto || '');
+  if (unidadePressaoAtual !== 'psi') return t;
+  return t.replace(/(\d+(?:[.,]\d+)?)(?:[–−](\d+(?:[.,]\d+)?))?\s*bar\b/g,
+    (_, min, max) => max ? faixaPressao(num(min), num(max)) : fmtPressao(num(min)));
+}
+function converterPontosPressao(texto, de, para) {
+  return String(texto || '').replace(/@(\d+(?:[.,]\d+)?)/g, (_, p) =>
+    '@' + Number(PT.pressaoNaUnidade(PT.pressaoEmBar(p, de), para).toPrecision(12)));
+}
+function mudarUnidadePressao(unidade, redesenhar = true, salvar = true) {
+  const nova = unidade === 'psi' ? 'psi' : 'bar', anterior = unidadePressaoAtual;
+  const campos = ['#pPress', '#cPress', '#xP1', '#plPmin', '#plPmax'];
+  if ($('#xModo').value === 'pressao') campos.push('#xAlvo');
+  if (nova !== anterior) {
+    const valores = campos.map(sel => String($(sel).value).trim() === '' ? null : lerPressao(sel));
+    unidadePressaoAtual = nova;
+    campos.forEach((sel, i) => { if (valores[i] != null) escreverPressao(sel, valores[i]); });
+    $('#plTam').value = converterPontosPressao($('#plTam').value, anterior, nova);
+  }
+  unidadePressaoAtual = nova; $('#pUnidadePressao').value = nova;
+  const unidadeTexto = unidadePressaoRotulo();
+  [['#pPressTitulo', 'Pressão de trabalho'], ['#cPressTitulo', 'Pressão no manômetro'],
+    ['#xP1Titulo', 'Na pressão de'], ['#plPminTitulo', 'Pressão mínima'], ['#plPmaxTitulo', 'Pressão máxima']]
+    .forEach(([sel, titulo]) => { $(sel).textContent = `${titulo} (${unidadeTexto})`; });
+  Object.entries({ pPress: 0.3, cPress: 0.3, xP1: 0.1, plPmin: 0.1, plPmax: 0.2 }).forEach(([id, min]) => { $('#' + id).min = valorPressao(min); });
+  $('#plUnidadePressao').textContent = unidadeTexto;
+  $('#plTam').placeholder = nova === 'psi' ? '03\nSF-02: 0,46@14,5 0,65@29 0,79@43,5' : '03\nSF-02: 0,46@1 0,65@2 0,79@3';
+  $('#xP1').placeholder = nova === 'psi' ? 'ex.: 43,5' : 'ex.: 3';
+  atualizarLabelCruzar();
+  if (salvar) { DB.config.unidadePressao = nova; saveDB(); }
+  if (redesenhar) {
+    const cruzado = !!$('#xResultado').innerHTML, sugerido = !!$('#pSugestoes').innerHTML;
+    preencherIso($('#pIso').value); renderRegulagem(); renderTabelaCruzada();
+    renderCatalogoPontas($('#pBusca').value); renderPontasLivres(); renderRegulagens();
+    if ($('#pBuscaRapida').value) renderBuscaPonta($('#pBuscaRapida').value);
+    if (ultimaCalibracao) mostrarCalibracao(ultimaCalibracao);
+    if (cruzado) cruzarVazaoPressao();
+    if (sugerido) sugerirPontas();
+    notaRegulagem();
+    if (resultado) renderResultado();
+  }
+}
 
 function lerRegulagem() {
   const modo = $('#pModo').value;
@@ -1109,7 +1169,7 @@ function lerRegulagem() {
     espacamento: num($('#pEsp').value), nBicos: num($('#pNb').value),
     larguraFaixa: num($('#pLf').value), bicosPorPassada: num($('#pBf').value), entreLinhas: num($('#pEl').value), protecao: $('#pProt').checked,
     ponta: $('#pPonta').value, iso: $('#pIso').value, angulo: num($('#pAng').value),
-    pressao: num($('#pPress').value), fixarPressao: $('#pFixar').checked,
+    pressao: lerPressao('#pPress'), fixarPressao: $('#pFixar').checked,
     tanque: num($('#pTq').value), area: num($('#pArea').value),
     temperatura: $('#pTemp').value, umidade: $('#pUr').value, vento: $('#pVento').value, hora: $('#pHora').value
   };
@@ -1129,7 +1189,7 @@ function aplicarRegulagem(e) {
   if (e.iso != null) preencherIso(e.iso); else preencherIso();
   preencherAngulos(e.angulo);
   $('#pFixar').checked = !!e.fixarPressao;
-  $('#pPress').value = e.fixarPressao && e.pressao ? e.pressao : '';
+  if (e.fixarPressao && e.pressao) escreverPressao('#pPress', e.pressao); else $('#pPress').value = '';
   atualizarVazaoAlvo();
 }
 /* velocidade pelo cronômetro: 3,6 × percurso ÷ tempo → preenche o campo de velocidade da regulagem */
@@ -1152,6 +1212,10 @@ function camposPorModo() {
   const faixa = $('#pModo').value === 'faixa';
   $('#camposArea').classList.toggle('hidden', faixa);
   $('#camposFaixa').classList.toggle('hidden', !faixa);
+  $('#pVolTitulo').textContent = faixa ? 'Volume na faixa tratada (L/ha tratado)' : 'Volume de calda (L/ha)';
+  $('#pAreaTitulo').textContent = faixa ? 'Área de lavoura (ha)' : 'Área (ha)';
+  $('#pFaixaNota').classList.toggle('hidden', !faixa);
+  atualizarLabelCruzar();
 }
 function preencherMarcas() {
   const marcas = [...new Set(PT.PONTAS.map(p => p.marca))];
@@ -1176,7 +1240,7 @@ function preencherIso(sel) {
   $('#pIso').innerHTML = sizes.map(s => {
     const i = PT.ISO_MAP[s], q = PT.vazaoDaPonta(p, s, pRef);
     const cor = i ? i.cor : s.charAt(0).toUpperCase() + s.slice(1);
-    return `<option value="${esc(s)}">${esc(s)}${i ? ' · ' + cor : ''}${q ? ' · ' + fmt(q, 2) + ' L/min a ' + fmt(pRef, 1) + ' bar' : ' (sem tabela)'}</option>`;
+    return `<option value="${esc(s)}">${esc(s)}${i ? ' · ' + cor : ''}${q ? ' · ' + fmt(q, 2) + ' L/min a ' + fmtPressao(pRef) : ' (sem tabela)'}</option>`;
   }).join('');
   if (sel && sizes.indexOf(sel) >= 0) $('#pIso').value = sel;
 }
@@ -1208,12 +1272,22 @@ function corBadge(iso) {
   return hex ? `<span class="iso-cor"><i style="background:${hex}"></i>${esc(iso)}</span>` : `<span class="iso-cor">${esc(iso)}</span>`;
 }
 function calcularRegulagem(silencioso) {
+  invalidarCalibracao();
   const e = lerRegulagem();
-  if (!(e.velocidade > 0) || !(e.volumeHa > 0)) { if (!silencioso) toast('Informe velocidade e volume de calda', 'err'); return; }
+  const erro = PT.validarRegulagem(e);
+  if (erro) {
+    regulagem = null; regulagemAlterada = true;
+    $('#pResultado').innerHTML = `<div class="card alert warn">${esc(erro)}</div>`;
+    $('#xTabela').innerHTML = ''; $('#xResultado').innerHTML = '';
+    atualizarAreaTanque(); notaRegulagem();
+    if (!silencioso) toast(erro, 'err');
+    return;
+  }
   regulagem = PT.calcular(e);
+  regulagemAlterada = false;
   regulagem.entrada = e;
   DB.config.pontas = e; saveDB();
-  renderRegulagem(); renderTabelaCruzada(); notaRegulagem();
+  renderRegulagem(); renderTabelaCruzada(); atualizarAreaTanque(); notaRegulagem();
   if (!silencioso) $('#pResultado').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 function renderRegulagem() {
@@ -1226,34 +1300,34 @@ function renderRegulagem() {
     <div class="card-hd"><h2>Regulagem calculada</h2><span class="hint">${r.modo === 'faixa' ? 'faixa dirigida' : 'área total'} · ${p ? esc(p.marca + ' ' + p.modelo) : 'sem ponta selecionada'}</span></div>
     <div class="kpis">
       <div class="kpi"><b>${fmt(r.vazaoPorBico, 3)}</b><small>L/min por bico</small></div>
-      <div class="kpi"><b>${r.pressao ? fmt(r.pressao, 2) + ' bar' : '—'}</b><small>${r.pressaoCalculada ? 'pressão necessária' : 'pressão fixada'}</small></div>
+      <div class="kpi"><b>${r.pressao ? fmtPressao(r.pressao) : '—'}</b><small>${r.pressaoCalculada ? 'pressão necessária' : 'pressão fixada'}</small></div>
       <div class="kpi"><b>${fmt(r.volumeAplicado, 0)}</b><small>L/ha ${r.modo === 'faixa' ? 'na faixa' : 'aplicados'}</small></div>
-      ${r.modo === 'faixa' ? `<div class="kpi"><b>${fmt(r.volumeLavoura, 0)}</b><small>L/ha de lavoura</small></div><div class="kpi"><b>${fmt(r.economia, 0)} %</b><small>economia de produto</small></div>` : ''}
+      ${r.modo === 'faixa' ? `<div class="kpi"><b>${fmt(r.volumeLavoura, 1)}</b><small>L/ha de lavoura</small></div><div class="kpi"><b>${fmt(r.economia, 1)} %</b><small>área que não recebe calda</small></div>` : ''}
       <div class="kpi"><b>${fmt(r.vazaoTotal, 1)}</b><small>L/min no conjunto</small></div>
       ${r.ehCone ? '<div class="kpi"><b>arco</b><small>cone: posição no atomizador</small></div>' : `<div class="kpi"><b>${r.modo === 'faixa' ? r.alturaFaixa : r.altura} cm</b><small>altura da ponta</small></div>`}
       <div class="kpi"><b>${fmt(r.rendimento, 2)}</b><small>ha/h teórico</small></div>
     </div>
     <div class="ponta-resumo">
       ${corBadge(r.iso)} ${gotaBadge(r.gota)}
-      ${p ? `<span class="tag">${esc(TIPO_PONTA[p.tipo] || p.tipo)}</span><span class="tag">${r.angulo}°</span><span class="tag">${esc(p.material)}</span><span class="tag">faixa útil ${p.pressao[0]}–${p.pressao[1]} bar</span>` : ''}
+      ${p ? `<span class="tag">${esc(TIPO_PONTA[p.tipo] || p.tipo)}</span><span class="tag">${r.angulo}°</span><span class="tag">${esc(p.material)}</span><span class="tag">faixa útil ${faixaPressao(p.pressao[0], p.pressao[1])}</span>` : ''}
       ${r.malha ? `<span class="tag">filtro malha ${r.malha}</span>` : ''}
     </div>
-    <div class="row-btns"><button class="btn" id="btnUsarVolume">↪️ Usar ${fmt(r.modo === 'faixa' ? r.volumeLavoura : r.volumeAplicado, 0)} L/ha na calda</button><button class="btn ghost" id="btnPrintReg">🖨️ Ficha de regulagem</button><button class="btn ghost" id="btnExpReg">⬇️ JSON</button></div>
+    <div class="row-btns"><button class="btn" id="btnUsarVolume">↪️ Usar ${fmt(r.modo === 'faixa' ? r.volumeLavoura : r.volumeAplicado, 1)} L/ha${r.modo === 'faixa' ? ' de lavoura' : ''} na calda</button><button class="btn ghost" id="btnPrintReg">🖨️ Ficha de regulagem</button><button class="btn ghost" id="btnExpReg">⬇️ JSON</button></div>
   </div>
 
-  ${r.avisos.length ? `<div class="card"><div class="card-hd"><h2>Conferências</h2><span class="hint">${r.avisos.length} ponto(s)</span></div>${r.avisos.map(a => `<div class="al ${a.nivel === 'info' ? 'info' : a.nivel}"><div class="t"><span>${esc(a.texto)}</span><span class="sev ${a.nivel}">${esc(a.nivel)}</span></div><div class="c">→ ${esc(a.conduta)}</div></div>`).join('')}</div>` : '<div class="card"><div class="al info"><div class="t">Regulagem coerente</div><div class="d">Pressão dentro da faixa da ponta e classe de gota compatível com o alvo. Confirme a campo com a coleta nos bicos.</div></div></div>'}
+  ${r.avisos.length ? `<div class="card"><div class="card-hd"><h2>Conferências</h2><span class="hint">${r.avisos.length} ponto(s)</span></div>${r.avisos.map(a => `<div class="al ${a.nivel === 'info' ? 'info' : a.nivel}"><div class="t"><span>${esc(textoComPressao(a.texto))}</span><span class="sev ${a.nivel}">${esc(a.nivel)}</span></div><div class="c">→ ${esc(textoComPressao(a.conduta))}</div></div>`).join('')}</div>` : '<div class="card"><div class="al info"><div class="t">Regulagem coerente</div><div class="d">Pressão dentro da faixa da ponta e classe de gota compatível com o alvo. Confirme a campo com a coleta nos bicos.</div></div></div>'}
 
   <div class="card"><div class="card-hd"><h2>Equações usadas</h2><span class="hint">com os seus números</span></div>
     <table class="tb formulas"><thead><tr><th>O quê</th><th>Equação</th><th>Com os seus números</th><th class="num">Resultado</th></tr></thead>
-    <tbody>${r.formulas.map(f => `<tr><td>${esc(f.nome)}</td><td><code>${esc(f.formula)}</code></td><td class="small">${esc(f.calculo)}</td><td class="num"><b>${esc(f.resultado)}</b></td></tr>`).join('')}</tbody></table>
-    <p class="small muted">V = volume (L/ha) · v = velocidade (km/h) · e = faixa de cada bico (m) · q = vazão do bico (L/min) · p = pressão (bar). A vazão vem da norma ISO 10625 (vazão nominal a 3 bar) e da lei da raiz quadrada: dobrar a vazão exige 4× a pressão.</p>
+    <tbody>${r.formulas.map(f => `<tr><td>${esc(f.nome)}</td><td><code>${esc(f.formula)}</code></td><td class="small">${esc(f.calculo)}</td><td class="num"><b>${esc(textoComPressao(f.resultado))}</b></td></tr>`).join('')}</tbody></table>
+    <p class="small muted">V = volume (L/ha) · v = velocidade (km/h) · e = faixa de cada bico (m) · q = vazão do bico (L/min). Nas equações do motor, p é calculada em bar; a pressão apresentada segue a unidade escolhida. 1 bar ≈ 14,5038 PSI. A vazão nominal ISO é referida a 3 bar (≈ 43,51 PSI). Dobrar a vazão exige 4× a pressão.</p>
   </div>
 
   <div class="card"><div class="card-hd"><h2>Ficha de campo</h2></div>
     <table class="tb"><tbody>
       <tr><td>Arranjo</td><td class="num">${r.modo === 'faixa' ? `faixa de ${fmt(r.larguraFaixa, 2)} m em entrelinhas de ${fmt(r.entreLinhas, 2)} m · ${r.nBicos} bico(s)` : `${r.nBicos} bicos a ${fmt(r.espacamento, 2)} m · barra de ${fmt(r.larguraTrabalho, 1)} m`}</td></tr>
       <tr><td>Ponta</td><td class="num">${p ? esc(p.marca + ' ' + p.modelo) : '—'} ${esc(r.iso)} (${esc(r.cor)}) · ${r.angulo}°</td></tr>
-      <tr><td>Pressão no manômetro</td><td class="num"><b>${r.pressao ? fmt(r.pressao, 2) + ' bar' : '—'}</b></td></tr>
+      <tr><td>Pressão no manômetro</td><td class="num"><b>${r.pressao ? fmtPressao(r.pressao) : '—'}</b></td></tr>
       <tr><td>Velocidade</td><td class="num"><b>${fmt(r.velocidade, 1)} km/h</b> (${fmt(3600 / (r.velocidade * 1000) * 50, 1)} s para 50 m)</td></tr>
       <tr><td>Vazão de referência por bico</td><td class="num">${fmt(r.vazaoPorBico, 3)} L/min = <b>${fmt(r.vazaoPorBico * 1000 / 2, 0)} mL em 30 s</b></td></tr>
       ${r.ficha ? `<tr><td>Por tanque de ${fmt(r.entrada.tanque, 0)} L</td><td class="num">${fmt(r.ficha.haPorTanque, 2)} ha · ${fmt(r.ficha.distancia, 0)} m de percurso · ${fmt(r.ficha.minutos, 0)} min</td></tr>
@@ -1263,11 +1337,11 @@ function renderRegulagem() {
     ${p ? `<p class="small muted">Fonte dos dados da ponta: ${esc(p.fonte)}.</p>` : ''}
   </div>`;
   $('#btnUsarVolume').onclick = () => {
-    const v = Math.round(r.modo === 'faixa' ? r.volumeLavoura : r.volumeAplicado);
+    const v = r.modo === 'faixa' ? r.volumeLavoura : r.volumeAplicado;
     $('#fVolume').value = v; $('#fVolume').dataset.touched = 1;
     if (r.entrada.tanque) $('#fTanque').value = r.entrada.tanque;
     if (r.entrada.area) $('#fArea').value = r.entrada.area;
-    DB.config.volumeHa = v; saveDB();
+    DB.config.volumeHa = v; areaPorTanqueCalda(); notaRegulagem(); saveDB();
     navTo('calda'); toast(`Volume de ${v} L/ha aplicado na calda`);
   };
   $('#btnPrintReg').onclick = () => {
@@ -1275,7 +1349,7 @@ function renderRegulagem() {
     $('#cardCalib').classList.toggle('sem-calib', !$('#cResultado').innerHTML.trim());
     document.body.classList.add('print-regulagem'); window.print();
   };
-  $('#btnExpReg').onclick = () => download(`regulagem-${hoje()}.json`, JSON.stringify({ app: 'gefaz-calda', modulo: 'pontas', versao: PT.versao, regulagem: r }, null, 1));
+  $('#btnExpReg').onclick = () => download(`regulagem-${hoje()}.json`, JSON.stringify({ app: 'gefaz-calda', modulo: 'pontas', versao: PT.versao, unidadePressao: 'bar', unidadePressaoExibicao: unidadePressaoAtual, regulagem: r }, null, 1));
 }
 function sugerirPontas() {
   const e = lerRegulagem();
@@ -1285,8 +1359,8 @@ function sugerirPontas() {
   el.innerHTML = `<h3>Pontas para ${fmt(s.vazaoAlvo, 3)} L/min por bico</h3><div class="lista compact">${s.opcoes.map((o, i) => `
     <div class="row"><div>
       <b>${esc(o.marca)} · ${esc(o.modelo)} ${esc(o.iso)}</b>
-      <small>${corBadge(o.iso)} ${gotaBadge(o.gota)} · ${fmt(o.pressao, 2)} bar · ${o.angulo}° · ${esc(TIPO_PONTA[o.tipo] || o.tipo)}${o.confirmar ? ' · <span class="tag noreg">conferir catálogo</span>' : ''}</small>
-      <small>${esc(o.nota)}</small>
+      <small>${corBadge(o.iso)} ${gotaBadge(o.gota)} · ${fmtPressao(o.pressao)} · ${o.angulo}° · ${esc(TIPO_PONTA[o.tipo] || o.tipo)}${o.confirmar ? ' · <span class="tag noreg">conferir catálogo</span>' : ''}</small>
+      <small>${esc(textoComPressao(o.nota))}</small>
     </div><div class="acts"><span class="pill ${o.score >= 85 ? 'ok' : o.score >= 65 ? 'warn' : 'info'}">${o.score}</span><button class="btn sm" data-usar="${i}">Usar</button></div></div>`).join('')}</div>
     <p class="small muted">Ordenado por classe de gota adequada ao alvo e por pressão confortável dentro da faixa útil da ponta. * = classe de gota estimada.</p>`;
   $$('#pSugestoes [data-usar]').forEach(b => b.onclick = () => {
@@ -1296,30 +1370,60 @@ function sugerirPontas() {
     calcularRegulagem();
   });
 }
+function lerColetas(texto, unidade = 'mL') {
+  const tokens = String(texto || '').trim().split(/[\s;]+/).filter(Boolean);
+  if (!tokens.length || tokens.some(t => !/^\d+(?:[.,]\d+)?$/.test(t))) return null;
+  // "1,800" em mL pode ser 1800 ou 1,8: não adivinhar nem criar dois bicos.
+  if (unidade !== 'L' && tokens.some(t => /^\d{1,3}[.,]\d{3}$/.test(t))) return null;
+  return tokens.map(t => Number(t.replace(',', '.')) * (unidade === 'L' ? 1000 : 1));
+}
+function invalidarCalibracao() {
+  if (ultimaCalibracao) $('#cResultado').innerHTML = '<div class="alert info">Os dados mudaram. Confira a calibração novamente.</div>';
+  ultimaCalibracao = null;
+  if (origemReferenciaCruzamento === 'calibracao') {
+    $('#xQ1').value = ''; $('#xP1').value = ''; $('#xResultado').innerHTML = '';
+    origemReferenciaCruzamento = null;
+  }
+}
 function renderCalibracao() {
+  invalidarCalibracao();
   const e = lerRegulagem();
-  const coletas = $('#cColetas').value.split(/[\s,;]+/).map(num).filter(v => v > 0);
-  if (!coletas.length) return toast('Informe o volume coletado em pelo menos um bico', 'err');
+  const coletas = lerColetas($('#cColetas').value, $('#cUnidadeColeta').value);
+  if (!coletas) {
+    const aviso = 'Coleta inválida ou ambígua. Para 1,8 litro, digite 1800 na unidade mL ou selecione L e digite 1,8. Separe os bicos por espaço ou ponto e vírgula; não use separador de milhar.';
+    $('#cResultado').innerHTML = `<div class="alert warn">${aviso}</div>`;
+    return toast('Confira o formato do volume coletado.', 'err');
+  }
+  const erro = PT.validarRegulagem(e);
+  if (erro || !(num($('#cSeg').value) > 0)) { $('#cResultado').innerHTML = ''; return toast(erro || 'Informe tempo de coleta maior que zero.', 'err'); }
+  if ($('#cPress').value !== '' && !(num($('#cPress').value) > 0)) { $('#cResultado').innerHTML = ''; return toast('Informe pressão de coleta maior que zero ou deixe em branco.', 'err'); }
   const c = PT.calibracao({
-    coletas, segundos: num($('#cSeg').value) || 60, pressao: num($('#cPress').value) || e.pressao, iso: e.iso,
-    modo: e.modo, espacamento: e.espacamento, larguraFaixa: e.larguraFaixa, bicosPorPassada: e.bicosPorPassada,
+    coletas, segundos: num($('#cSeg').value), pressao: lerPressao('#cPress') || e.pressao, iso: e.iso, ponta: e.ponta,
+    modo: e.modo, espacamento: e.espacamento, larguraFaixa: e.larguraFaixa, bicosPorPassada: e.bicosPorPassada, entreLinhas: e.entreLinhas,
     velocidade: e.velocidade, distancia: e.distancia, tempo: (PT.velocidadeMedida(e.distancia, e.tempos) || {}).tempoMedio || 0, volumeHa: e.volumeHa
   });
   if (!c) return;
   ultimaCalibracao = c;
+  mostrarCalibracao(c);
+}
+function mostrarCalibracao(c) {
+  const e = lerRegulagem();
   const cls = { bom: 'ok', aceitavel: 'warn', irregular: 'bad', 'fora-do-alvo': 'bad' }[c.veredito];
-  const rotulo = { bom: 'Uniforme e no alvo', aceitavel: 'Aceitável (CV 5–10 %)', irregular: 'Irregular — CV acima de 10 %', 'fora-do-alvo': 'Volume fora do alvo' }[c.veredito];
+  const rotulo = { bom: 'Uniforme e no alvo', aceitavel: 'Aceitável (CV 5–10 %)', irregular: 'Irregular — confira os bicos sinalizados e o CV', 'fora-do-alvo': 'Volume fora do alvo' }[c.veredito];
   $('#cResultado').innerHTML = `
     <div class="kpis"><div class="kpi"><b>${fmt(c.media, 3)}</b><small>L/min média</small></div>
-      <div class="kpi"><b>${fmt(c.cv, 1)} %</b><small>CV entre bicos</small></div>
-      <div class="kpi"><b>${fmt(c.volumeReal, 0)}</b><small>L/ha reais</small></div>
+      <div class="kpi"><b>${c.bicos.length > 1 ? fmt(c.cv, 1) + ' %' : '—'}</b><small>CV entre bicos</small></div>
+      <div class="kpi"><b>${fmt(c.volumeReal, 1)}</b><small>L/ha ${e.modo === 'faixa' ? 'na faixa tratada' : 'reais'}</small></div>
+      ${e.modo === 'faixa' ? `<div class="kpi"><b>${fmt(c.volumeLavoura, 1)}</b><small>L/ha de lavoura</small></div>` : ''}
       ${c.erro != null ? `<div class="kpi"><b>${c.erro > 0 ? '+' : ''}${fmt(c.erro, 1)} %</b><small>desvio do alvo</small></div>` : ''}
-      ${c.velocidade ? `<div class="kpi"><b>${fmt(c.velocidade, 2)}</b><small>km/h medidos</small></div>` : ''}</div>
-    <div class="alert ${cls === 'ok' ? 'ok' : cls === 'warn' ? 'warn' : 'bad'}"><b>${esc(rotulo)}</b>${c.correcao.length ? '<br>' + c.correcao.map(esc).join('<br>') : ''}</div>
+      ${c.velocidade ? `<div class="kpi"><b>${fmt(c.velocidade, 2)}</b><small>km/h usados no cálculo</small></div>` : ''}</div>
+    <p class="small muted">${c.bicos.length} bico(s) coletado(s) em ${fmt(c.segundos, 1)} s. ${c.nominal > 0 ? `Referência da ponta selecionada: ${fmt(c.nominal, 3)} L/min a ${fmtPressao(c.pressao)}.` : 'Sem referência de vazão nesta pressão; desgaste nominal não aferido.'}</p>
+    <div class="alert ${cls === 'ok' ? 'ok' : cls === 'warn' ? 'warn' : 'bad'}"><b>${c.bicos.length === 1 && c.veredito === 'bom' ? 'Coleta individual no alvo — uniformidade do conjunto não avaliada' : esc(rotulo)}</b>${c.bicos.length === 1 && c.veredito !== 'bom' ? '<br>Uma coleta não avalia a uniformidade entre bicos.' : ''}${c.correcao.length ? '<br>' + c.correcao.map(t => esc(textoComPressao(t))).join('<br>') : ''}</div>
     <table class="tb"><thead><tr><th>Bico</th><th class="num">L/min</th><th class="num">Desvio da média</th><th class="num">Desgaste vs. nominal</th><th>Conduta</th></tr></thead>
-    <tbody>${c.bicos.map(b => `<tr><td>${b.n}</td><td class="num">${fmt(b.vazao, 3)}</td><td class="num">${b.desvio > 0 ? '+' : ''}${fmt(b.desvio, 1)} %</td><td class="num">${b.desgaste == null ? '—' : (b.desgaste > 0 ? '+' : '') + fmt(b.desgaste, 1) + ' %'}</td><td>${b.trocar ? '<span class="tag noreg">trocar</span>' : '<span class="tag reg">ok</span>'}</td></tr>`).join('')}</tbody></table>
-    <table class="tb formulas"><tbody>${c.formulas.map(f => `<tr><td>${esc(f.nome)}</td><td><code>${esc(f.formula)}</code></td><td class="small">${esc(f.calculo)}</td><td class="num"><b>${esc(f.resultado)}</b></td></tr>`).join('')}</tbody></table>
-    <p class="small muted">Critério: bico com vazão 10 % acima da nominal (ou 10 % fora da média do conjunto) está gasto e deve ser trocado. CV acima de 10 % indica bicos entupidos, filtros sujos ou pontas de modelos diferentes na mesma barra.</p>`;
+    <tbody>${c.bicos.map(b => `<tr><td>${b.n}</td><td class="num">${fmt(b.vazao, 3)}</td><td class="num">${b.desvio > 0 ? '+' : ''}${fmt(b.desvio, 1)} %</td><td class="num">${b.desgaste == null ? '—' : (b.desgaste > 0 ? '+' : '') + fmt(b.desgaste, 1) + ' %'}</td><td>${b.trocar ? '<span class="tag noreg">inspecionar e repetir coleta</span>' : '<span class="tag reg">ok</span>'}</td></tr>`).join('')}</tbody></table>
+    <table class="tb formulas"><tbody>${c.formulas.filter(f => c.bicos.length > 1 || f.nome !== 'Coeficiente de variação').map(f => `<tr><td>${esc(f.nome)}</td><td><code>${esc(f.formula)}</code></td><td class="small">${esc(f.calculo)}</td><td class="num"><b>${esc(textoComPressao(f.resultado))}</b></td></tr>`).join('')}</tbody></table>
+    <p class="small muted">Nas equações, os valores de pressão são em bar. Os resultados e os campos usam ${unidadePressaoRotulo()}.</p>
+    <p class="small muted">Coleta zero não é descartada. Bicos sem vazão, mais de 10 % fora da média ou mais de 10 % acima da referência são sinalizados: confira filtros, limpeza e montagem e repita a coleta antes de decidir pela troca. Compare a uniformidade entre pontas de mesmo modelo e tamanho.</p>`;
 }
 function renderCatalogoPontas(q) {
   // busca livre: vários termos em qualquer ordem — marca, modelo, tipo, tamanho, cor, ângulo ou código ("XR 11002")
@@ -1334,10 +1438,10 @@ function renderCatalogoPontas(q) {
   $('#nPontas').textContent = `${lista.length} de ${PT.PONTAS.length} famílias`;
   $('#listaPontas').innerHTML = lista.map(p => `<div class="row"><div>
       <b>${esc(p.marca)} · ${esc(p.modelo)}</b>
-      <small>${esc(TIPO_PONTA[p.tipo] || p.tipo)} · ${p.angulos.join('°/')}° · ${p.pressao[0]}–${p.pressao[1]} bar · ${esc(p.material)}</small>
-      <small>Tamanhos: ${PT.tamanhosDaPonta(p).map(s => acha(p, s) ? `<b>${esc(s)}</b>` : esc(s)).join(', ')}${p.escalaPropria ? ' (escala de cores do fabricante, não ISO)' : ''}${p.vazaoTabela ? ` · <span class="tag reg">tabela de vazão do fabricante, ${p.vazaoTabela.pressoes[0]}–${p.vazaoTabela.pressoes[p.vazaoTabela.pressoes.length - 1]} bar</span>` : ''}</small>
+      <small>${esc(TIPO_PONTA[p.tipo] || p.tipo)} · ${p.angulos.join('°/')}° · ${faixaPressao(p.pressao[0], p.pressao[1])} · ${esc(p.material)}</small>
+      <small>Tamanhos: ${PT.tamanhosDaPonta(p).map(s => acha(p, s) ? `<b>${esc(s)}</b>` : esc(s)).join(', ')}${p.escalaPropria ? ' (escala de cores do fabricante, não ISO)' : ''}${p.vazaoTabela ? ` · <span class="tag reg">tabela de vazão do fabricante, ${faixaPressao(p.vazaoTabela.pressoes[0], p.vazaoTabela.pressoes[p.vazaoTabela.pressoes.length - 1])}</span>` : ''}</small>
       <small>${esc(p.nota)}</small>
-      <small class="muted">Gota: ${p.gotasPorTamanho ? 'classe por tamanho e pressão, disponível na tabela cruzada' : p.gotasPorBar ? Object.entries(p.gotasPorBar).map(([b, g]) => `${b} bar → ${PT.GOTA_MAP[g].nome.toLowerCase()}`).join(' · ') : (p.gotasFaixa || []).map(g => PT.GOTA_MAP[g].nome.toLowerCase()).join(' a ') + ' (faixa do catálogo)'} · Fonte: ${esc(p.fonte)}</small>
+      <small class="muted">Gota: ${p.gotasPorTamanho ? 'classe por tamanho e pressão, disponível na tabela cruzada' : p.gotasPorBar ? Object.entries(p.gotasPorBar).map(([b, g]) => `${fmtPressao(b)} → ${PT.GOTA_MAP[g].nome.toLowerCase()}`).join(' · ') : (p.gotasFaixa || []).map(g => PT.GOTA_MAP[g].nome.toLowerCase()).join(' a ') + ' (faixa do catálogo)'} · Fonte: ${esc(p.fonte)}</small>
     </div><div class="acts"><button class="btn sm ghost" data-ponta="${esc(p.id)}"${exatas[p.id] && exatas[p.id][0] ? ` data-tam="${esc(exatas[p.id][0].tamanho)}" data-ang="${exatas[p.id][0].angulo}"` : ''}>Usar${exatas[p.id] && exatas[p.id][0] ? ' ' + esc(exatas[p.id][0].tamanho) : ''}</button></div></div>`).join('') || '<div class="small muted">Nada encontrado. Dá para cadastrar em Ponta → ＋ Minha ponta.</div>';
   $$('#listaPontas [data-ponta]').forEach(b => b.onclick = () => {
     const p = PT.PONTA_MAP[b.dataset.ponta];
@@ -1345,8 +1449,12 @@ function renderCatalogoPontas(q) {
     calcularRegulagem(); toast(`${p.modelo}${b.dataset.tam ? ' · ' + b.dataset.tam : ''} selecionada`);
   });
 }
+function resumoRegulagemSalva(r) {
+  if (r.entrada && r.entrada.fixarPressao) return String(r.resumo || '').replace(/\d+(?:[.,]\d+)?\s*bar\b/, fmtPressao(r.entrada.pressao));
+  return textoComPressao(r.resumo);
+}
 function renderRegulagens() {
-  $('#listaRegulagens').innerHTML = DB.regulagens.length ? DB.regulagens.map((r, i) => `<div class="row"><div><b>${esc(r.nome)}</b><small>${esc(r.data)} · ${esc(r.resumo)}</small></div><div class="acts"><button class="btn sm" data-carreg="${i}">Carregar</button><button class="btn sm ghost danger" data-delreg="${i}">✕</button></div></div>`).join('') : '<div class="small muted">Nenhuma regulagem salva.</div>';
+  $('#listaRegulagens').innerHTML = DB.regulagens.length ? DB.regulagens.map((r, i) => `<div class="row"><div><b>${esc(r.nome)}</b><small>${esc(r.data)} · ${esc(resumoRegulagemSalva(r))}</small></div><div class="acts"><button class="btn sm" data-carreg="${i}">Carregar</button><button class="btn sm ghost danger" data-delreg="${i}">✕</button></div></div>`).join('') : '<div class="small muted">Nenhuma regulagem salva.</div>';
   $$('#listaRegulagens [data-carreg]').forEach(b => b.onclick = () => { aplicarRegulagem(DB.regulagens[+b.dataset.carreg].entrada); calcularRegulagem(); toast('Regulagem carregada'); });
   $$('#listaRegulagens [data-delreg]').forEach(b => b.onclick = () => { if (confirm('Excluir esta regulagem?')) { DB.regulagens.splice(+b.dataset.delreg, 1); saveDB(); renderRegulagens(); preencherSelectRegulagem(); } });
 }
@@ -1363,6 +1471,7 @@ function salvarRegulagem() {
 }
 /* ───────── cruzamento vazão × pressão ───────── */
 let ultimaCalibracao = null;
+let origemReferenciaCruzamento = null;
 const X_LABEL = { vazao: 'Vazão desejada (L/min)', volume: 'Volume desejado (L/ha)', pressao: 'Pressão desejada (bar)' };
 function faixaPorBicoAtual() {
   const e = lerRegulagem();
@@ -1371,36 +1480,38 @@ function faixaPorBicoAtual() {
 function atualizarLabelCruzar() {
   const m = $('#xModo').value;
   const l = $('#xAlvoLabel'), inp = $('#xAlvo');
-  l.childNodes[0].nodeValue = X_LABEL[m];
-  inp.step = m === 'volume' ? '1' : '0.01';
+  l.childNodes[0].nodeValue = m === 'pressao' ? `Pressão desejada (${unidadePressaoRotulo()})` : m === 'volume' && $('#pModo').value === 'faixa' ? 'Volume desejado na faixa (L/ha tratado)' : X_LABEL[m];
+  inp.step = m === 'pressao' ? 'any' : m === 'volume' ? '1' : '0.01';
 }
 function cruzarVazaoPressao() {
   const e = lerRegulagem(), m = $('#xModo').value, alvo = num($('#xAlvo').value);
   const entrada = {
-    vazaoConhecida: num($('#xQ1').value), pressaoConhecida: num($('#xP1').value),
+    vazaoConhecida: num($('#xQ1').value), pressaoConhecida: lerPressao('#xP1'),
     velocidade: e.velocidade, faixaPorBico: faixaPorBicoAtual(), ponta: e.ponta, iso: e.iso
   };
   if (m === 'vazao') entrada.vazaoDesejada = alvo;
-  else if (m === 'pressao') entrada.pressaoDesejada = alvo;
+  else if (m === 'pressao') entrada.pressaoDesejada = lerPressao('#xAlvo');
   else entrada.volumeDesejado = alvo;
   const c = PT.cruzar(entrada);
   if (!c) { $('#xResultado').innerHTML = '<div class="alert warn">Informe a vazão e a pressão conhecidas e o valor que você quer atingir.</div>'; return; }
   $('#xResultado').innerHTML = `
     <div class="kpis">
-      <div class="kpi"><b>${fmt(c.p2, 2)} bar</b><small>pressão ${c.alvo === 'pressao' ? 'informada' : 'necessária'}</small></div>
+      <div class="kpi"><b>${fmtPressao(c.p2)}</b><small>pressão ${c.alvo === 'pressao' ? 'informada' : 'necessária'}</small></div>
       <div class="kpi"><b>${fmt(c.q2, 3)}</b><small>L/min por bico</small></div>
       <div class="kpi"><b>${c.variacaoVazao > 0 ? '+' : ''}${fmt(c.variacaoVazao, 1)} %</b><small>na vazão</small></div>
       <div class="kpi"><b>${c.variacaoPressao > 0 ? '+' : ''}${fmt(c.variacaoPressao, 1)} %</b><small>na pressão</small></div>
-      ${c.volumeDepois != null ? `<div class="kpi"><b>${fmt(c.volumeDepois, 0)}</b><small>L/ha (era ${fmt(c.volumeAntes, 0)})</small></div>` : ''}
+      ${c.volumeDepois != null ? `<div class="kpi"><b>${fmt(c.volumeDepois, 1)}</b><small>L/ha${e.modo === 'faixa' ? ' na faixa' : ''} (era ${fmt(c.volumeAntes, 1)})</small></div>` : ''}
+      ${e.modo === 'faixa' && e.entreLinhas > 0 && c.volumeDepois != null ? `<div class="kpi"><b>${fmt(c.volumeDepois * e.larguraFaixa / e.entreLinhas, 1)}</b><small>L/ha de lavoura</small></div>` : ''}
       ${c.velocidadeEquivalente ? `<div class="kpi"><b>${fmt(c.velocidadeEquivalente, 2)}</b><small>km/h com a pressão antiga</small></div>` : ''}
     </div>
     ${c.gota ? `<div class="ponta-resumo">${gotaBadge(c.gota)}<span class="tag">na pressão cruzada</span></div>` : ''}
-    ${c.avisos.map(a => `<div class="al ${a.nivel}"><div class="t"><span>${esc(a.texto)}</span><span class="sev ${a.nivel}">${esc(a.nivel)}</span></div><div class="c">→ ${esc(a.conduta)}</div></div>`).join('')}
-    <table class="tb formulas"><tbody>${c.formulas.map(f => `<tr><td>${esc(f.nome)}</td><td><code>${esc(f.formula)}</code></td><td class="small">${esc(f.calculo)}</td><td class="num"><b>${esc(f.resultado)}</b></td></tr>`).join('')}</tbody></table>
-    <div class="row-btns"><button class="btn" id="btnUsarPressao">↪️ Usar ${fmt(c.p2, 2)} bar como pressão de trabalho</button></div>`;
+    ${c.avisos.map(a => `<div class="al ${a.nivel}"><div class="t"><span>${esc(textoComPressao(a.texto))}</span><span class="sev ${a.nivel}">${esc(a.nivel)}</span></div><div class="c">→ ${esc(textoComPressao(a.conduta))}</div></div>`).join('')}
+    <table class="tb formulas"><tbody>${c.formulas.map(f => `<tr><td>${esc(f.nome)}</td><td><code>${esc(f.formula)}</code></td><td class="small">${esc(f.calculo)}</td><td class="num"><b>${esc(textoComPressao(f.resultado))}</b></td></tr>`).join('')}</tbody></table>
+    <p class="small muted">Nas equações, os valores de pressão são em bar. Os resultados e os campos usam ${unidadePressaoRotulo()}.</p>
+    <div class="row-btns"><button class="btn" id="btnUsarPressao">↪️ Usar ${fmtPressao(c.p2)} como pressão de trabalho</button></div>`;
   $('#btnUsarPressao').onclick = () => {
-    $('#pPress').value = c.p2; $('#pFixar').checked = true;
-    calcularRegulagem(); toast(`Pressão de ${fmt(c.p2, 2)} bar aplicada na regulagem`);
+    escreverPressao('#pPress', c.p2); $('#pFixar').checked = true;
+    calcularRegulagem(); toast(`Pressão de ${fmtPressao(c.p2)} aplicada na regulagem`);
   };
   renderTabelaCruzada();
 }
@@ -1410,26 +1521,28 @@ function renderTabelaCruzada() {
   const p = PT.PONTA_MAP[e.ponta];
   if (!t.sizes.length) { $('#xTabela').innerHTML = ''; return; }
   $('#xTabela').innerHTML = `<h3>Tabela cruzada — ${p ? esc(p.marca + ' ' + p.modelo) : 'pontas ISO'}</h3>
-    <p class="small muted">L/min por bico e, embaixo, o volume que sai a ${fmt(e.velocidade, 1)} km/h com ${fmt(t.faixaPorBico, 2)} m por bico. Verde = dentro de 5 % do alvo de ${fmt(e.volumeHa, 0)} L/ha; a linha destacada é a ponta em uso.</p>
-    <div class="cruzada"><table class="tb"><thead><tr><th>bar</th>${t.sizes.map(s => `<th class="num">${corBadge(s)}</th>`).join('')}</tr></thead>
-    <tbody>${t.linhas.map(l => `<tr><th>${fmt(l.bar, 1)}</th>${l.celulas.map(c => `<td class="num ${c.noAlvo ? 'alvo' : ''} ${c.iso === e.iso ? 'sel' : ''}" title="${c.gota ? esc(c.gota.nome) : ''}">${fmt(c.vazao, 2)}${c.volume != null ? `<small>${fmt(c.volume, 0)} L/ha</small>` : ''}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+    <p class="small muted">L/min por bico e, embaixo, o volume que sai a ${fmt(e.velocidade, 1)} km/h com ${fmt(t.faixaPorBico, 2)} m por bico. ${e.modo === 'faixa' ? 'Os volumes da tabela são por hectare de faixa tratada. ' : ''}Verde = dentro de 5 % do alvo de ${fmt(e.volumeHa, 1)} L/ha; a linha destacada é a ponta em uso.</p>
+    <div class="cruzada"><table class="tb"><thead><tr><th>${unidadePressaoRotulo()}</th>${t.sizes.map(s => `<th class="num">${corBadge(s)}</th>`).join('')}</tr></thead>
+    <tbody>${t.linhas.map(l => `<tr><th>${fmt(PT.pressaoNaUnidade(l.bar, unidadePressaoAtual), 2)}</th>${l.celulas.map(c => `<td class="num ${c.noAlvo ? 'alvo' : ''} ${c.iso === e.iso ? 'sel' : ''}" title="${c.gota ? esc(c.gota.nome) : ''}">${fmt(c.vazao, 2)}${c.volume != null ? `<small>${fmt(c.volume, 0)} L/ha</small>` : ''}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
 function preencherCruzarDaPonta() {
   const e = lerRegulagem();
-  const q = PT.vazaoNominal(e.iso);
-  if (!q) return toast('Selecione uma ponta com tamanho ISO', 'err');
-  $('#xQ1').value = q; $('#xP1').value = 3;
+  const p = PT.PONTA_MAP[e.ponta], pressao = PT.pressaoReferencia(p);
+  const q = PT.vazaoDaPonta(p, e.iso, pressao);
+  if (!q) return toast('A ponta selecionada não tem referência de vazão para este tamanho', 'err');
+  $('#xQ1').value = q; escreverPressao('#xP1', pressao); origemReferenciaCruzamento = 'ponta';
   if (!num($('#xAlvo').value)) {                       // sem alvo ainda: mira a vazão que o arranjo pede
     $('#xModo').value = 'vazao'; atualizarLabelCruzar();
     $('#xAlvo').value = PT.vazaoNecessaria(e.volumeHa, e.velocidade, faixaPorBicoAtual());
   }
-  toast(`Ponto de referência: ${fmt(q, 2)} L/min a 3 bar (nominal ISO ${e.iso})`);
+  toast(`Ponto de referência: ${fmt(q, 3)} L/min a ${fmtPressao(pressao)} (${p ? p.modelo : 'ISO'} ${e.iso})`);
   cruzarVazaoPressao();
 }
 function preencherCruzarDaCalibracao() {
   if (!ultimaCalibracao) return toast('Rode a calibração a campo primeiro', 'err');
   $('#xQ1').value = ultimaCalibracao.media;
-  $('#xP1').value = num($('#cPress').value) || lerRegulagem().pressao || '';
+  if (ultimaCalibracao.pressao) escreverPressao('#xP1', ultimaCalibracao.pressao); else $('#xP1').value = '';
+  origemReferenciaCruzamento = 'calibracao';
   toast(`Ponto de referência: média medida de ${fmt(ultimaCalibracao.media, 3)} L/min`);
   cruzarVazaoPressao();
 }
@@ -1457,13 +1570,15 @@ function renderClima() {
     <p class="small muted">${esc(c.fonte)}. A janela de 2 a 8 vale para pulverização em geral; produto sistêmico aguenta a borda superior melhor que o de contato.</p>`;
 }
 function atualizarAreaTanque() {
-  const tanque = num($('#pTq').value), volume = num($('#pVol').value), el = $('#pAreaTanque');
-  if (!(tanque > 0) || !(volume > 0)) { el.innerHTML = ''; return; }
-  const ha = tanque / volume;
-  el.innerHTML = `Área por tanque = ${fmt(tanque, 0)} L ÷ ${fmt(volume, 0)} L/ha = <b>${fmt(ha, 2)} ha</b> por carga.
+  const e = lerRegulagem(), el = $('#pAreaTanque');
+  if (PT.validarRegulagem(e) || !(e.tanque > 0)) { el.innerHTML = ''; return; }
+  const r = PT.calcular(e);
+  if (!r.ficha) { el.innerHTML = ''; return; }
+  const ha = r.ficha.haExatos, volume = r.modo === 'faixa' ? r.volumeLavoura : r.volumeAplicado;
+  el.innerHTML = `${r.modo === 'faixa' ? `Na faixa: <b>${fmt(r.volumeAplicado, 1)} L/ha tratado</b> · na lavoura: <b>${fmt(volume, 1)} L/ha de lavoura</b>.<br>` : ''}Área por tanque de ${fmt(e.tanque, 0)} L = <b>${fmt(ha, 2)} ha${r.modo === 'faixa' ? ' de lavoura' : ''}</b> por carga${e.fixarPressao ? ' (volume efetivo na pressão fixa)' : ''}.
     <button class="btn sm ghost" id="btnUsarAreaTanque">usar como área</button>`;
   $('#btnUsarAreaTanque').onclick = () => {
-    $('#pArea').value = Math.round(ha * 100) / 100;
+    $('#pArea').value = Number(ha.toPrecision(12));
     if (regulagem) calcularRegulagem(true);
     toast(`Área ajustada para uma carga: ${fmt(ha, 2)} ha`);
   };
@@ -1476,7 +1591,7 @@ function renderBuscaPonta(q) {
   const res = PT.buscarPontas(q, { limite: 30 });
   const linha = (r, i) => {
     const det = r.tamanho
-      ? `${esc(r.tamanho)}${r.cor && r.cor !== r.tamanho ? ' · ' + esc(r.cor) : ''} · ${r.angulo}° · ${r.vazao ? fmt(r.vazao, 2) + ' L/min a ' + fmt(r.pressaoRef, 1) + ' bar' : 'sem vazão'}`
+      ? `${esc(r.tamanho)}${r.cor && r.cor !== r.tamanho ? ' · ' + esc(r.cor) : ''} · ${r.angulo}° · ${r.vazao ? fmt(r.vazao, 2) + ' L/min a ' + fmtPressao(r.pressaoRef) : 'sem vazão'}`
       : `${r.nTamanhos} tamanho(s) · ${r.angulos.join('/')}° · ${esc(PT.TIPOS[r.tipo] || r.tipo)}`;
     return `<button type="button" class="it" data-pb="${i}"><span><b>${esc(r.marca)} · ${esc(r.modelo)}${r.livre ? ' ★' : ''}</b><small>${det}</small></span><span class="src ${r.livre ? 'kb' : 'cat'}">${r.tamanho ? 'ponta' : 'família'}</span></button>`;
   };
@@ -1513,14 +1628,14 @@ function carregarPontasLivres(semTela) {
 function limparFormPontaLivre() {
   pontaLivreEditando = null;
   ['#plMarca', '#plModelo', '#plNota', '#plTam'].forEach(s => { $(s).value = ''; });
-  $('#plAng').value = '110'; $('#plPmin').value = 1; $('#plPmax').value = 6; $('#plTipo').value = 'leque'; $('#plGota').value = '';
+  $('#plAng').value = '110'; escreverPressao('#plPmin', 1); escreverPressao('#plPmax', 6); $('#plTipo').value = 'leque'; $('#plGota').value = '';
   $('#btnPlSalvar').textContent = 'Salvar e usar esta ponta';
 }
 function renderPontasLivres() {
   const el = $('#plLista'); if (!el) return;
   el.innerHTML = DB.pontasLivres.length ? '<div class="sub-hd">Minhas pontas</div>' + DB.pontasLivres.map((d, i) => {
     const p = PT.PONTA_MAP[d.id];
-    return `<div class="row"><div><b>${esc(d.marca)} · ${esc(d.modelo)}</b><small>${p ? esc(p.sizes.join(', ')) + ' · ' + p.pressao[0] + '–' + p.pressao[1] + ' bar' : 'dados inválidos — edite'}</small></div><div class="acts"><button type="button" class="btn sm" data-plusar="${i}">Usar</button><button type="button" class="btn sm ghost" data-pled="${i}" aria-label="Editar">✎</button><button type="button" class="btn sm ghost danger" data-pldel="${i}" aria-label="Excluir">✕</button></div></div>`;
+    return `<div class="row"><div><b>${esc(d.marca)} · ${esc(d.modelo)}</b><small>${p ? esc(p.sizes.join(', ')) + ' · ' + faixaPressao(p.pressao[0], p.pressao[1]) : 'dados inválidos — edite'}</small></div><div class="acts"><button type="button" class="btn sm" data-plusar="${i}">Usar</button><button type="button" class="btn sm ghost" data-pled="${i}" aria-label="Editar">✎</button><button type="button" class="btn sm ghost danger" data-pldel="${i}" aria-label="Excluir">✕</button></div></div>`;
   }).join('') : '';
   $$('#plLista [data-plusar]').forEach(b => b.onclick = () => usarPonta(DB.pontasLivres[+b.dataset.plusar].id));
   $$('#plLista [data-pled]').forEach(b => b.onclick = () => editarPontaLivre(DB.pontasLivres[+b.dataset.pled]));
@@ -1533,12 +1648,12 @@ function usarPonta(id) {
 function editarPontaLivre(d) {
   pontaLivreEditando = d.id;
   $('#plMarca').value = d.marca; $('#plModelo').value = d.modelo; $('#plTipo').value = d.tipo || 'leque'; $('#plAng').value = d.angulos || '';
-  $('#plPmin').value = d.pressaoMin; $('#plPmax').value = d.pressaoMax; $('#plGota').value = d.gota || ''; $('#plNota').value = d.nota || ''; $('#plTam').value = d.tamanhos || '';
+  escreverPressao('#plPmin', d.pressaoMin); escreverPressao('#plPmax', d.pressaoMax); $('#plGota').value = d.gota || ''; $('#plNota').value = d.nota || ''; $('#plTam').value = converterPontosPressao(d.tamanhos, 'bar', unidadePressaoAtual);
   $('#btnPlSalvar').textContent = 'Salvar alterações e usar';
   $('#pontaLivreBox').open = true; $('#plMarca').scrollIntoView({ block: 'center' });
 }
 function salvarPontaLivre() {
-  const def = { marca: $('#plMarca').value.trim(), modelo: $('#plModelo').value.trim(), tipo: $('#plTipo').value, angulos: $('#plAng').value.trim(), pressaoMin: $('#plPmin').value, pressaoMax: $('#plPmax').value, gota: $('#plGota').value, nota: $('#plNota').value.trim(), tamanhos: $('#plTam').value.trim() };
+  const def = { marca: $('#plMarca').value.trim(), modelo: $('#plModelo').value.trim(), tipo: $('#plTipo').value, angulos: $('#plAng').value.trim(), pressaoMin: lerPressao('#plPmin'), pressaoMax: lerPressao('#plPmax'), gota: $('#plGota').value, nota: $('#plNota').value.trim(), tamanhos: converterPontosPressao($('#plTam').value.trim(), unidadePressaoAtual, 'bar') };
   let p; try { p = PT.registrarPonta(def); } catch (e) { return toast(e.message, 'err'); }
   def.id = p.id;
   if (pontaLivreEditando && pontaLivreEditando !== p.id) { PT.removerPonta(pontaLivreEditando); DB.pontasLivres = DB.pontasLivres.filter(x => x.id !== pontaLivreEditando); }
@@ -1555,11 +1670,24 @@ function excluirPontaLivre(d) {
   preencherModelos(); $('#pPonta').onchange(); renderPontasLivres();
 }
 function initPontas() {
+  mudarUnidadePressao(DB.config.unidadePressao, false, false);
+  $('#pUnidadePressao').onchange = () => mudarUnidadePressao($('#pUnidadePressao').value);
   carregarPontasLivres(true);
   $('#pAlvo').innerHTML = PT.ALVOS.map(a => `<option value="${a.id}">${esc(a.nome)}</option>`).join('');
   $('#chipsPreset').innerHTML = PT.PRESETS.map(p => `<button type="button" class="chip" data-preset="${esc(p.id)}" title="${esc(p.nota)}">${esc(p.nome)}</button>`).join('');
   preencherMarcas(); preencherModelos(); preencherIso(); preencherAngulos();
-  const recalc = () => { atualizarVazaoAlvo(); if (regulagem) calcularRegulagem(true); else renderTabelaCruzada(); };
+  const recalc = () => {
+    regulagemAlterada = true;
+    invalidarCalibracao();
+    $('#pSugestoes').innerHTML = '';
+    $('#xResultado').innerHTML = '';
+    if (origemReferenciaCruzamento === 'ponta') {
+      $('#xQ1').value = ''; $('#xP1').value = ''; origemReferenciaCruzamento = null;
+    }
+    atualizarVazaoAlvo();
+    if (regulagem) calcularRegulagem(true); else renderTabelaCruzada();
+    atualizarAreaTanque();
+  };
   $('#pModo').onchange = () => { camposPorModo(); recalc(); };
   $('#pAlvo').onchange = () => { preencherModelos($('#pPonta').value); preencherIso(); preencherAngulos(); recalc(); };
   $('#pMarca').onchange = () => { preencherModelos(); preencherIso(); preencherAngulos(); recalc(); };
@@ -1580,7 +1708,17 @@ function initPontas() {
   $('#btnSugerir').onclick = sugerirPontas;
   $('#btnSalvarReg').onclick = salvarRegulagem;
   $('#btnCalibrar').onclick = renderCalibracao;
-  $('#xModo').onchange = () => { atualizarLabelCruzar(); if ($('#xAlvo').value) cruzarVazaoPressao(); };
+  $('#cUnidadeColeta').onchange = () => {
+    invalidarCalibracao();
+    const litros = $('#cUnidadeColeta').value === 'L';
+    $('#cColetasTitulo').textContent = `Volume coletado por bico (${litros ? 'L' : 'mL'}; separe por espaço ou ponto e vírgula)`;
+    $('#cColetas').placeholder = litros ? 'ex.: 1,8 1,75 0 1,8' : 'ex.: 1800 1750 0 1800';
+  };
+  ['#cColetas', '#cSeg', '#cPress'].forEach(s => { $(s).oninput = $(s).onchange = invalidarCalibracao; });
+  ['#xQ1', '#xP1'].forEach(s => { $(s).oninput = () => {
+    origemReferenciaCruzamento = null; $('#xResultado').innerHTML = '';
+  }; });
+  $('#xModo').onchange = () => { delete $('#xAlvo').dataset.pressaoBar; delete $('#xAlvo').dataset.pressaoExibida; atualizarLabelCruzar(); if ($('#xAlvo').value) cruzarVazaoPressao(); };
   $('#btnCruzar').onclick = cruzarVazaoPressao;
   $('#btnCruzPonta').onclick = preencherCruzarDaPonta;
   $('#btnCruzCalib').onclick = preencherCruzarDaCalibracao;
