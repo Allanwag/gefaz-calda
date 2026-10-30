@@ -1175,7 +1175,7 @@ function lerRegulagem() {
     temperatura: $('#pTemp').value, umidade: $('#pUr').value, vento: $('#pVento').value, hora: $('#pHora').value
   };
 }
-function aplicarRegulagem(e) {
+function aplicarRegulagem(e, preservarClima = false) {
   if (!e) return;
   if (e.modo) $('#pModo').value = e.modo;
   const set = (sel, v) => { if (v != null && v !== '') $(sel).value = v; };
@@ -1185,7 +1185,10 @@ function aplicarRegulagem(e) {
   $('#pLargura').value = e.larguraEfetiva == null ? '' : e.larguraEfetiva;
   set('#pLf', e.larguraFaixa); set('#pBf', e.bicosPorPassada); set('#pEl', e.entreLinhas); $('#pProt').checked = !!e.protecao;
   set('#pTq', e.tanque); set('#pArea', e.area);
-  set('#pTemp', e.temperatura); set('#pUr', e.umidade); set('#pVento', e.vento); set('#pHora', e.hora);
+  if (!preservarClima) {
+    [['#pTemp', e.temperatura], ['#pUr', e.umidade], ['#pVento', e.vento], ['#pHora', e.hora]]
+      .forEach(([sel, valor]) => { $(sel).value = valor == null ? '' : valor; });
+  }
   camposPorModo(); atualizarVelocidade();
   if (e.ponta) { const p = PT.PONTA_MAP[e.ponta]; if (p) { $('#pMarca').value = p.marca; preencherModelos(e.ponta); } }
   if (e.iso != null) preencherIso(e.iso); else preencherIso();
@@ -1193,6 +1196,7 @@ function aplicarRegulagem(e) {
   $('#pFixar').checked = !!e.fixarPressao;
   if (e.fixarPressao && e.pressao) escreverPressao('#pPress', e.pressao); else $('#pPress').value = '';
   atualizarVazaoAlvo();
+  renderClima();
 }
 /* velocidade pelo cronômetro: 3,6 × percurso ÷ tempo → preenche o campo de velocidade da regulagem */
 function atualizarVelocidade(dosCampos) {
@@ -1402,8 +1406,10 @@ function renderCalibracao() {
   const erro = PT.validarRegulagem(e);
   if (erro || !(num($('#cSeg').value) > 0)) { $('#cResultado').innerHTML = ''; return toast(erro || 'Informe tempo de coleta maior que zero.', 'err'); }
   if ($('#cPress').value !== '' && !(num($('#cPress').value) > 0)) { $('#cResultado').innerHTML = ''; return toast('Informe pressão de coleta maior que zero ou deixe em branco.', 'err'); }
+  const pressaoColeta = String($('#cPress').value).trim() !== '' ? lerPressao('#cPress')
+    : e.fixarPressao && String($('#pPress').value).trim() !== '' ? e.pressao : 0;
   const c = PT.calibracao({
-    coletas, segundos: num($('#cSeg').value), pressao: lerPressao('#cPress') || e.pressao, iso: e.iso, ponta: e.ponta,
+    coletas, segundos: num($('#cSeg').value), pressao: pressaoColeta, iso: e.iso, ponta: e.ponta,
     modo: e.modo, espacamento: e.espacamento, nBicos: e.nBicos, larguraEfetiva: e.larguraEfetiva, larguraFaixa: e.larguraFaixa, bicosPorPassada: e.bicosPorPassada, entreLinhas: e.entreLinhas,
     velocidade: e.velocidade, distancia: e.distancia, tempo: (PT.velocidadeMedida(e.distancia, e.tempos) || {}).tempoMedio || 0, volumeHa: e.volumeHa
   });
@@ -1737,7 +1743,7 @@ function initPontas() {
   $('#pBusca').oninput = e => renderCatalogoPontas(e.target.value);
   $$('#chipsPreset [data-preset]').forEach(ch => ch.onclick = () => {
     const p = PT.PRESETS.find(x => x.id === ch.dataset.preset);
-    aplicarRegulagem({ ...p, tanque: num($('#pTq').value), area: num($('#pArea').value) });
+    aplicarRegulagem({ ...p, tanque: num($('#pTq').value), area: num($('#pArea').value) }, true);
     calcularRegulagem(); toast(p.nome);
   });
   camposPorModo();

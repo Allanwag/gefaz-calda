@@ -51,7 +51,7 @@ test('todo arquivo do pré-cache existe: se um faltar, o addAll derruba a instal
   assert.ok(assets.length > 10);
   const faltam = assets.filter(a => a !== './' && !fs.existsSync(require('node:path').join(__dirname, '..', a.split('?')[0])));
   assert.deepEqual(faltam, []);
-  ['./estoque.js', './fazenda.js', './estoque-ui.js', './metas-ui.js'].forEach(a => assert.ok(assets.includes(a), a + ' precisa estar no pré-cache'));
+  ['./estoque.js', './fazenda.js?v=39', './estoque-ui.js', './metas-ui.js'].forEach(a => assert.ok(assets.includes(a), a + ' precisa estar no pré-cache'));
 });
 
 test('o leitor de PDF vem do cache depois da primeira vez e todos os scripts do index.html são pré-cacheados', async () => {

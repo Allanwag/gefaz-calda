@@ -102,12 +102,14 @@ function planilhaDaFicha() {
   const linhas = nomesConhecidos().map(nome => { const k = norm(nome); return { nome, intervalo: DB.intervalos[k], carencia: DB.carencias[k], maxAplic: DB.maxAplic[k], reentrada: DB.reentradas[k] }; });
   return GCEstoque.fichaParaCSV(linhas);
 }
-function aplicarFichaNaCalda() {
+function aplicarFichaNaCalda(remocao) {
   calda.itens.forEach(it => Object.entries(FICHA_CAMPOS).forEach(([campo, mapa]) => {
     const v = DB[mapa][norm(it.nome)];
     if (v !== undefined) it[campo] = v;
+    else if (remocao && norm(it.nome) === norm(remocao.nome) && remocao.campos.includes(campo)) delete it[campo];
   }));
   renderItens();
+  conferirResultadoAtual();
 }
 function importarFicha(texto) {
   const f = GCEstoque.fichaDeTabela(GCEstoque.parseCSV(texto));
@@ -127,11 +129,17 @@ function renderFicha() {
   tb.innerHTML = lista.length
     ? `<thead><tr><th>Produto</th><th class="num">Intervalo (d)</th><th class="num">Carência (d)</th><th class="num">Máx./ciclo</th><th class="num">Reentrada (h)</th><th></th></tr></thead><tbody>${lista.slice(0, 300).map(p => `<tr><td>${esc(p.nome)}</td>${inp(p, 'intervalo', '—')}${inp(p, 'carencia', '—')}${inp(p, 'maxAplic', '—')}${inp(p, 'reentrada', '—')}<td><button type="button" class="btn sm ghost danger" data-fdel="${esc(p.chave)}" aria-label="Remover ${esc(p.nome)} da ficha">✕</button></td></tr>`).join('')}</tbody>`
     : '<tbody><tr><td class="muted">Nenhum produto com ficha ainda. Baixe a planilha, preencha e importe — ou preencha direto na calda.</td></tr></tbody>';
-  tb.querySelectorAll('[data-fk]').forEach(i => i.onchange = () => { salvarFichaProduto(nomeDaFicha(i.dataset.fk), i.dataset.fc, i.value); aplicarFichaNaCalda(); $('#fichaResumo').textContent = `${produtosDaFicha().length} produto(s) com ficha`; });
+  tb.querySelectorAll('[data-fk]').forEach(i => i.onchange = () => {
+    const nome = nomeDaFicha(i.dataset.fk);
+    salvarFichaProduto(nome, i.dataset.fc, i.value);
+    aplicarFichaNaCalda({ nome, campos: [i.dataset.fc] });
+    $('#fichaResumo').textContent = `${produtosDaFicha().length} produto(s) com ficha`;
+  });
   tb.querySelectorAll('[data-fdel]').forEach(b => b.onclick = () => {
     const nome = nomeDaFicha(b.dataset.fdel);
     if (!confirm(`Tirar ${nome} da ficha (apaga intervalo, carência, máximo e reentrada)?`)) return;
     Object.keys(FICHA_CAMPOS).forEach(c => salvarFichaProduto(nome, c, ''));
+    aplicarFichaNaCalda({ nome, campos: Object.keys(FICHA_CAMPOS) });
     renderFicha();
   });
 }

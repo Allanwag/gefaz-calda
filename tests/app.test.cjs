@@ -9,14 +9,16 @@ function app() {
   const elements = new Map();
   const element = s => {
     if (!elements.has(s)) elements.set(s, { value: '', dataset: {}, innerHTML: '', textContent: '',
-      classList: { toggle() {}, add() {}, remove() {} }, options: [], childNodes: [{ nodeValue: '' }], scrollIntoView() {}, addEventListener() {} });
+      classList: { toggle() {}, add() {}, remove() {} }, options: [], childNodes: [{ nodeValue: '' }], scrollIntoView() {}, addEventListener() {}, querySelectorAll: () => [] });
     return elements.get(s);
   };
-  const ctx = vm.createContext({ window: { GC_KB: KB, GCEngine: E, GCPontas: require('../pontas.js'), scrollTo() {}, addEventListener() {} },
+  const ctx = vm.createContext({ window: { GC_KB: KB, GCEngine: E, GCPontas: require('../pontas.js'), GCEstoque: require('../estoque.js'), scrollTo() {}, addEventListener() {} },
     document: { querySelector: element, querySelectorAll: () => [], addEventListener() {} },
     localStorage: { getItem: () => null, setItem() {} }, crypto: { randomUUID: () => 'id' },
-    setTimeout: () => 1, clearTimeout() {}, setInterval: () => 2, clearInterval() {}, console });
+    setTimeout: () => 1, clearTimeout() {}, setInterval: () => 2, clearInterval() {}, confirm: () => true,
+    GCEstoque: require('../estoque.js'), console });
   vm.runInContext(fs.readFileSync(require.resolve('../app.js'), 'utf8'), ctx);
+  vm.runInContext(fs.readFileSync(require.resolve('../fazenda.js'), 'utf8'), ctx);
   const run = s => vm.runInContext(s, ctx);
   run(`DB = defaultDB();
     const regulagemDoLaudoOriginal = regulagemDoLaudo;
@@ -40,6 +42,120 @@ function appFaixa() {
   a.element('#pFixar').checked = false;
   return a;
 }
+
+test('carregar regulagem restaura clima vazio, ausente, zero e preenchido sem herdar a leitura anterior', () => {
+  const a = appFaixa();
+  Object.entries({ pTemp: '36', pUr: '25', pVento: '24', pHora: '14:00' })
+    .forEach(([id, value]) => { a.element('#' + id).value = value; });
+  a.run('renderClima()');
+  assert.match(a.element('#pClima').innerHTML, /Delta T/);
+  a.run("aplicarRegulagem({...lerRegulagem(), temperatura:'', umidade:'', vento:'', hora:''})");
+  for (const id of ['pTemp', 'pUr', 'pVento', 'pHora']) assert.equal(a.element('#' + id).value, '');
+  assert.match(a.element('#pClima').innerHTML, /Informe temperatura e umidade/);
+  a.run('calcularRegulagem(true)');
+  assert.equal(a.run('regulagem.clima'), null);
+  Object.entries({ pTemp: '36', pUr: '25', pVento: '24', pHora: '14:00' })
+    .forEach(([id, value]) => { a.element('#' + id).value = value; });
+  a.run("aplicarRegulagem({modo:'faixa'})");
+  for (const id of ['pTemp', 'pUr', 'pVento', 'pHora']) assert.equal(a.element('#' + id).value, '');
+  a.run("aplicarRegulagem({...lerRegulagem(), temperatura:0, umidade:0, vento:0, hora:'00:00'})");
+  assert.equal(a.element('#pTemp').value, 0);
+  assert.equal(a.element('#pUr').value, 0);
+  assert.equal(a.element('#pVento').value, 0);
+  assert.equal(a.element('#pHora').value, '00:00');
+  a.run("aplicarRegulagem({...lerRegulagem(), temperatura:'26', umidade:'55', vento:'8', hora:'08:30'})");
+  assert.match(a.element('#pClima').innerHTML, /Delta T/);
+  assert.equal(a.element('#pHora').value, '08:30');
+  a.run("aplicarRegulagem({...PT.PRESETS[0]}, true)");
+  assert.equal(a.element('#pTemp').value, '26');
+  assert.equal(a.element('#pHora').value, '08:30');
+});
+
+test('calibração só usa pressão medida ou pressão fixa ativa como referência nominal', () => {
+  const a = appFaixa();
+  a.element('#cPress').value = '';
+  a.element('#pPress').value = '8';
+  a.element('#pFixar').checked = false;
+  a.element('#cColetas').value = '500 500 500 500';
+  a.run('renderCalibracao()');
+  assert.equal(a.run('ultimaCalibracao.pressao'), 0);
+  assert.equal(a.run('ultimaCalibracao.nominal'), 0);
+  assert.equal(a.run('ultimaCalibracao.bicos[0].desgaste'), null);
+  assert.ok(a.run('ultimaCalibracao.correcao.every(t => !t.startsWith("Pressão:"))'));
+  assert.match(a.element('#cResultado').innerHTML, /desgaste nominal não aferido/);
+  a.element('#pFixar').checked = true;
+  a.element('#pPress').value = '3';
+  a.run('renderCalibracao()');
+  assert.equal(a.run('ultimaCalibracao.pressao'), 3);
+  assert.ok(a.run('ultimaCalibracao.nominal') > 0);
+  a.element('#cPress').value = '4';
+  a.run('renderCalibracao()');
+  assert.equal(a.run('ultimaCalibracao.pressao'), 4);
+  a.run("mudarUnidadePressao('psi', false)");
+  a.element('#cPress').value = '';
+  a.element('#pFixar').checked = false;
+  a.run('renderCalibracao()');
+  assert.equal(a.run('ultimaCalibracao.pressao'), 0);
+  assert.equal(a.run('ultimaCalibracao.nominal'), 0);
+  a.element('#pFixar').checked = true;
+  a.run('renderCalibracao()');
+  assert.equal(a.run('ultimaCalibracao.pressao'), 3);
+});
+
+test('apagar cada prazo na ficha remove só o campo do produto e invalida o laudo antigo', () => {
+  const a = app();
+  a.run("calda.itens.push({nome:'Receita sem ficha', classe:'Fungicida', dose:1, unidade:'L/ha', carencia:21, intervalo:7, maxAplic:2, reentrada:12})");
+  const valores = { intervalo: 14, carencia: 30, maxAplic: 3, reentrada: 24 };
+  for (const [campo, valor] of Object.entries(valores)) a.run(`salvarFichaProduto('Wetcit','${campo}',${valor})`);
+  a.run('aplicarFichaNaCalda()');
+  const outras = a.run('JSON.stringify(calda.itens[1])');
+  const mapa = { intervalo: 'intervalos', carencia: 'carencias', maxAplic: 'maxAplic', reentrada: 'reentradas' };
+  for (const campo of Object.keys(valores)) {
+    a.run('analisar(true, false)');
+    assert.equal(a.run('conferirResultadoAtual()'), true);
+    const input = { dataset: { fk: 'wetcit', fc: campo }, value: '' };
+    a.element('#fichaTabela').querySelectorAll = sel => sel === '[data-fk]' ? [input] : [];
+    a.run('renderFicha()');
+    input.onchange();
+    assert.equal(a.run(`DB.${mapa[campo]}.wetcit`), undefined);
+    assert.equal(a.run(`calda.itens[0].${campo}`), undefined);
+    assert.equal(a.run('resultado'), null);
+    assert.equal(a.run('resumoExport()'), null);
+    assert.equal(a.run('JSON.stringify(calda.itens[1])'), outras);
+    for (const [outro, valor] of Object.entries(valores)) {
+      if (outro !== campo && a.run(`DB.${mapa[outro]}.wetcit`) !== undefined)
+        assert.equal(a.run(`calda.itens[0].${outro}`), valor);
+    }
+  }
+});
+
+test('excluir ficha inteira limpa os quatro prazos só da calda correspondente; zero continua válido', () => {
+  const a = app();
+  a.run("calda.itens.push({nome:'Outra receita', classe:'Fungicida', dose:1, unidade:'L/ha', carencia:21})");
+  a.run("salvarFichaProduto('Wetcit','intervalo',14); salvarFichaProduto('Wetcit','carencia',0); salvarFichaProduto('Wetcit','maxAplic',3); salvarFichaProduto('Wetcit','reentrada',0); aplicarFichaNaCalda()");
+  assert.equal(a.run('calda.itens[0].carencia'), 0);
+  assert.equal(a.run('calda.itens[0].reentrada'), 0);
+  a.run('analisar(true, false)');
+  const button = { dataset: { fdel: 'wetcit' } };
+  a.element('#fichaTabela').querySelectorAll = sel => sel === '[data-fdel]' ? [button] : [];
+  a.run('renderFicha()');
+  button.onclick();
+  for (const campo of ['intervalo', 'carencia', 'maxAplic', 'reentrada']) assert.equal(a.run(`calda.itens[0].${campo}`), undefined);
+  assert.equal(a.run('calda.itens[1].carencia'), 21);
+  assert.equal(a.run('resultado'), null);
+  assert.equal(a.run('resumoExport()'), null);
+});
+
+test('importação parcial da ficha mantém os campos omitidos e produtos sem mapa', () => {
+  const a = app();
+  a.run("calda.itens.push({nome:'Outra receita', classe:'Fungicida', dose:1, unidade:'L/ha', carencia:21})");
+  a.run("salvarFichaProduto('Wetcit','intervalo',14); salvarFichaProduto('Wetcit','carencia',30); aplicarFichaNaCalda()");
+  a.run("importarFicha('Produto;Carência (dias)\\nWetcit;0')");
+  assert.equal(a.run('DB.intervalos.wetcit'), 14);
+  assert.equal(a.run('calda.itens[0].intervalo'), 14);
+  assert.equal(a.run('calda.itens[0].carencia'), 0);
+  assert.equal(a.run('calda.itens[1].carencia'), 21);
+});
 
 test('Columbia: botão preenche 18 m, 46 pontas e 40 cm preservando velocidade e volume do operador', () => {
   const a = appFaixa(); a.element('#btnColumbiaCross').onclick();
